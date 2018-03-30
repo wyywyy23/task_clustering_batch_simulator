@@ -26,16 +26,16 @@ int ClusteringWMS::main() {
   std::tuple<std::string,unsigned int,double> my_job2 = std::make_tuple("config2", 2, 900);
   std::set<std::tuple<std::string,unsigned int,double>> set_of_jobs = {my_job1, my_job2};
 
-  std::map<std::string, double> estimates;
-  try {
-    WRENCH_INFO("Getting queue waiting time estimates");
-    estimates = this->batch_service->getQueueWaitingTimeEstimate(set_of_jobs);
-  } catch (std::runtime_error &e) {
-    throw;
-  }
-
-  WRENCH_INFO("ESTIMATE #1: (1,1800): %lf", estimates["config1"]);
-  WRENCH_INFO("ESTIMATE #2: (2,900): %lf", estimates["config2"]);
+//  std::map<std::string, double> estimates;
+//  try {
+//    WRENCH_INFO("Getting queue waiting time estimates");
+//    estimates = this->batch_service->getQueueWaitingTimeEstimate(set_of_jobs);
+//  } catch (std::runtime_error &e) {
+//    throw;
+//  }
+//
+//  WRENCH_INFO("ESTIMATE #1: (1,1800): %lf", estimates["config1"]);
+//  WRENCH_INFO("ESTIMATE #2: (2,900): %lf", estimates["config2"]);
 
   Simulation::sleep(10);
 
