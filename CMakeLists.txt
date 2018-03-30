@@ -8,6 +8,8 @@ include_directories(src/ /usr/local/include /usr/local/include/wrench)
 # source files
 set(SOURCE_FILES
     src/Simulator.cpp
+    src/ClusteringWMS.cpp
+    src/ClusteringWMS.h
         )
 # test files
 set(TEST_FILES
