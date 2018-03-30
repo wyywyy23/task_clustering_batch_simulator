@@ -15,11 +15,11 @@ using namespace wrench;
 
     public:
 
-        ClusteringWMS(std::string hostname, ComputeService *batch_service);
+        ClusteringWMS(std::string hostname, BatchService *batch_service);
         int main() override;
 
     private:
-        ComputeService *batch_service;
+        BatchService *batch_service;
 
     };
 

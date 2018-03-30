@@ -46,11 +46,14 @@ int main(int argc, char **argv) {
   for (int i=0; i < num_compute_nodes; i++) {
     compute_nodes.push_back("ComputeNode_" + std::to_string(i));
   }
-  ComputeService *batch_service;
+  BatchService *batch_service;
   try {
     std::string login_hostname = "Login";
-    batch_service = simulation->add(new BatchService(login_hostname, true, false, compute_nodes, nullptr,
-                                                     {{BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}}));
+//    batch_service = simulation->add(new BatchService(login_hostname, true, false, compute_nodes, nullptr,
+//                                                     {{BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}}));
+    batch_service = new BatchService(login_hostname, true, false, {"ComputeNode_0", "ComputeNode_1"}, nullptr,
+                                     {});
+    simulation->add(batch_service);
   } catch (std::invalid_argument &e) {
     std::cerr << "Cannot instantiate batch service: " << e.what() << "\n";
     exit(1);
@@ -166,7 +169,8 @@ Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens) {
 
   static std::uniform_int_distribution<unsigned long> m_udist(min_time, max_time);
   for (int i=0; i < num_tasks; i++) {
-    workflow->addTask("Task_" + std::to_string(i), m_udist(rng), 1, 1, 1.0, 0.0);
+    unsigned long flops = m_udist(rng);
+    workflow->addTask("Task_" + std::to_string(i), flops, 1, 1, 1.0, 0.0);
   }
 
   return workflow;
