@@ -50,7 +50,9 @@ int main(int argc, char **argv) {
   try {
     std::string login_hostname = "Login";
     batch_service = new BatchService(login_hostname, true, false, compute_nodes, nullptr,
-                                     {{BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}});
+                                     {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, "conservative_bf"},
+                                      {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}
+                                     });
     simulation->add(batch_service);
   } catch (std::invalid_argument &e) {
     std::cerr << "Cannot instantiate batch service: " << e.what() << "\n";
