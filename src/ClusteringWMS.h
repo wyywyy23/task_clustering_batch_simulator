@@ -15,11 +15,14 @@ using namespace wrench;
 
     public:
 
-        ClusteringWMS(std::string hostname, BatchService *batch_service);
+        ClusteringWMS(std::string hostname, StandardJobScheduler *job_scheduler, BatchService *batch_service);
         int main() override;
+
+        void processEventStandardJobCompletion(std::unique_ptr<WorkflowExecutionEvent>) override;
 
     private:
         BatchService *batch_service;
+        std::string task_clustering_algorithm;
 
     };
 

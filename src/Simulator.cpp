@@ -6,22 +6,27 @@
 #include <wrench-dev.h>
 #include <services/compute/batch/BatchServiceProperty.h>
 #include "ClusteringWMS.h"
+#include "FixedClusteringScheduler.h"
 
 using namespace wrench;
 
 void setupSimulationPlatform(Simulation *simulation, int num_compute_nodes);
 Workflow *createWorkflow(std::string workflow_spec);
 Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens);
+StandardJobScheduler *createStandardJobScheduler(std::string scheduler_spec);
 
 int main(int argc, char **argv) {
 
   // Parse command-line arguments
-  if (argc != 5) {
-    std::cerr << "Usage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <workflow specification> <workflow start time>" << "\n";
-    std::cerr << "  workflow specification options:" << "\n";
+  if (argc != 6) {
+    std::cerr << "Usage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <workflow specification> <workflow start time> <algorithm>" << "\n";
+    std::cerr << "  * workflow specification options:" << "\n";
     std::cerr << "    - indep:n:t1:t2" << "\n";
     std::cerr << "      - n: number of tasks" << "\n";
     std::cerr << "      - t1/t2: min/max task durations in integral second (uniformly distributed)" << "\n";
+    std::cerr << "  * algorithm  options:" << "\n";
+    std::cerr << "    - fixed_clustering:n" << "\n";
+    std::cerr << "      - n: number of tasks in each cluster" << "\n";
     exit(1);
   }
   int num_compute_nodes;
@@ -59,10 +64,14 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
+  // Create the Standard Job Scheduler
+  StandardJobScheduler *scheduler = createStandardJobScheduler(argv[5]);
+
+
   // Create the WMS
   WMS *wms = nullptr;
   try {
-    wms = simulation->add(new ClusteringWMS("Login", batch_service));
+    wms = simulation->add(new ClusteringWMS("Login", scheduler, batch_service));
   } catch (std::invalid_argument &e) {
     std::cerr << "Cannot instantiate WMS\n";
     exit(1);
@@ -158,10 +167,10 @@ Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens) {
   if ((sscanf(spec_tokens[1].c_str(), "%lu", &num_tasks) != 1) or (num_tasks < 1)) {
     throw std::invalid_argument("createIndepWorkflow(): invalid number of tasks in indep workflow specification");
   }
-  if ((sscanf(spec_tokens[1].c_str(), "%lu", &min_time) != 1) or (min_time < 0.0)) {
+  if ((sscanf(spec_tokens[2].c_str(), "%lu", &min_time) != 1) or (min_time < 0.0)) {
     throw std::invalid_argument("createIndepWorkflow(): invalid min task exec time in indep workflow specification");
   }
-  if ((sscanf(spec_tokens[1].c_str(), "%lu", &max_time) != 1) or (max_time < 0.0) or (max_time < min_time)) {
+  if ((sscanf(spec_tokens[3].c_str(), "%lu", &max_time) != 1) or (max_time < 0.0) or (max_time < min_time)) {
     throw std::invalid_argument("createIndepWorkflow(): invalid max task exec time in indep workflow specification");
   }
 
@@ -170,9 +179,36 @@ Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens) {
   static std::uniform_int_distribution<unsigned long> m_udist(min_time, max_time);
   for (int i=0; i < num_tasks; i++) {
     unsigned long flops = m_udist(rng);
+    std::cerr << "FLOPS = " << flops << "\n";
     workflow->addTask("Task_" + std::to_string(i), flops, 1, 1, 1.0, 0.0);
   }
 
   return workflow;
+
+}
+
+
+StandardJobScheduler *createStandardJobScheduler(std::string scheduler_spec) {
+
+  std::istringstream ss(scheduler_spec);
+  std::string token;
+  std::vector<std::string> tokens;
+
+  while(std::getline(ss, token, ':')) {
+    tokens.push_back(token);
+  }
+
+  if (tokens[0] == "fixed_clustering") {
+    if (tokens.size() != 2) {
+      throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed_clustering specification");
+    }
+    int num_tasks_per_cluster;
+    if ((sscanf(tokens[1].c_str(), "%d", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1)) {
+      throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed_clustering specification");
+    }
+    return new FixedClusteringScheduler(num_tasks_per_cluster);
+  } else {
+    throw std::invalid_argument("createStandardJobScheduler(): Unknown workflow type " + tokens[0]);
+  }
 
 }

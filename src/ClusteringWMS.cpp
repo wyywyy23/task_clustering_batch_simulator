@@ -5,11 +5,14 @@
 
 #include "ClusteringWMS.h"
 
+using namespace wrench;
+
 XBT_LOG_NEW_DEFAULT_CATEGORY(clustering_wms, "Log category for Clustering WMS");
 
-ClusteringWMS::ClusteringWMS(std::string hostname, BatchService *batch_service) :
-        WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
+ClusteringWMS::ClusteringWMS(std::string hostname, StandardJobScheduler *standard_job_scheduler, BatchService *batch_service) :
+        WMS(std::unique_ptr<StandardJobScheduler>(standard_job_scheduler), nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
   this->batch_service = batch_service;
+  this->task_clustering_algorithm = task_clustering_algorithm;
 }
 
 int ClusteringWMS::main() {
@@ -19,26 +22,41 @@ int ClusteringWMS::main() {
   TerminalOutput::setThisProcessLoggingColor(WRENCH_LOGGING_COLOR_RED);
   WRENCH_INFO("Starting!");
 
-  unsigned long num_compute_node = this->batch_service->getNumHosts();
-  WRENCH_INFO("The Batch Service has %ld compute nodes", num_compute_node);
+  WRENCH_INFO("About to execute a workflow with %lu tasks", this->workflow->getNumberOfTasks());
 
-  std::tuple<std::string,unsigned int,double> my_job1 = std::make_tuple("config1", 1, 1800);
-  std::tuple<std::string,unsigned int,double> my_job2 = std::make_tuple("config2", 2, 900);
-  std::set<std::tuple<std::string,unsigned int,double>> set_of_jobs = {my_job1, my_job2};
+  // Create a job manager
+  std::shared_ptr<JobManager> job_manager = this->createJobManager();
 
-  std::map<std::string, double> estimates;
-  try {
-    WRENCH_INFO("Getting queue waiting time estimates");
-    estimates = this->batch_service->getQueueWaitingTimeEstimate(set_of_jobs);
-  } catch (std::runtime_error &e) {
-    throw;
+  while (true) {
+
+    // Get the ready tasks
+    std::map<std::string, std::vector<wrench::WorkflowTask *>> ready_tasks = this->workflow->getReadyTasks();
+
+    // Scheduler ready tasks
+    WRENCH_INFO("Scheduling tasks...");
+    this->standard_job_scheduler->scheduleTasks(
+            {this->batch_service},
+            ready_tasks);
+
+    // Wait for a workflow execution event, and process it
+    try {
+      this->waitForAndProcessNextEvent();
+    } catch (WorkflowExecutionException &e) {
+      WRENCH_INFO("Error while getting next execution event (%s)... ignoring and trying again",
+                  (e.getCause()->toString().c_str()));
+      continue;
+    }
+    if (workflow->isDone()) {
+      break;
+    }
   }
 
-  WRENCH_INFO("ESTIMATE #1: (1,1800): %lf", estimates["config1"]);
-  WRENCH_INFO("ESTIMATE #2: (2,900): %lf", estimates["config2"]);
-
-  Simulation::sleep(10);
+  job_manager.reset();
+  WRENCH_INFO("WORKFLOW EXECUTION COMPLETE");
 
   return 0;
+}
 
+void ClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<WorkflowExecutionEvent>) {
+  WRENCH_INFO("A STANDARD JOB HAS COMPLETED");
 }
