@@ -39,6 +39,7 @@ int ClusteringWMS::main() {
             ready_tasks);
 
     // Wait for a workflow execution event, and process it
+    WRENCH_INFO("WAITING FOR A WORKFLOW COMPLETION EVENT\n");
     try {
       this->waitForAndProcessNextEvent();
     } catch (WorkflowExecutionException &e) {
@@ -46,6 +47,7 @@ int ClusteringWMS::main() {
                   (e.getCause()->toString().c_str()));
       continue;
     }
+
     if (workflow->isDone()) {
       break;
     }
@@ -58,5 +60,14 @@ int ClusteringWMS::main() {
 }
 
 void ClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<WorkflowExecutionEvent>) {
-  WRENCH_INFO("A STANDARD JOB HAS COMPLETED");
+  static int count = 0;
+  count++;
+  WRENCH_INFO("*************************************************************");
+  WRENCH_INFO("*************************************************************");
+  WRENCH_INFO("*************************************************************");
+  WRENCH_INFO("*************************************************************");
+  WRENCH_INFO("*************************************************************");
+  WRENCH_INFO("*************************************************************");
+  WRENCH_INFO("*************************************************************");
+  WRENCH_INFO("************************************ A STANDARD JOB HAS COMPLETED: %d", count);
 }

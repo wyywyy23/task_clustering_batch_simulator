@@ -17,6 +17,10 @@ StandardJobScheduler *createStandardJobScheduler(std::string scheduler_spec);
 
 int main(int argc, char **argv) {
 
+  // Create and initialize a simulation
+  auto simulation = new wrench::Simulation();
+  simulation->init(&argc, argv);
+
   // Parse command-line arguments
   if (argc != 6) {
     std::cerr << "Usage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <workflow specification> <workflow start time> <algorithm>" << "\n";
@@ -39,9 +43,6 @@ int main(int argc, char **argv) {
     std::cerr << "Invalid workflow start time\n";
   }
 
-  // Create and initialize a simulation
-  auto simulation = new wrench::Simulation();
-  simulation->init(&argc, argv);
 
   // Setup the simulation platform
   setupSimulationPlatform(simulation, num_compute_nodes);
