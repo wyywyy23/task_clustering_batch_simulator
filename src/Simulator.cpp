@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
   try {
     std::string login_hostname = "Login";
     batch_service = new BatchService(login_hostname, true, false, compute_nodes, nullptr,
+//                                     {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, "FCFS"},
                                      {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, "conservative_bf"},
                                       {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}
                                      });

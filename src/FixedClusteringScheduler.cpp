@@ -35,14 +35,14 @@ namespace wrench {
         batch_job_args["-t"] = std::to_string(100 + MAX(1, task_to_schedule->getFlops() / 60.0)); //time in minutes
         batch_job_args["-c"] = "1"; //number of cores per node
 
+        StandardJob *job = this->getJobManager()->createStandardJob(task_to_schedule, {});
+
         this->getJobManager()->submitJob(
-               this->getJobManager()->createStandardJob(task_to_schedule, {}),
-                batch_service, batch_job_args);
+                job, batch_service, batch_job_args);
       } catch (WorkflowExecutionException &e) {
         throw std::runtime_error("Couldn't submit job: " + e.getCause()->toString());
       }
 
-	WRENCH_INFO("SUBMITTED A JOB!");
       return;
     }
 };

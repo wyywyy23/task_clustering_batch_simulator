@@ -19,6 +19,7 @@ using namespace wrench;
         int main() override;
 
         void processEventStandardJobCompletion(std::unique_ptr<WorkflowExecutionEvent>) override;
+        void processEventStandardJobFailure(std::unique_ptr<WorkflowExecutionEvent>) override;
 
     private:
         BatchService *batch_service;
