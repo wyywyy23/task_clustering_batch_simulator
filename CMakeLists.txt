@@ -10,8 +10,8 @@ set(SOURCE_FILES
     src/Simulator.cpp
     src/ClusteringWMS.cpp
     src/ClusteringWMS.h
-    src/FixedClusteringScheduler.cpp
-    src/FixedClusteringScheduler.h
+        src/FixedSequentialClusteringScheduler.cpp
+        src/FixedSequentialClusteringScheduler.h
         )
 # test files
 set(TEST_FILES

@@ -4,6 +4,7 @@
 //
 
 #include "ClusteringWMS.h"
+#include "FixedSequentialClusteringScheduler.h"
 
 using namespace wrench;
 
@@ -19,7 +20,7 @@ int ClusteringWMS::main() {
 
   this->checkDeferredStart();
 
-  TerminalOutput::setThisProcessLoggingColor(WRENCH_LOGGING_COLOR_RED);
+  TerminalOutput::setThisProcessLoggingColor(WRENCH_LOGGING_COLOR_YELLOW);
   WRENCH_INFO("Starting!");
 
   WRENCH_INFO("About to execute a workflow with %lu tasks", this->workflow->getNumberOfTasks());
@@ -59,10 +60,42 @@ int ClusteringWMS::main() {
 }
 
 void ClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<WorkflowExecutionEvent> e) {
-  WRENCH_INFO("A job has completed!");
+  StandardJob *job = (StandardJob *)e->job;
+  WRENCH_INFO("Job %s has completed", job->getName().c_str());
+  // Remove the job from the set of pending jobs
+  ((FixedSequentialClusteringScheduler *)(this->standard_job_scheduler.get()))->submitted_jobs.erase(job);
 }
 
 
 void ClusteringWMS::processEventStandardJobFailure(std::unique_ptr<WorkflowExecutionEvent> e) {
   WRENCH_INFO("A job has failed");
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

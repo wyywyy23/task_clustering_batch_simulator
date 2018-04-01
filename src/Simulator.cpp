@@ -6,14 +6,14 @@
 #include <wrench-dev.h>
 #include <services/compute/batch/BatchServiceProperty.h>
 #include "ClusteringWMS.h"
-#include "FixedClusteringScheduler.h"
+#include "FixedSequentialClusteringScheduler.h"
 
 using namespace wrench;
 
-void setupSimulationPlatform(Simulation *simulation, int num_compute_nodes);
+void setupSimulationPlatform(Simulation *simulation, unsigned long num_compute_nodes);
 Workflow *createWorkflow(std::string workflow_spec);
 Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens);
-StandardJobScheduler *createStandardJobScheduler(std::string scheduler_spec);
+StandardJobScheduler *createStandardJobScheduler(std::string scheduler_spec, unsigned long max_num_jobs);
 
 int main(int argc, char **argv) {
 
@@ -22,19 +22,19 @@ int main(int argc, char **argv) {
   simulation->init(&argc, argv);
 
   // Parse command-line arguments
-  if (argc != 6) {
-    std::cerr << "Usage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <workflow specification> <workflow start time> <algorithm>" << "\n";
+  if (argc != 7) {
+    std::cerr << "Usage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <workflow specification> <workflow start time> <max num concurrent jobs> <algorithm>" << "\n";
     std::cerr << "  * workflow specification options:" << "\n";
     std::cerr << "    - indep:n:t1:t2" << "\n";
     std::cerr << "      - n: number of tasks" << "\n";
     std::cerr << "      - t1/t2: min/max task durations in integral second (uniformly distributed)" << "\n";
     std::cerr << "  * algorithm  options:" << "\n";
-    std::cerr << "    - fixed_clustering:n" << "\n";
+    std::cerr << "    - fixed_sequential_clustering:n" << "\n";
     std::cerr << "      - n: number of tasks in each cluster" << "\n";
     exit(1);
   }
-  int num_compute_nodes;
-  if ((sscanf(argv[1], "%d", &num_compute_nodes) != 1) or (num_compute_nodes < 1)) {
+  unsigned long num_compute_nodes;
+  if ((sscanf(argv[1], "%lu", &num_compute_nodes) != 1) or (num_compute_nodes < 1)) {
     std::cerr << "Invalid number of compute nodes\n";
   }
 
@@ -43,6 +43,10 @@ int main(int argc, char **argv) {
     std::cerr << "Invalid workflow start time\n";
   }
 
+  unsigned long max_num_jobs;
+  if ((sscanf(argv[5], "%lu", &max_num_jobs) != 1) or (max_num_jobs < 1)) {
+    std::cerr << "Invalid maximum number of concurrent jobs\n";
+  }
 
   // Setup the simulation platform
   setupSimulationPlatform(simulation, num_compute_nodes);
@@ -67,7 +71,7 @@ int main(int argc, char **argv) {
   }
 
   // Create the Standard Job Scheduler
-  StandardJobScheduler *scheduler = createStandardJobScheduler(argv[5]);
+  StandardJobScheduler *scheduler = createStandardJobScheduler(argv[6], max_num_jobs);
 
 
   // Create the WMS
@@ -101,7 +105,7 @@ int main(int argc, char **argv) {
 
 }
 
-void setupSimulationPlatform(Simulation *simulation, int num_compute_nodes) {
+void setupSimulationPlatform(Simulation *simulation, unsigned long num_compute_nodes) {
 
   // Create a the platform file
   std::string xml = "<?xml version='1.0'?>\n"
@@ -181,7 +185,6 @@ Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens) {
   static std::uniform_int_distribution<unsigned long> m_udist(min_time, max_time);
   for (int i=0; i < num_tasks; i++) {
     unsigned long flops = m_udist(rng);
-    std::cerr << "FLOPS = " << flops << "\n";
     workflow->addTask("Task_" + std::to_string(i), flops, 1, 1, 1.0, 0.0);
   }
 
@@ -189,8 +192,7 @@ Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens) {
 
 }
 
-
-StandardJobScheduler *createStandardJobScheduler(std::string scheduler_spec) {
+StandardJobScheduler *createStandardJobScheduler(std::string scheduler_spec, unsigned long max_num_jobs) {
 
   std::istringstream ss(scheduler_spec);
   std::string token;
@@ -200,15 +202,15 @@ StandardJobScheduler *createStandardJobScheduler(std::string scheduler_spec) {
     tokens.push_back(token);
   }
 
-  if (tokens[0] == "fixed_clustering") {
+  if (tokens[0] == "fixed_sequential_clustering") {
     if (tokens.size() != 2) {
-      throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed_clustering specification");
+      throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed_sequential_clustering specification");
     }
-    int num_tasks_per_cluster;
-    if ((sscanf(tokens[1].c_str(), "%d", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1)) {
-      throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed_clustering specification");
+    unsigned long num_tasks_per_cluster;
+    if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1)) {
+      throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed_sequential_clustering specification");
     }
-    return new FixedClusteringScheduler(num_tasks_per_cluster);
+    return new FixedSequentialClusteringScheduler(num_tasks_per_cluster, max_num_jobs);
   } else {
     throw std::invalid_argument("createStandardJobScheduler(): Unknown workflow type " + tokens[0]);
   }
