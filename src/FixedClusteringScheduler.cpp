@@ -3,21 +3,25 @@
 // Created by Henri Casanova on 3/30/18.
 //
 
-#include "FixedSequentialClusteringScheduler.h"
+#include "FixedClusteringScheduler.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(fixed_clustering_scheduler, "Log category for Fixed Clustering Scheduler");
 
 namespace wrench {
 
-    FixedSequentialClusteringScheduler::FixedSequentialClusteringScheduler(unsigned long num_tasks_per_cluster, unsigned long max_num_submitted_jobs) {
-      if (num_tasks_per_cluster < 1) {
-        throw std::invalid_argument("FixedSequentialClusteringScheduler::FixedSequentialClusteringScheduler(): invalid num_tasks_per_cluster argument");
+    FixedClusteringScheduler::FixedClusteringScheduler(
+            unsigned long num_tasks_per_cluster,
+            unsigned long num_nodes_per_cluster,
+            unsigned long max_num_submitted_jobs) {
+      if ((num_tasks_per_cluster < 1) || (num_nodes_per_cluster < 1) || (max_num_submitted_jobs < 1)) {
+        throw std::invalid_argument("FixedClusteringScheduler::FixedClusteringScheduler(): invalid arguments");
       }
       this->num_tasks_per_cluster = num_tasks_per_cluster;
+      this->num_nodes_per_cluster = num_nodes_per_cluster;
       this->max_num_submitted_jobs = max_num_submitted_jobs;
     }
 
-    void FixedSequentialClusteringScheduler::scheduleTasks(const std::set<ComputeService *> &compute_services,
+    void FixedClusteringScheduler::scheduleTasks(const std::set<ComputeService *> &compute_services,
                                                            const std::map<std::string, std::vector<WorkflowTask *>> &tasks) {
 
       if (tasks.empty()) {
@@ -45,19 +49,22 @@ namespace wrench {
         WRENCH_INFO("Creating a Standard job with %lu tasks:", num_tasks_in_batch);
 
         std::vector<WorkflowTask*> tasks_in_job;
-        double total_flops = 0.0;
-        WRENCH_INFO("FIRST=%lu   LAST=%lu", first_task_in_batch, last_task_in_batch);
         for (unsigned long i=first_task_in_batch; i <= last_task_in_batch; i++) {
           tasks_in_job.push_back(tasks_to_schedule[i]);
           WRENCH_INFO("  - task %s (%.2lf flops)",
                       tasks_to_schedule[i]->getId().c_str(),
                       tasks_to_schedule[i]->getFlops());
-          total_flops += tasks_to_schedule[i]->getFlops();
         }
 
+        // Compute the number of nodes for the job
+        unsigned long num_nodes = MIN(num_tasks_in_batch, this->num_nodes_per_cluster);
+
+        // Compute the time for the job (a bit conservative for now)
+        double max_flop_best_fit_time = computeJobTime(num_nodes, tasks_in_job);
+
         std::map<std::string, std::string> batch_job_args;
-        batch_job_args["-N"] = "1";
-        batch_job_args["-t"] = std::to_string(1 + total_flops / 60.0); //time in minutes
+        batch_job_args["-N"] = std::to_string(num_nodes);
+        batch_job_args["-t"] = std::to_string((unsigned long)(1 + max_flop_best_fit_time / 60.0)); //time in minutes
         batch_job_args["-c"] = "1"; //number of cores per node
 
         StandardJob *job = this->getJobManager()->createStandardJob(tasks_in_job, {});
@@ -67,7 +74,6 @@ namespace wrench {
             batch_job_args["-c"].c_str());
 
         try {
-          WRENCH_INFO("Submitting the job...");
           this->getJobManager()->submitJob(
                   job, batch_service, batch_job_args);
           this->submitted_jobs.insert(job);
@@ -81,6 +87,46 @@ namespace wrench {
       TerminalOutput::setThisProcessLoggingColor(WRENCH_LOGGING_COLOR_YELLOW);
 
       return;
+    }
+
+
+    double FixedClusteringScheduler::computeJobTime(
+            unsigned long num_nodes,
+            std::vector<WorkflowTask *> tasks) {
+
+      // Sort the tasks by decreasing flop count
+      std::sort(tasks.begin(), tasks.end(),
+                [](const WorkflowTask* t1, const WorkflowTask* t2) -> bool
+                {
+                    if (t1->getFlops() == t2->getFlops()) {
+                      return ((uintptr_t) t1 > (uintptr_t) t2);
+                    } else {
+                      return (t1->getFlops() > t2->getFlops());
+                    }
+                });
+
+      // Print them just to check
+      double completion_times[num_nodes];
+
+      for (auto t : tasks) {
+        // Find the node with the earliest completion time
+        unsigned long selected_node = 0;
+        for (unsigned long i = 1; i < num_nodes; i++) {
+          if (completion_times[i] < completion_times[selected_node]) {
+            selected_node = i;
+          }
+        }
+        // Assign the task to it
+        completion_times[selected_node] += t->getFlops();
+      }
+
+      double max_completion_time = 0;
+      for (unsigned long i=0; i < num_nodes; i++) {
+        if (completion_times[i] > max_completion_time) {
+          max_completion_time = completion_times[i];
+        }
+      }
+      return max_completion_time;
     }
 
 };

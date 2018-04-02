@@ -7,11 +7,11 @@ set(CMAKE_CXX_STANDARD 11)
 include_directories(src/ /usr/local/include /usr/local/include/wrench)
 # source files
 set(SOURCE_FILES
-    src/Simulator.cpp
-    src/ClusteringWMS.cpp
-    src/ClusteringWMS.h
-        src/FixedSequentialClusteringScheduler.cpp
-        src/FixedSequentialClusteringScheduler.h
+        src/Simulator.cpp
+        src/ClusteringWMS.cpp
+        src/ClusteringWMS.h
+        src/FixedClusteringScheduler.cpp
+        src/FixedClusteringScheduler.h
         )
 # test files
 set(TEST_FILES
@@ -25,18 +25,18 @@ find_library(ZMQ_LIBRARY NAMES zmq)
 # generating the executable
 add_executable(simulator ${SOURCE_FILES})
 target_link_libraries(simulator
-                        ${WRENCH_LIBRARY} 
-                        ${SIMGRID_LIBRARY} 
-                        ${PUGIXML_LIBRARY} 
-                        ${LEMON_LIBRARY}
-                        ${ZMQ_LIBRARY}
-                     )
+        ${WRENCH_LIBRARY}
+        ${SIMGRID_LIBRARY}
+        ${PUGIXML_LIBRARY}
+        ${LEMON_LIBRARY}
+        ${ZMQ_LIBRARY}
+        )
 install(TARGETS simulator DESTINATION bin)
 # generating unit tests
-add_executable(unit_tests EXCLUDE_FROM_ALL 
-                 ${SOURCE_FILES} 
-                 ${TEST_FILES}
-              )
-target_link_libraries(unit_tests 
-                        ${GTEST_LIBRARY} wrench -lpthread -lm
-                     )
+add_executable(unit_tests EXCLUDE_FROM_ALL
+        ${SOURCE_FILES}
+        ${TEST_FILES}
+        )
+target_link_libraries(unit_tests
+        ${GTEST_LIBRARY} wrench -lpthread -lm
+        )

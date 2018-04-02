@@ -4,7 +4,7 @@
 //
 
 #include "ClusteringWMS.h"
-#include "FixedSequentialClusteringScheduler.h"
+#include "FixedClusteringScheduler.h"
 
 using namespace wrench;
 
@@ -53,7 +53,7 @@ int ClusteringWMS::main() {
     }
   }
 
-  WRENCH_INFO("WORKFLOW EXECUTION COMPLETE");
+  std::cout << "WORKFLOW EXECUTION COMPLETE: " <<  this->simulation->getCurrentSimulatedDate() << "\n";
   job_manager.reset();
 
   return 0;
@@ -63,7 +63,7 @@ void ClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<WorkflowEx
   StandardJob *job = (StandardJob *)e->job;
   WRENCH_INFO("Job %s has completed", job->getName().c_str());
   // Remove the job from the set of pending jobs
-  ((FixedSequentialClusteringScheduler *)(this->standard_job_scheduler.get()))->submitted_jobs.erase(job);
+  ((FixedClusteringScheduler *)(this->standard_job_scheduler.get()))->submitted_jobs.erase(job);
 }
 
 

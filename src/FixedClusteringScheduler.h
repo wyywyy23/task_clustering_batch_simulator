@@ -12,11 +12,15 @@ namespace wrench {
     /**
      * @brief A batch Scheduler
      */
-    class FixedSequentialClusteringScheduler : public StandardJobScheduler {
+    class FixedClusteringScheduler : public StandardJobScheduler {
 
     public:
 
-        FixedSequentialClusteringScheduler(unsigned long num_tasks_per_cluster, unsigned long max_num_submitted_jobs);
+        FixedClusteringScheduler(
+                unsigned long num_tasks_per_cluster,
+                unsigned long num_nodes_per_cluster,
+                unsigned long max_num_submitted_jobs
+        );
 
         void scheduleTasks(const std::set<ComputeService *> &compute_services,
                            const std::map<std::string, std::vector<WorkflowTask *>> &tasks) override;
@@ -25,8 +29,10 @@ namespace wrench {
 
     private:
         unsigned long num_tasks_per_cluster;
+        unsigned long num_nodes_per_cluster;
         unsigned long max_num_submitted_jobs;
 
+        double computeJobTime(unsigned long num_nodes, std::vector<WorkflowTask *> tasks);
     };
 }
 
