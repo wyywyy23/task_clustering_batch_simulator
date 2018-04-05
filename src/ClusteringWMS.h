@@ -18,8 +18,8 @@ using namespace wrench;
         ClusteringWMS(std::string hostname, StandardJobScheduler *job_scheduler, BatchService *batch_service);
         int main() override;
 
-        void processEventStandardJobCompletion(std::unique_ptr<WorkflowExecutionEvent>) override;
-        void processEventStandardJobFailure(std::unique_ptr<WorkflowExecutionEvent>) override;
+        void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent>) override;
+        void processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent>) override;
 
     private:
         BatchService *batch_service;

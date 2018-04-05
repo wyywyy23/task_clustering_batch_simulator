@@ -59,15 +59,15 @@ int ClusteringWMS::main() {
   return 0;
 }
 
-void ClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<WorkflowExecutionEvent> e) {
-  StandardJob *job = (StandardJob *)e->job;
+void ClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
+  StandardJob *job = e->standard_job;
   WRENCH_INFO("Job %s has completed", job->getName().c_str());
   // Remove the job from the set of pending jobs
   ((FixedClusteringScheduler *)(this->standard_job_scheduler.get()))->submitted_jobs.erase(job);
 }
 
 
-void ClusteringWMS::processEventStandardJobFailure(std::unique_ptr<WorkflowExecutionEvent> e) {
+void ClusteringWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
   WRENCH_INFO("A job has failed");
 }
 

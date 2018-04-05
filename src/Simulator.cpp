@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     std::cerr << "    - indep:n:t1:t2 " << "\n";
     std::cerr << "      - n: number of tasks" << "\n";
     std::cerr << "      - t1/t2: min/max task durations in integral second (uniformly distributed)" << "\n";
-    std::cerr << "      Just a set of independent tasks" << "\n";
+    std::cerr << "      (just a set of independent tasks)" << "\n";
     std::cerr << "  * algorithm  options:" << "\n";
     std::cerr << "    - fixed_clustering:n:m" << "\n";
     std::cerr << "      - n: number of tasks in each cluster" << "\n";
