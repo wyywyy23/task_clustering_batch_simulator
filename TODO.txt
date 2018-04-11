@@ -1,0 +1,22 @@
+
+* Job unlimited
+
+    - No pilot job:
+            - 1 job / 1 task
+            - A-priori clustering (Chen et al.):  n tasks -> 1 sequential task:    1 job / 1 task
+            - clustering de task into jobs:
+                    - choose job shape based on queue-wait time prediction
+                    - whatever tasks make sense in a job
+
+    - Pilot job:
+            - Keith Cooper (level-by-level)
+            - Queue-aware pilot job, dynamic-scheduling: heuristic to submit appropriate pilot jobs
+
+    - Scheduler effect overhead (to deal with submitting too many jobs)
+
+
+* If jobs are limited, what do we do?
+
+
+Much later: data transfers
+
