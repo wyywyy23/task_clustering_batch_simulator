@@ -1,0 +1,29 @@
+
+
+https://www.olcf.ornl.gov/kb_articles/titan-scheduling-policy/ 
+	- At most 4 job in queue, but unlimited running
+
+https://www.olcf.ornl.gov/kb_articles/eos-scheduling-policy-2/
+	- Limit of (2) eligible-to-run jobs per user.
+
+https://www.olcf.ornl.gov/support/system-user-guides/rhea-user-guide/
+	- max 4 jobs running and 4 jobs eligible per user
+          in bins A, B, and C 
+
+
+http://www.nersc.gov/users/computational-systems/retired-systems/hopper/running-jobs/queues-and-policies/  
+	- Big table
+
+https://portal.tacc.utexas.edu/user-guides/stampede#tablestampedequeues
+	- Bit table
+
+https://www.alcf.anl.gov/user-guides/job-scheduling-policy-bgq-systems
+	- Big table
+
+
+
+SCHEDULING WORKFLOWS ON BATCH QUEUES:
+
+http://vgrads.rice.edu/publications/pdfs/cluster09-paper.pdf/
+
+
