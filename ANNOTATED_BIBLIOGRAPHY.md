@@ -12,18 +12,27 @@ intelligently using batch queues without relying on reservations"
     
 #### General approach:
 
-  - Decide a group of next levels to run in the DAG based on
-	  estimate wait time divided by runtime if run as a single job
+  - Decide a group of next levels in the DAG to run as a single job,  based on
+	  estimated wait time divided by runtime
   - Submit a corresponding pilot job
   - When the pilot job starts, start running the tasks and 
-	  repeat the above to submit the next pilot job
- - So while a pilot job runs, another one travels 
-	    through the queue
+	  repeat the above once to submit the next pilot job
+     - <b>So while a pilot job runs, another one travels through the queue</b>
  - If a running job expires with tasks sill running / not done,
 	  then "put them back in the DAG" and cancel all pilot jobs
  - Repeat until everything is executed
 
-The main heuristic is in the first step: how to decide how many levels to aggregate in a job. Their answer is a greedy algorithm that looks the the configuration with the lowest waittime/runtime ratio, but stops at the first local minimum it finds (trying 1 level, 2 levels, etc...)
+The "meat" is in the first step: how to decide how many levels to aggregate
+in a job. Their answer is a greedy algorithm that looks the the
+configuration with the lowest waittime/runtime ratio, but stops at the
+first local minimum it finds (trying 1 level, 2 levels, etc...)
+
+One question: they never say how many hosts their ask for for a pilot job.
+I believe they ask for the full parallelism. Of course it would be easy to 
+consider all kings of options there as well. An easy extension of their
+work?
+
+
 
 
 #### More details
@@ -60,7 +69,7 @@ submitPilotJob():
 	  levels together
 ```
 
-The smarts are in the groupByLevel() function. In case that function says "run the whole DAG" then there are two options
+The above algorithm calls the the groupByLevel() function. In case that function says "run the whole DAG" then there are two options
 using a simple heuristic to decide "as one job" or "as n jobs for n tasks".  
 
 ```
@@ -75,5 +84,8 @@ groupByLevel():
    - return (i-1, estimated wait time, execution time, num_hosts)
 ```
 
+
+groupByLevel() is the main heuristic really, which decides how to aggregate
+by level.
 
 
