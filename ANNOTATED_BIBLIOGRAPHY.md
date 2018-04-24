@@ -9,6 +9,8 @@
 ### Batch Queue Resource Scheduling for Workflow Applications
 by Zhang, Koelbel, Cooper
 
+[PDF](./papers/zhang_batch.pdf)
+
 #### Relevant quotes:
 
   - "Our work seeks to reduce the workflow turnaroud time by
