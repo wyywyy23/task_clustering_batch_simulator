@@ -129,5 +129,12 @@ promote load-balancing.
 This paper has a good Related Work section, which should serve as
 inspiration.
 
+--- 
+
+### Level based batch scheduling strategy with idle slot reduction under DAG constraints for computational grid
+
+by Shahid, Raza, Sajid
+
+[PDF](./papers/1-s2.0-S0164121215001260-main.pdf)
 
 
