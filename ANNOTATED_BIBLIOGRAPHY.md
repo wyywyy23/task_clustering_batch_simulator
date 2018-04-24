@@ -102,6 +102,8 @@ by level.
 ### Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions
 by Chen et al.
 
+[PDF](./papers/chen-fgcs-2014.pdf)
+
 This is a pretty straightfoward paper: each task execution has some overhead, so we should cluster tasks to reduce that overhead
 
 A few key assumptions:
