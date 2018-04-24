@@ -118,3 +118,9 @@ promote load-balancing.
 
 This paper has a good Related Work section, which should serve as
 inspiration.
+
+---
+
+### Other papers to look at
+
+  - Paper that cite Zhang et al: [Google Scholar](https://scholar.google.com/scholar?start=0&hl=en&as_sdt=2005&sciodt=0,5&cites=220981682553958010&scipsc=)
