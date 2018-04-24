@@ -89,3 +89,32 @@ groupByLevel() is the main heuristic really, which decides how to aggregate
 by level.
 
 
+---
+
+### Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions
+by Chen et al.
+
+This is a pretty straightfoward paper: each task execution has some overhead, so we should cluster tasks to reduce that overhead
+
+A few key assumptions:
+
+  - Tasks are sequential (fine)
+  - When aggregating tasks in job, the tasks run in sequence (not fine)
+  - There is a clustering overhead (which we could simulate easily)
+  - All clustering is off-line
+
+Two clustering approaches:
+ 
+  - "Vertical clustering" 
+  - "Horizontal clustering" 
+
+
+Vertical clustering is about data locality (we don't care)
+
+Horizontal cluster is simple: when creating clusters of independent tasks
+in a level, try to create clusters with as close as possible runtimes to
+promote load-balancing.
+
+
+This paper has a good Related Work section, which should serve as
+inspiration.
