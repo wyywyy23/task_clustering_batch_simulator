@@ -3,24 +3,24 @@
 // Created by Henri Casanova on 3/29/18.
 //
 
-#include "ClusteringWMS.h"
+#include "FixedClusteringWMS.h"
 #include "FixedClusteringScheduler.h"
 
 using namespace wrench;
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(clustering_wms, "Log category for Clustering WMS");
 
-ClusteringWMS::ClusteringWMS(std::string hostname, StandardJobScheduler *standard_job_scheduler, BatchService *batch_service) :
+FixedClusteringWMS::FixedClusteringWMS(std::string hostname, StandardJobScheduler *standard_job_scheduler, BatchService *batch_service) :
         WMS(std::unique_ptr<StandardJobScheduler>(standard_job_scheduler), nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
   this->batch_service = batch_service;
   this->task_clustering_algorithm = task_clustering_algorithm;
 }
 
-int ClusteringWMS::main() {
+int FixedClusteringWMS::main() {
 
   this->checkDeferredStart();
 
-  TerminalOutput::setThisProcessLoggingColor(WRENCH_LOGGING_COLOR_YELLOW);
+  TerminalOutput::setThisProcessLoggingColor(COLOR_YELLOW);
   WRENCH_INFO("Starting!");
 
   WRENCH_INFO("About to execute a workflow with %lu tasks", this->workflow->getNumberOfTasks());
@@ -29,6 +29,8 @@ int ClusteringWMS::main() {
   std::shared_ptr<JobManager> job_manager = this->createJobManager();
 
   while (true) {
+
+    this->pilot_job_scheduler->schedulePilotJobs({this->batch_service});
 
     // Get the ready tasks
     std::map<std::string, std::vector<wrench::WorkflowTask *>> ready_tasks = this->workflow->getReadyTasks();
@@ -59,7 +61,7 @@ int ClusteringWMS::main() {
   return 0;
 }
 
-void ClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
+void FixedClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
   StandardJob *job = e->standard_job;
   WRENCH_INFO("Job %s has completed", job->getName().c_str());
   // Remove the job from the set of pending jobs
@@ -67,7 +69,7 @@ void ClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJo
 }
 
 
-void ClusteringWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
+void FixedClusteringWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
   WRENCH_INFO("A job has failed");
 }
 

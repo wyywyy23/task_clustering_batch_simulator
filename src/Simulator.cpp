@@ -5,15 +5,17 @@
 #include <iostream>
 #include <wrench-dev.h>
 #include <services/compute/batch/BatchServiceProperty.h>
-#include "ClusteringWMS.h"
+#include "FixedClusteringWMS.h"
 #include "FixedClusteringScheduler.h"
+#include "ZhangClusteringWMS.h"
 
 using namespace wrench;
 
 void setupSimulationPlatform(Simulation *simulation, unsigned long num_compute_nodes);
 Workflow *createWorkflow(std::string workflow_spec);
 Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens);
-StandardJobScheduler *createStandardJobScheduler(std::string scheduler_spec, unsigned long max_num_jobxs);
+//StandardJobScheduler *createStandardJobScheduler(std::string scheduler_spec, unsigned long max_num_jobxs);
+WMS *createWMS(std::string scheduler_spec, unsigned long max_num_jobs, std::string algorithm_name, BatchService *batch_service);
 
 int main(int argc, char **argv) {
 
@@ -34,6 +36,7 @@ int main(int argc, char **argv) {
     std::cerr << "      - n: number of tasks in each cluster" << "\n";
     std::cerr << "      - m: number of nodes used to execute each cluster" << "\n";
     std::cerr << "      (ready tasks are grouped into clustered \"arbitrarily\"\n";
+    std::cerr << "    - zhang (algorithm by Zhang, Koelbel, Cooper)" << "\n";
     exit(1);
   }
   unsigned long num_compute_nodes;
@@ -50,6 +53,8 @@ int main(int argc, char **argv) {
   if ((sscanf(argv[5], "%lu", &max_num_jobs) != 1) or (max_num_jobs < 1)) {
     std::cerr << "Invalid maximum number of concurrent jobs\n";
   }
+
+  std::string scheduler_spec = argv[6];
 
   // Setup the simulation platform
   setupSimulationPlatform(simulation, num_compute_nodes);
@@ -73,14 +78,17 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  // Create the Standard Job Scheduler
-  StandardJobScheduler *scheduler = createStandardJobScheduler(argv[6], max_num_jobs);
-
-
   // Create the WMS
   WMS *wms = nullptr;
   try {
-    wms = simulation->add(new ClusteringWMS("Login", scheduler, batch_service));
+    WMS *wms = createWMS("Login", max_num_jobs, scheduler_spec, batch_service);
+  } catch (std::invalid_argument &e) {
+    std::cerr << "Cannot instantiate WMS: " << e.what() << "\n";
+    exit(1);
+  }
+
+  try {
+    simulation->add(wms);
   } catch (std::invalid_argument &e) {
     std::cerr << "Cannot instantiate WMS\n";
     exit(1);
@@ -195,7 +203,10 @@ Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens) {
 
 }
 
-StandardJobScheduler *createStandardJobScheduler(std::string scheduler_spec, unsigned long max_num_jobs) {
+WMS *createWMS(std::string hostname,
+                                unsigned long max_num_jobs,
+                                std::string scheduler_spec,
+                                BatchService *batch_service) {
 
   std::istringstream ss(scheduler_spec);
   std::string token;
@@ -215,7 +226,13 @@ StandardJobScheduler *createStandardJobScheduler(std::string scheduler_spec, uns
         (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
       throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed_clustering specification");
     }
-    return new FixedClusteringScheduler(num_tasks_per_cluster, num_nodes_per_cluster, max_num_jobs);
+    return new FixedClusteringWMS(hostname, new FixedClusteringScheduler(num_tasks_per_cluster, num_nodes_per_cluster,
+                                                                         max_num_jobs), batch_service);
+
+  } else if (tokens[0] == "zhang") {
+
+    return new ZhangClusteringWMS(hostname, batch_service);
+
   } else {
     throw std::invalid_argument("createStandardJobScheduler(): Unknown workflow type " + tokens[0]);
   }

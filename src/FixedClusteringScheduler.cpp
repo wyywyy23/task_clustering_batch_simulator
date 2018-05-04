@@ -28,7 +28,7 @@ namespace wrench {
         return;
       }
 
-      TerminalOutput::setThisProcessLoggingColor(WRENCH_LOGGING_COLOR_RED);
+      TerminalOutput::setThisProcessLoggingColor(COLOR_RED);
 
       BatchService *batch_service = (BatchService *)(*(compute_services.begin()));
 
@@ -84,7 +84,7 @@ namespace wrench {
         first_task_in_batch = last_task_in_batch + 1;
       }
 
-      TerminalOutput::setThisProcessLoggingColor(WRENCH_LOGGING_COLOR_YELLOW);
+      TerminalOutput::setThisProcessLoggingColor(COLOR_YELLOW);
 
       return;
     }

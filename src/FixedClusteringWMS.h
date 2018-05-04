@@ -1,8 +1,4 @@
 
-//
-// Created by Henri Casanova on 3/29/18.
-//
-
 #ifndef TASK_CLUSTERING_FOR_BATCH_CLUSTERINGWMS_H
 #define TASK_CLUSTERING_FOR_BATCH_CLUSTERINGWMS_H
 
@@ -11,11 +7,11 @@
 using namespace wrench;
 
 
-    class ClusteringWMS : public WMS {
+    class FixedClusteringWMS : public WMS {
 
     public:
 
-        ClusteringWMS(std::string hostname, StandardJobScheduler *job_scheduler, BatchService *batch_service);
+        FixedClusteringWMS(std::string hostname, StandardJobScheduler *job_scheduler, BatchService *batch_service);
         int main() override;
 
         void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent>) override;
@@ -24,6 +20,9 @@ using namespace wrench;
     private:
         BatchService *batch_service;
         std::string task_clustering_algorithm;
+
+        PilotJob *pending_pilot_job;
+        PilotJob *running_pilot_job;
 
     };
 
