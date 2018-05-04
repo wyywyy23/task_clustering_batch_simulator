@@ -68,22 +68,25 @@ namespace wrench {
         batch_job_args["-c"] = "1"; //number of cores per node
 
         StandardJob *job = this->getJobManager()->createStandardJob(tasks_in_job, {});
-        WRENCH_INFO("Created a job with with batch arguments: %s:%s:%s",
+        WRENCH_INFO("Created a batch job with with batch arguments: %s:%s:%s",
             batch_job_args["-N"].c_str(),
             batch_job_args["-t"].c_str(),
             batch_job_args["-c"].c_str());
 
         try {
+          WRENCH_INFO("Submitting batch job...");
           this->getJobManager()->submitJob(
                   job, batch_service, batch_job_args);
           this->submitted_jobs.insert(job);
-          WRENCH_INFO("Job submitted!");
+          WRENCH_INFO("Batch job submitted!");
         } catch (WorkflowExecutionException &e) {
           throw std::runtime_error("Couldn't submit job: " + e.getCause()->toString());
         }
         first_task_in_batch = last_task_in_batch + 1;
+        WRENCH_INFO("----> ftib: %ld\n", first_task_in_batch);
       }
 
+      WRENCH_INFO("Done with scheduling decisions");
       TerminalOutput::setThisProcessLoggingColor(COLOR_YELLOW);
 
       return;
@@ -105,8 +108,10 @@ namespace wrench {
                     }
                 });
 
-      // Print them just to check
       double completion_times[num_nodes];
+      for (int i=0; i < num_nodes; i++) {
+        completion_times[i] = 0.0;
+      }
 
       for (auto t : tasks) {
         // Find the node with the earliest completion time

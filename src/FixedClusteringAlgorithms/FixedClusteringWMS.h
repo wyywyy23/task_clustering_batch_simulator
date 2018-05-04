@@ -21,8 +21,6 @@ using namespace wrench;
         BatchService *batch_service;
         std::string task_clustering_algorithm;
 
-        PilotJob *pending_pilot_job;
-        PilotJob *running_pilot_job;
 
     };
 

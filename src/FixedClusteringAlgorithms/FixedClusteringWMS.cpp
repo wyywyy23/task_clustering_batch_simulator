@@ -1,14 +1,11 @@
 
-//
-// Created by Henri Casanova on 3/29/18.
-//
 
 #include "FixedClusteringWMS.h"
 #include "FixedClusteringScheduler.h"
 
 using namespace wrench;
 
-XBT_LOG_NEW_DEFAULT_CATEGORY(clustering_wms, "Log category for Clustering WMS");
+XBT_LOG_NEW_DEFAULT_CATEGORY(fixed_clustering_wms, "Log category for Fixed Clustering WMS");
 
 FixedClusteringWMS::FixedClusteringWMS(std::string hostname, StandardJobScheduler *standard_job_scheduler, BatchService *batch_service) :
         WMS(std::unique_ptr<StandardJobScheduler>(standard_job_scheduler), nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
@@ -30,12 +27,12 @@ int FixedClusteringWMS::main() {
 
   while (true) {
 
-    this->pilot_job_scheduler->schedulePilotJobs({this->batch_service});
+//    this->pilot_job_scheduler->schedulePilotJobs({this->batch_service});
 
     // Get the ready tasks
     std::map<std::string, std::vector<wrench::WorkflowTask *>> ready_tasks = this->workflow->getReadyTasks();
 
-    // Scheduler ready tasks
+    // Schedule ready tasks
     WRENCH_INFO("Scheduling tasks...");
     this->standard_job_scheduler->scheduleTasks(
             {this->batch_service},
@@ -43,6 +40,7 @@ int FixedClusteringWMS::main() {
 
     // Wait for a workflow execution event, and process it
     try {
+      WRENCH_INFO("Waiting for an event");
       this->waitForAndProcessNextEvent();
     } catch (WorkflowExecutionException &e) {
       WRENCH_INFO("Error while getting next execution event (%s)... ignoring and trying again",

@@ -17,6 +17,8 @@
 
 namespace wrench {
 
+    class PlaceHolderJob;
+
     class ZhangClusteringWMS : public WMS {
 
     public:
@@ -28,6 +30,21 @@ namespace wrench {
         BatchService *batch_service;
 
         int main() override;
+        void submitPilotJob();
+        void processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) override;
+        void processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) override;
+        void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) override;
+        void processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) override;
+
+
+          std::set<PlaceHolderJob *> running_placeholder_jobs;
+        PlaceHolderJob *pending_placeholder_job;
+
+        double core_speed;
+        unsigned long num_hosts;
+
+        std::shared_ptr<JobManager> job_manager;
+
 
     };
 

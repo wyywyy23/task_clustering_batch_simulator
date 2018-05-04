@@ -1,13 +1,10 @@
-//
-// Created by Henri Casanova on 3/20/18.
-//
 
 #include <iostream>
 #include <wrench-dev.h>
 #include <services/compute/batch/BatchServiceProperty.h>
-#include "FixedClusteringWMS.h"
-#include "FixedClusteringScheduler.h"
-#include "ZhangClusteringWMS.h"
+#include "FixedClusteringAlgorithms/FixedClusteringWMS.h"
+#include "FixedClusteringAlgorithms/FixedClusteringScheduler.h"
+#include "ZhangClusteringAlgorithm/ZhangClusteringWMS.h"
 
 using namespace wrench;
 
@@ -65,23 +62,33 @@ int main(int argc, char **argv) {
     compute_nodes.push_back("ComputeNode_" + std::to_string(i));
   }
   BatchService *batch_service;
+  std::string login_hostname = "Login";
   try {
-    std::string login_hostname = "Login";
     batch_service = new BatchService(login_hostname, true, false, compute_nodes, nullptr,
-//                                     {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, "FCFS"},
                                      {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, "conservative_bf"},
                                       {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}
                                      });
-    simulation->add(batch_service);
   } catch (std::invalid_argument &e) {
     std::cerr << "Cannot instantiate batch service: " << e.what() << "\n";
-    exit(1);
+    std::cerr << "Trying the non-BATSCHED option...\n";
+    try {
+      batch_service = new BatchService(login_hostname, true, false, compute_nodes, nullptr,
+                                       {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
+                                        {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}
+                                       });
+    } catch (std::invalid_argument &e) {
+      std::cerr << "Cannot instantiate batch service: " << e.what() << "\n";
+      std::cerr << "Giving up\n";
+      exit(1);
+    }
   }
+
+  simulation->add(batch_service);
 
   // Create the WMS
   WMS *wms = nullptr;
   try {
-    WMS *wms = createWMS("Login", max_num_jobs, scheduler_spec, batch_service);
+    wms = createWMS("Login", max_num_jobs, scheduler_spec, batch_service);
   } catch (std::invalid_argument &e) {
     std::cerr << "Cannot instantiate WMS: " << e.what() << "\n";
     exit(1);
@@ -90,9 +97,10 @@ int main(int argc, char **argv) {
   try {
     simulation->add(wms);
   } catch (std::invalid_argument &e) {
-    std::cerr << "Cannot instantiate WMS\n";
+    std::cerr << "Cannot add WMS to simulation: " << e.what() << "\n";
     exit(1);
   }
+
 
   // Create the Workflow
   Workflow *workflow = nullptr;
@@ -216,6 +224,7 @@ WMS *createWMS(std::string hostname,
     tokens.push_back(token);
   }
 
+
   if (tokens[0] == "fixed_clustering") {
     if (tokens.size() != 3) {
       throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed_clustering specification");
@@ -226,8 +235,9 @@ WMS *createWMS(std::string hostname,
         (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
       throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed_clustering specification");
     }
-    return new FixedClusteringWMS(hostname, new FixedClusteringScheduler(num_tasks_per_cluster, num_nodes_per_cluster,
+    WMS *wms = new FixedClusteringWMS(hostname, new FixedClusteringScheduler(num_tasks_per_cluster, num_nodes_per_cluster,
                                                                          max_num_jobs), batch_service);
+    return wms;
 
   } else if (tokens[0] == "zhang") {
 

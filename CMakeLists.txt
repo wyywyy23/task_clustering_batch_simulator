@@ -8,12 +8,13 @@ include_directories(src/ /usr/local/include /usr/local/include/wrench)
 # source files
 set(SOURCE_FILES
         src/Simulator.cpp
-        src/ZhangClusteringWMS.cpp
-        src/ZhangClusteringWMS.h
-        src/FixedClusteringWMS.cpp
-        src/FixedClusteringWMS.h
-        src/FixedClusteringScheduler.cpp
-        src/FixedClusteringScheduler.h
+        src/ZhangClusteringAlgorithm/ZhangClusteringWMS.cpp
+        src/ZhangClusteringAlgorithm/ZhangClusteringWMS.h
+        src/ZhangClusteringAlgorithm/PlaceHolderJob.h
+        src/FixedClusteringAlgorithms/FixedClusteringWMS.cpp
+        src/FixedClusteringAlgorithms/FixedClusteringWMS.h
+        src/FixedClusteringAlgorithms/FixedClusteringScheduler.cpp
+        src/FixedClusteringAlgorithms/FixedClusteringScheduler.h
         )
 
 # wrench library and dependencies
