@@ -33,7 +33,7 @@ int FixedClusteringWMS::main() {
     std::map<std::string, std::vector<wrench::WorkflowTask *>> ready_tasks = this->workflow->getReadyTasks();
 
     // Schedule ready tasks
-    WRENCH_INFO("Scheduling tasks...");
+    WRENCH_INFO("Scheduling tasks %ld ready tasks...", ready_tasks.size());
     this->standard_job_scheduler->scheduleTasks(
             {this->batch_service},
             ready_tasks);

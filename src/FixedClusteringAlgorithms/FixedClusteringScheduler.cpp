@@ -40,7 +40,7 @@ namespace wrench {
 
 
       unsigned long first_task_in_batch = 0;
-      while ((first_task_in_batch < tasks_to_schedule.size()) and (this->submitted_jobs.size() <= this->max_num_submitted_jobs)) {
+      while ((first_task_in_batch < tasks_to_schedule.size()) and (this->submitted_jobs.size() < this->max_num_submitted_jobs)) {
 
 
         unsigned long last_task_in_batch = MIN(first_task_in_batch + this->num_tasks_per_cluster -1 , tasks.size() -1);

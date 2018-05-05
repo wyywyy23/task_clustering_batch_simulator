@@ -11,7 +11,7 @@ using namespace wrench;
 void setupSimulationPlatform(Simulation *simulation, unsigned long num_compute_nodes);
 Workflow *createWorkflow(std::string workflow_spec);
 Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens);
-//StandardJobScheduler *createStandardJobScheduler(std::string scheduler_spec, unsigned long max_num_jobxs);
+Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens);
 WMS *createWMS(std::string scheduler_spec, unsigned long max_num_jobs, std::string algorithm_name, BatchService *batch_service);
 
 int main(int argc, char **argv) {
@@ -28,6 +28,9 @@ int main(int argc, char **argv) {
     std::cerr << "      - n: number of tasks" << "\n";
     std::cerr << "      - t1/t2: min/max task durations in integral second (uniformly distributed)" << "\n";
     std::cerr << "      (just a set of independent tasks)" << "\n";
+    std::cerr << "    - levels:l0:l2:....:ln:t1:t2" << "\n";
+    std::cerr << "      - lx: num tasks in level x" << "\n";
+    std::cerr << "      - t1/t2: min/max task durations in integral second (uniformly distributed)" << "\n";
     std::cerr << "  * algorithm  options:" << "\n";
     std::cerr << "    - fixed_clustering:n:m" << "\n";
     std::cerr << "      - n: number of tasks in each cluster" << "\n";
@@ -108,6 +111,7 @@ int main(int argc, char **argv) {
     workflow = createWorkflow(argv[3]);
   } catch (std::invalid_argument &e) {
     std::cerr << "Cannot create workflow: " << e.what() << "\n";
+    exit(1);
   }
   wms->addWorkflow(workflow, workflow_start_time);
 
@@ -177,6 +181,17 @@ Workflow *createWorkflow(std::string workflow_spec) {
     } catch (std::invalid_argument &e) {
       throw;
     }
+
+  } else if (tokens[0] == "levels") {
+    if (tokens.size() < 4) {
+      throw std::invalid_argument("createWorkflow(): Invalid workflow specification " + workflow_spec);
+    }
+    try {
+      return createLevelsWorkflow(tokens);
+    } catch (std::invalid_argument &e) {
+      throw;
+    }
+
   } else {
     throw std::invalid_argument("createWorkflow(): Unknown workflow type " + tokens[0]);
   }
@@ -190,13 +205,13 @@ Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens) {
   std::default_random_engine rng;
 
   if ((sscanf(spec_tokens[1].c_str(), "%lu", &num_tasks) != 1) or (num_tasks < 1)) {
-    throw std::invalid_argument("createIndepWorkflow(): invalid number of tasks in indep workflow specification");
+    throw std::invalid_argument("createIndepWorkflow(): invalid number of tasks in workflow specification");
   }
   if ((sscanf(spec_tokens[2].c_str(), "%lu", &min_time) != 1) or (min_time < 0.0)) {
-    throw std::invalid_argument("createIndepWorkflow(): invalid min task exec time in indep workflow specification");
+    throw std::invalid_argument("createIndepWorkflow(): invalid min task exec time in workflow specification");
   }
   if ((sscanf(spec_tokens[3].c_str(), "%lu", &max_time) != 1) or (max_time < 0.0) or (max_time < min_time)) {
-    throw std::invalid_argument("createIndepWorkflow(): invalid max task exec time in indep workflow specification");
+    throw std::invalid_argument("createIndepWorkflow(): invalid max task exec time in workflow specification");
   }
 
   auto workflow = new Workflow();
@@ -210,6 +225,59 @@ Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens) {
   return workflow;
 
 }
+
+
+Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
+
+  unsigned long min_time;
+  unsigned long max_time;
+  std::default_random_engine rng;
+
+  unsigned long num_levels = spec_tokens.size()-3;
+
+  unsigned long num_tasks[num_levels];
+
+  for (unsigned long l = 0; l < num_levels; l++) {
+    if ((sscanf(spec_tokens[l+1].c_str(), "%lu", &(num_tasks[l])) != 1) or (num_tasks[l] < 1)) {
+      throw std::invalid_argument("createLevelsWorkflow(): invalid number of tasks in level " + std::to_string(l) + " workflow specification");
+    }
+  }
+
+  if ((sscanf(spec_tokens[spec_tokens.size()-2].c_str(), "%lu", &min_time) != 1) or (min_time < 0.0)) {
+    throw std::invalid_argument("createLevelsWorkflow(): invalid min task exec time in workflow specification");
+  }
+  if ((sscanf(spec_tokens[spec_tokens.size()-1].c_str(), "%lu", &max_time) != 1) or (max_time < 0.0) or (max_time < min_time)) {
+    throw std::invalid_argument("createLevelsWorkflow(): invalid max task exec time in workflow specification");
+  }
+
+  auto workflow = new Workflow();
+
+  // Create the tasks
+  std::vector<wrench::WorkflowTask *> tasks[num_levels];
+
+  static std::uniform_int_distribution<unsigned long> m_udist(min_time, max_time);
+  for (unsigned long l=0; l < num_levels; l++) {
+    for (unsigned long t=0; t < num_tasks[l]; t++) {
+      unsigned long flops = m_udist(rng);
+      tasks[l].push_back(workflow->addTask("Task_l" + std::to_string(l) + "_" + std::to_string(t), (double) flops, 1, 1, 1.0, 0.0));
+    }
+  }
+
+  // Create the control dependencies (right now FULL dependencies)
+  for (unsigned long l=1; l < num_levels; l++) {
+    for (unsigned long t=0; t < num_tasks[l]; t++) {
+      for (unsigned long p=0; p < num_tasks[l-1]; p++) {
+        workflow->addControlDependency(tasks[l-1][p], tasks[l][t]);
+      }
+    }
+  }
+
+//  workflow->exportToEPS("/tmp/foo.eps");
+
+  return workflow;
+
+}
+
 
 WMS *createWMS(std::string hostname,
                                 unsigned long max_num_jobs,
