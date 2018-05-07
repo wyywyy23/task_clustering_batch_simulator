@@ -17,7 +17,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(zhang_clustering_wms, "Log category for Zhang Clust
 namespace wrench {
 
     ZhangClusteringWMS::ZhangClusteringWMS(std::string hostname, BatchService *batch_service) :
-            WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustring_wms") {
+            WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
       this->batch_service = batch_service;
       this->pending_placeholder_job = nullptr;
     }
@@ -35,6 +35,7 @@ namespace wrench {
       this->job_manager = this->createJobManager();
 
       while (not workflow->isDone()) {
+
         // Submit a pilot job (if needed)
         submitPilotJob();
 
@@ -59,9 +60,8 @@ namespace wrench {
       // Compute my start level as the next "not started level"
       unsigned long start_level = 0;
       for (auto ph : this->running_placeholder_jobs) {
-        start_level = MAX(start_level, ph->end_level);
+        start_level =  1 + MAX(start_level, ph->end_level);
       }
-      start_level = start_level + 1;
 
       // For now, Just do a single level - TODO: DO THE REAL THING
       unsigned long end_level = start_level;
@@ -108,8 +108,6 @@ namespace wrench {
         }
       }
 
-      WRENCH_INFO("Submitting a Pilot Job (%ld hosts, %.2lf sec) for workflow levels %ld-%ld",
-                  parallelism, requested_execution_time, start_level, end_level);
 
 
       // Submit the pilot job
@@ -118,7 +116,6 @@ namespace wrench {
       service_specific_args["-c"] = "1";
       service_specific_args["-t"] = std::to_string(1 + ((unsigned long)requested_execution_time)/60);
 
-      this->job_manager->submitJob(this->pending_placeholder_job->pilot_job, this->batch_service, service_specific_args);
 
       // Keep track of the placeholder job
       this->pending_placeholder_job = new PlaceHolderJob(
@@ -127,25 +124,53 @@ namespace wrench {
               start_level,
               end_level);
 
+      WRENCH_INFO("Submitting a Pilot Job (%ld hosts, %.2lf sec) for workflow levels %ld-%ld (%s)",
+                  parallelism, requested_execution_time, start_level, end_level,
+                  this->pending_placeholder_job->pilot_job->getName().c_str());
+
+
+      // submit the corresponding pilot job
+      this->job_manager->submitJob(this->pending_placeholder_job->pilot_job, this->batch_service, service_specific_args);
+
+      WRENCH_INFO("Submitted Pilot Job %ld (%s) as part of Placeholder job %ld",
+                  (unsigned long) this->pending_placeholder_job->pilot_job,
+                  this->pending_placeholder_job->pilot_job->getName().c_str(),
+                  (unsigned long) this->pending_placeholder_job);
+
     }
 
 
     void ZhangClusteringWMS::processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) {
       // Just for kicks, check it was the pending one
+      WRENCH_INFO("Got a Pilot Job Start event: %s", e->pilot_job->getName().c_str());
+      if (this->pending_placeholder_job == nullptr) {
+        WRENCH_INFO("FATAL!!! Got a PILOT JOB START EVENT, but PENDING_PLACEHOLDER == NULLPTR");
+        exit(1);
+      }
+//      WRENCH_INFO("Got a Pilot Job Start event e->pilot_job = %ld, this->pending->pilot_job = %ld (%s)",
+//                  (unsigned long) e->pilot_job,
+//                  (unsigned long) this->pending_placeholder_job->pilot_job,
+//                  this->pending_placeholder_job->pilot_job->getName().c_str());
+
       if (e->pilot_job != this->pending_placeholder_job->pilot_job) {
-        throw std::runtime_error("A pilot job has started, but it doesn't match the pending pilot job!");
+
+        WRENCH_INFO("Must be for a placeholder I already cancelled... nevermind");
+        return;
+//        throw std::runtime_error("A pilot job has started, but it doesn't match the pending pilot job!");
       }
 
       PlaceHolderJob *placeholder_job = this->pending_placeholder_job;
 
-      WRENCH_INFO("The pending pilot job has started!");
+      WRENCH_INFO("The pending pilot job  (%s) has started. It has %ld tasks",
+                  placeholder_job->pilot_job->getName().c_str(), placeholder_job->tasks.size());
 
       // Move it to running
-      this->running_placeholder_jobs.insert(this->pending_placeholder_job);
+      this->running_placeholder_jobs.insert(placeholder_job);
       this->pending_placeholder_job = nullptr;
 
       // Submit all ready tasks to it each in its standard job
       for (auto task : placeholder_job->tasks) {
+        WRENCH_INFO("Task %s has state %d", task->getId().c_str(), task->getState());
         if (task->getState() == WorkflowTask::READY) {
           StandardJob *standard_job = this->job_manager->createStandardJob(task,{});
           WRENCH_INFO("Submitting a Standard Job to execute Task %s in placeholder %ld-%ld",
@@ -173,8 +198,8 @@ namespace wrench {
         throw std::runtime_error("Got a pilot job expiration, but no matching placeholder job found");
       }
 
-      WRENCH_INFO("Got a pilot job completion for a placeholder job that deals with levels %ld-%ld",
-                  placeholder_job->start_level, placeholder_job->end_level);
+      WRENCH_INFO("Got a pilot job expiration for a placeholder job that deals with levels %ld-%ld (%s)",
+                  placeholder_job->start_level, placeholder_job->end_level, placeholder_job->pilot_job->getName().c_str());
       // Check if there are unprocessed tasks
       bool unprocessed = false;
       for (auto task : placeholder_job->tasks) {
@@ -192,8 +217,12 @@ namespace wrench {
 
       // Cancel pending pilot job if any
       if (this->pending_placeholder_job) {
-        WRENCH_INFO("Canceling pending placeholder job!");
+        WRENCH_INFO("Canceling pending placeholder job (placeholder=%ld,  pilot_job=%ld / %s",
+                    (unsigned long)this->pending_placeholder_job,
+                    (unsigned long)this->pending_placeholder_job->pilot_job,
+                    this->pending_placeholder_job->pilot_job->getName().c_str());
         this->job_manager->terminateJob(this->pending_placeholder_job->pilot_job);
+        this->pending_placeholder_job = nullptr;
       }
 
       // Cancel running pilot jobs if none of their tasks has started
@@ -208,8 +237,13 @@ namespace wrench {
         }
         if (not started) {
           WRENCH_INFO("Canceling running placeholder job that handled levels %ld-%ld because none"
-                              "of its tasks has started", ph->start_level, ph->end_level);
-          this->job_manager->terminateJob(ph->pilot_job);
+                              "of its tasks has started (%s)", ph->start_level, ph->end_level,
+                              ph->pilot_job->getName().c_str());
+          try {
+            this->job_manager->terminateJob(ph->pilot_job);
+          } catch (WorkflowExecutionException &e) {
+            // ignore (likely already dead!)
+          }
           to_remove.insert(ph);
         }
       }
@@ -259,8 +293,7 @@ namespace wrench {
     }
 
     void ZhangClusteringWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
-      WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS",
-              e->standard_job->tasks[0]->getId().c_str());
+//      WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS", e->standard_job->tasks[0]->getId().c_str());
 
     }
 

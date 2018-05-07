@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
   BatchService *batch_service;
   std::string login_hostname = "Login";
   try {
-    batch_service = new BatchService(login_hostname, true, false, compute_nodes, nullptr,
+    batch_service = new BatchService(login_hostname, true, true, compute_nodes, nullptr,
                                      {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, "conservative_bf"},
                                       {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}
                                      });
@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
     std::cerr << "Cannot instantiate batch service: " << e.what() << "\n";
     std::cerr << "Trying the non-BATSCHED option...\n";
     try {
-      batch_service = new BatchService(login_hostname, true, false, compute_nodes, nullptr,
+      batch_service = new BatchService(login_hostname, true, true, compute_nodes, nullptr,
                                        {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
                                         {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}
                                        });
