@@ -13,7 +13,7 @@ namespace wrench {
 
     public:
         PlaceHolderJob(PilotJob *pilot_job,
-                       std::vector<WorkflowTask *> tasks,
+                       std::vector<std::pair<WorkflowTask *, bool>> tasks,
                        unsigned long start_level,
                        unsigned long end_level) : pilot_job(pilot_job),
                                                   tasks(tasks),
@@ -21,7 +21,7 @@ namespace wrench {
                                                   end_level(end_level) { }
 
         PilotJob *pilot_job;
-        std::vector<WorkflowTask *>tasks;
+        std::vector<std::pair<WorkflowTask *, bool>> tasks;
         unsigned long start_level;
         unsigned long end_level;
     };
