@@ -102,12 +102,12 @@ namespace wrench {
       requested_execution_time = requested_execution_time + EXECUTION_TIME_FUDGE_FACTOR;
 
       // Aggregate tasks
-      std::vector<std::pair<WorkflowTask *, bool>> tasks;
+      std::vector<WorkflowTask *> tasks;
       for (unsigned long l = start_level; l <= end_level; l++) {
         std::vector<WorkflowTask *> tasks_in_level = this->workflow->getTasksInTopLevelRange(l,l);
         for (auto t : tasks_in_level) {
           if (t->getState() != WorkflowTask::COMPLETED) {
-            tasks.push_back(std::make_pair(t, false));
+            tasks.push_back(t);
           }
         }
       }
@@ -174,11 +174,11 @@ namespace wrench {
 
       // Submit all ready tasks to it each in its standard job
       for (auto task : placeholder_job->tasks) {
-        WRENCH_INFO("Task %s has state %d", std::get<0>(task)->getId().c_str(), std::get<0>(task)->getState());
-        if (std::get<0>(task)->getState() == WorkflowTask::READY) {
-          StandardJob *standard_job = this->job_manager->createStandardJob(std::get<0>(task),{});
+        WRENCH_INFO("Task %s has state %d", task->getId().c_str(), task->getState());
+        if (task->getState() == WorkflowTask::READY) {
+          StandardJob *standard_job = this->job_manager->createStandardJob(task,{});
           WRENCH_INFO("Submitting a Standard Job to execute Task %s in placeholder %ld-%ld",
-                      std::get<0>(task)->getId().c_str(), placeholder_job->start_level, placeholder_job->end_level);
+                      task->getId().c_str(), placeholder_job->start_level, placeholder_job->end_level);
           this->job_manager->submitJob(standard_job, placeholder_job->pilot_job->getComputeService());
         }
       }
@@ -205,12 +205,7 @@ namespace wrench {
       WRENCH_INFO("Got a pilot job expiration for a placeholder job that deals with levels %ld-%ld (%s)",
                   placeholder_job->start_level, placeholder_job->end_level, placeholder_job->pilot_job->getName().c_str());
       // Check if there are unprocessed tasks
-      bool unprocessed = false;
-      for (auto task : placeholder_job->tasks) {
-        if (std::get<1>(task) == false) {
-          unprocessed = true;
-        }
-      }
+      bool unprocessed = (placeholder_job->tasks.size() != placeholder_job->num_completed_tasks);
 
       if (not unprocessed) { // Nothing to do
         WRENCH_INFO("This placeholder job has no unprocessed tasks. great.");
@@ -235,7 +230,7 @@ namespace wrench {
       for (auto ph : this->running_placeholder_jobs) {
         bool started = false;
         for (auto task : ph->tasks) {
-          if (std::get<0>(task)->getState() != WorkflowTask::NOT_READY) {
+          if (task->getState() != WorkflowTask::NOT_READY) {
             started = true;
           }
         }
@@ -273,33 +268,14 @@ namespace wrench {
       PlaceHolderJob *placeholder_job = nullptr;
       for (auto ph : this->running_placeholder_jobs) {
         for (auto task : ph->tasks) {
-          if (std::get<0>(task) == completed_task) {
+          if (task == completed_task) {
             placeholder_job = ph;
             break;
           }
         }
       }
 
-//      for (auto task : placeholder_job->tasks) {
-//        WRENCH_INFO("B4: =======> %d", std::get<1>(task));
-//      }
-
-      // update task status
-      for (int i=0; i < placeholder_job->tasks.size(); i++) {
-//        WRENCH_INFO("    task: %s", std::get<0>(placeholder_job->tasks[i])->getId().c_str());
-        if (std::get<0>(placeholder_job->tasks[i]) == completed_task) {
-//          WRENCH_INFO("      *");
-          placeholder_job->tasks[i] =  std::make_pair(std::get<0>(placeholder_job->tasks[i]), true);
-          break;
-        }
-      }
-
-//      for (auto task : placeholder_job->tasks) {
-//        WRENCH_INFO("B5: =======> %d", std::get<1>(task));
-//      }
-
-//      sleep(100);
-
+      placeholder_job->num_completed_tasks++;
 
       if (placeholder_job == nullptr) {
         throw std::runtime_error("Got a task completion, but couldn't find a placeholder for the task");
@@ -309,25 +285,18 @@ namespace wrench {
       std::vector<WorkflowTask *>children = this->workflow->getTaskChildren(completed_task);
       for (auto ph : this->running_placeholder_jobs) {
         for (auto task : ph->tasks) {
-          if ((std::find(children.begin(), children.end(), std::get<0>(task)) != children.end()) and
-                  (std::get<0>(task)->getState() == WorkflowTask::READY)) {
-            StandardJob *standard_job = this->job_manager->createStandardJob(std::get<0>(task),{});
+          if ((std::find(children.begin(), children.end(), task) != children.end()) and
+                  (task->getState() == WorkflowTask::READY)) {
+            StandardJob *standard_job = this->job_manager->createStandardJob(task,{});
             WRENCH_INFO("Submitting a Standard Job to execute Task %s in placeholder %ld-%ld",
-                        std::get<0>(task)->getId().c_str(), ph->start_level, ph->end_level);
+                        task->getId().c_str(), ph->start_level, ph->end_level);
             this->job_manager->submitJob(standard_job, ph->pilot_job->getComputeService());
           }
         }
       }
 
       // Terminate the standard job in case all its tasks are done
-      bool completed = true;
-      for (auto task : placeholder_job->tasks) {
-        if (not std::get<1>(task)) {
-          completed = false;
-          break;
-        }
-      }
-      if (completed) {
+      if (placeholder_job->num_completed_tasks == placeholder_job->tasks.size()) {
         WRENCH_INFO("All tasks are completed in this pilot job, so I am terminating it (%s)",
           placeholder_job->pilot_job->getName().c_str());
         try {
