@@ -65,38 +65,31 @@ namespace wrench {
         start_level =  1 + MAX(start_level, ph->end_level);
       }
 
-      // For now, Just do a single level - TODO: DO THE REAL THING
-      unsigned long end_level = start_level;
-
-
       // Nothing to do?
       if (start_level >= this->workflow->getNumLevels()) {
         return;
       }
 
-      // Figure out parallelism
-      unsigned long parallelism = 0;
-      for (unsigned long l = start_level; l <= end_level; l++) {
-        unsigned long num_tasks_in_level = this->workflow->getTasksInTopLevelRange(l,l).size();
-        if (num_tasks_in_level > this->num_hosts) {
-          throw std::runtime_error("ZhangClusteringWMS::submitPilotJob(): Workflow level " +
-                                   std::to_string(l) +
-                                   " has more tasks than" +
-                                   "number of hosts on the batch service, which is not" +
-                                   "handled by the algorithm by Zhang et al.");
-        }
-        parallelism = MAX(parallelism, num_tasks_in_level);
-      }
+      double best_ratio = DBL_MAX;
+      unsigned long end_level;
+      unsigned long requested_parallelism;
+      double requested_execution_time;
 
-      // Figure out the maximum execution time
-      double requested_execution_time = 0;
-      for (unsigned long l = start_level; l <= end_level; l++) {
-        double max_exec_time_in_level = 0;
-        std::vector<WorkflowTask *> tasks_in_level = this->workflow->getTasksInTopLevelRange(l,l);
-        for (auto t : tasks_in_level) {
-          max_exec_time_in_level = MAX(max_exec_time_in_level,  t->getFlops() / core_speed);
+      // Apply the DAG GROUPING heuristic (Fig. 5 in the paper)
+      for (unsigned long candidate_end_level = start_level; candidate_end_level < this->workflow->getNumLevels(); candidate_end_level++) {
+        std::tuple<double, double, unsigned long> wait_run_par = computeLevelGroupingRatio(start_level, candidate_end_level);
+        double wait_time = std::get<0>(wait_run_par);
+        double run_time = std::get<1>(wait_run_par);
+        unsigned long parallelism = std::get<2>(wait_run_par);
+        double ratio = wait_time / run_time;
+        if (ratio <= best_ratio) {
+          end_level = candidate_end_level;
+          best_ratio = ratio;
+          requested_execution_time = run_time;
+          requested_parallelism = parallelism;
+        } else {
+          break;
         }
-        requested_execution_time += max_exec_time_in_level;
       }
 
       requested_execution_time = requested_execution_time + EXECUTION_TIME_FUDGE_FACTOR;
@@ -112,34 +105,27 @@ namespace wrench {
         }
       }
 
-
-
       // Submit the pilot job
       std::map<std::string, std::string> service_specific_args;
-      service_specific_args["-N"] = std::to_string(parallelism);
+      service_specific_args["-N"] = std::to_string(requested_parallelism);
       service_specific_args["-c"] = "1";
       service_specific_args["-t"] = std::to_string(1 + ((unsigned long)requested_execution_time)/60);
 
 
       // Keep track of the placeholder job
       this->pending_placeholder_job = new PlaceHolderJob(
-              this->job_manager->createPilotJob(parallelism, 1, 0.0, requested_execution_time),
+              this->job_manager->createPilotJob(requested_parallelism, 1, 0.0, requested_execution_time),
               tasks,
               start_level,
               end_level);
 
       WRENCH_INFO("Submitting a Pilot Job (%ld hosts, %.2lf sec) for workflow levels %ld-%ld (%s)",
-                  parallelism, requested_execution_time, start_level, end_level,
+                  requested_parallelism, requested_execution_time, start_level, end_level,
                   this->pending_placeholder_job->pilot_job->getName().c_str());
 
 
       // submit the corresponding pilot job
       this->job_manager->submitJob(this->pending_placeholder_job->pilot_job, this->batch_service, service_specific_args);
-
-      WRENCH_INFO("Submitted Pilot Job %ld (%s) as part of Placeholder job %ld",
-                  (unsigned long) this->pending_placeholder_job->pilot_job,
-                  this->pending_placeholder_job->pilot_job->getName().c_str(),
-                  (unsigned long) this->pending_placeholder_job);
 
     }
 
@@ -173,15 +159,18 @@ namespace wrench {
       this->pending_placeholder_job = nullptr;
 
       // Submit all ready tasks to it each in its standard job
+      std::string output_string = "";
       for (auto task : placeholder_job->tasks) {
-        WRENCH_INFO("Task %s has state %d", task->getId().c_str(), task->getState());
+//        WRENCH_INFO("Task %s has state %d", task->getId().c_str(), task->getState());
         if (task->getState() == WorkflowTask::READY) {
           StandardJob *standard_job = this->job_manager->createStandardJob(task,{});
-          WRENCH_INFO("Submitting a Standard Job to execute Task %s in placeholder %ld-%ld",
-                      task->getId().c_str(), placeholder_job->start_level, placeholder_job->end_level);
+          output_string += " " + task->getId();
+
           this->job_manager->submitJob(standard_job, placeholder_job->pilot_job->getComputeService());
         }
       }
+      WRENCH_INFO("Submitted Standard Jobs to execute Task %s in placeholder %ld-%ld",
+                  output_string.c_str(), placeholder_job->start_level, placeholder_job->end_level);
 
       // Re-submit a pilot job
       this->submitPilotJob();
@@ -262,8 +251,6 @@ namespace wrench {
 
       WRENCH_INFO("Got a standard job completion for task %s", completed_task->getId().c_str());
 
-
-
       // Find the placeholder job this task belongs to
       PlaceHolderJob *placeholder_job = nullptr;
       for (auto ph : this->running_placeholder_jobs) {
@@ -275,18 +262,18 @@ namespace wrench {
         }
       }
 
-      placeholder_job->num_completed_tasks++;
-
       if (placeholder_job == nullptr) {
         throw std::runtime_error("Got a task completion, but couldn't find a placeholder for the task");
       }
+
+      placeholder_job->num_completed_tasks ++;
 
       // Start all newly ready tasks that depended on the completed task, REGARDLESS OF PLACEHOLDER
       std::vector<WorkflowTask *>children = this->workflow->getTaskChildren(completed_task);
       for (auto ph : this->running_placeholder_jobs) {
         for (auto task : ph->tasks) {
           if ((std::find(children.begin(), children.end(), task) != children.end()) and
-                  (task->getState() == WorkflowTask::READY)) {
+              (task->getState() == WorkflowTask::READY)) {
             StandardJob *standard_job = this->job_manager->createStandardJob(task,{});
             WRENCH_INFO("Submitting a Standard Job to execute Task %s in placeholder %ld-%ld",
                         task->getId().c_str(), ph->start_level, ph->end_level);
@@ -297,8 +284,8 @@ namespace wrench {
 
       // Terminate the standard job in case all its tasks are done
       if (placeholder_job->num_completed_tasks == placeholder_job->tasks.size()) {
-        WRENCH_INFO("All tasks are completed in this pilot job, so I am terminating it (%s)",
-          placeholder_job->pilot_job->getName().c_str());
+        WRENCH_INFO("All tasks are completed in this placeholder job, so I am terminating it (%s)",
+                    placeholder_job->pilot_job->getName().c_str());
         try {
           this->job_manager->terminateJob(placeholder_job->pilot_job);
         } catch (WorkflowExecutionException &e) {
@@ -311,7 +298,57 @@ namespace wrench {
 
     void ZhangClusteringWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
 //      WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS", e->standard_job->tasks[0]->getId().c_str());
-
     }
+
+
+
+    /**
+     *
+     * @param start_level
+     * @param end_level
+     * @return
+     */
+    std::tuple<double, double, unsigned long> ZhangClusteringWMS::computeLevelGroupingRatio(
+            unsigned long start_level, unsigned long end_level) {
+
+      // Figure out parallelism
+      unsigned long parallelism = 0;
+      for (unsigned long l = start_level; l <= end_level; l++) {
+        unsigned long num_tasks_in_level = this->workflow->getTasksInTopLevelRange(l,l).size();
+        if (num_tasks_in_level > this->num_hosts) {
+          throw std::runtime_error("ZhangClusteringWMS::submitPilotJob(): Workflow level " +
+                                   std::to_string(l) +
+                                   " has more tasks than" +
+                                   "number of hosts on the batch service, which is not" +
+                                   "handled by the algorithm by Zhang et al.");
+        }
+        parallelism = MAX(parallelism, num_tasks_in_level);
+      }
+
+      // Figure out the maximum execution time
+      double execution_time = 0;
+      for (unsigned long l = start_level; l <= end_level; l++) {
+        double max_exec_time_in_level = 0;
+        std::vector<WorkflowTask *> tasks_in_level = this->workflow->getTasksInTopLevelRange(l,l);
+        for (auto t : tasks_in_level) {
+          max_exec_time_in_level = MAX(max_exec_time_in_level,  t->getFlops() / core_speed);
+        }
+        execution_time += max_exec_time_in_level;
+      }
+
+      // Figure out the estimated wait time
+//      std::map<std::string,double> getQueueWaitingTimeEstimate(std::set<std::tuple<std::string,unsigned int,unsigned int, double>>);
+      std::set<std::tuple<std::string,unsigned int,unsigned int, double>> job_config;
+      job_config.insert(std::make_tuple("config", (unsigned int)parallelism, 1, execution_time));
+      std::map<std::string, double> estimates = this->batch_service->getQueueWaitingTimeEstimate(job_config);
+      double wait_time_estimate = estimates["config"];
+
+      WRENCH_INFO("GroupLevel(%ld,%ld): parallelism=%ld, wait_time=%.2lf, execution_time=%.2lf",
+            start_level, end_level, parallelism, wait_time_estimate, execution_time);
+
+      return std::make_tuple(wait_time_estimate, execution_time, parallelism);
+    }
+
+
 
 };
