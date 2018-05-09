@@ -237,6 +237,8 @@ Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
 
   unsigned long num_tasks[num_levels];
 
+  std::cerr << "Creating a 'levels' workflow...\n";
+
   for (unsigned long l = 0; l < num_levels; l++) {
     if ((sscanf(spec_tokens[l+1].c_str(), "%lu", &(num_tasks[l])) != 1) or (num_tasks[l] < 1)) {
       throw std::invalid_argument("createLevelsWorkflow(): invalid number of tasks in level " + std::to_string(l) + " workflow specification");
@@ -270,6 +272,11 @@ Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
         workflow->addControlDependency(tasks[l-1][p], tasks[l][t]);
       }
     }
+  }
+
+  // Make sure we have what we think:
+  for (auto t : workflow->getTasks()) {
+    std::cerr << "Task " << t->getId() << " has  has " << t->getNumberOfChildren() << " children\n";
   }
 
 //  workflow->exportToEPS("/tmp/foo.eps");

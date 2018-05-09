@@ -122,7 +122,10 @@ namespace wrench {
       WRENCH_INFO("Submitting a Pilot Job (%ld hosts, %.2lf sec) for workflow levels %ld-%ld (%s)",
                   requested_parallelism, requested_execution_time, start_level, end_level,
                   this->pending_placeholder_job->pilot_job->getName().c_str());
-
+      WRENCH_INFO("This pilot job has these tasks:");
+      for (auto t : this->pending_placeholder_job->tasks) {
+        WRENCH_INFO("     - %s", t->getId().c_str());
+      }
 
       // submit the corresponding pilot job
       this->job_manager->submitJob(this->pending_placeholder_job->pilot_job, this->batch_service, service_specific_args);
@@ -151,9 +154,6 @@ namespace wrench {
 
       PlaceHolderJob *placeholder_job = this->pending_placeholder_job;
 
-      WRENCH_INFO("The pending pilot job  (%s) has started. It has %ld tasks",
-                  placeholder_job->pilot_job->getName().c_str(), placeholder_job->tasks.size());
-
       // Move it to running
       this->running_placeholder_jobs.insert(placeholder_job);
       this->pending_placeholder_job = nullptr;
@@ -161,16 +161,15 @@ namespace wrench {
       // Submit all ready tasks to it each in its standard job
       std::string output_string = "";
       for (auto task : placeholder_job->tasks) {
-//        WRENCH_INFO("Task %s has state %d", task->getId().c_str(), task->getState());
         if (task->getState() == WorkflowTask::READY) {
           StandardJob *standard_job = this->job_manager->createStandardJob(task,{});
           output_string += " " + task->getId();
 
+          WRENCH_INFO("Submitting task %s as part of placeholder job %ld-%ld",
+              task->getId().c_str(), placeholder_job->start_level, placeholder_job->end_level);
           this->job_manager->submitJob(standard_job, placeholder_job->pilot_job->getComputeService());
         }
       }
-      WRENCH_INFO("Submitted Standard Jobs to execute Task %s in placeholder %ld-%ld",
-                  output_string.c_str(), placeholder_job->start_level, placeholder_job->end_level);
 
       // Re-submit a pilot job
       this->submitPilotJob();
@@ -275,8 +274,8 @@ namespace wrench {
           if ((std::find(children.begin(), children.end(), task) != children.end()) and
               (task->getState() == WorkflowTask::READY)) {
             StandardJob *standard_job = this->job_manager->createStandardJob(task,{});
-            WRENCH_INFO("Submitting a Standard Job to execute Task %s in placeholder %ld-%ld",
-                        task->getId().c_str(), ph->start_level, ph->end_level);
+            WRENCH_INFO("Submitting task %s  as part of placeholder job %ld-%ld",
+                        task->getId().c_str(), placeholder_job->start_level, placeholder_job->end_level);
             this->job_manager->submitJob(standard_job, ph->pilot_job->getComputeService());
           }
         }

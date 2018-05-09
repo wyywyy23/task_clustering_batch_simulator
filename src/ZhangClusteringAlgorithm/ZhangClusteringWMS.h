@@ -15,6 +15,7 @@
 #include <wms/WMS.h>
 #include <services/compute/batch/BatchService.h>
 
+
 namespace wrench {
 
     class PlaceHolderJob;
