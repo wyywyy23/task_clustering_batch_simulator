@@ -9,6 +9,7 @@
 
 
 #include <wrench-dev.h>
+#include <WorkflowUtil/WorkflowUtil.h>
 #include "ZhangClusteringWMS.h"
 #include "PlaceHolderJob.h"
 
@@ -32,7 +33,7 @@ namespace wrench {
       // Find out core speed on the batch service
       this->core_speed = *(this->batch_service->getCoreFlopRate().begin());
       // Find out #hosts on the batch service
-      this->num_hosts = this->batch_service->getNumHosts();
+      this->number_of_hosts = this->batch_service->getNumHosts();
 
       // Create a job manager
       this->job_manager = this->createJobManager();
@@ -387,7 +388,7 @@ namespace wrench {
       unsigned long parallelism = 0;
       for (unsigned long l = start_level; l <= end_level; l++) {
         unsigned long num_tasks_in_level = this->workflow->getTasksInTopLevelRange(l,l).size();
-        if (num_tasks_in_level > this->num_hosts) {
+        if (num_tasks_in_level > this->number_of_hosts) {
           throw std::runtime_error("ZhangClusteringWMS::applyGroupingHeuristic(): Workflow level " +
                                    std::to_string(l) +
                                    " has more tasks than" +
@@ -398,29 +399,19 @@ namespace wrench {
       }
 
       // Figure out the maximum execution time
-      double execution_time = 0;
-      for (unsigned long l = start_level; l <= end_level; l++) {
-        double max_exec_time_in_level = 0;
-        std::vector<WorkflowTask *> tasks_in_level = this->workflow->getTasksInTopLevelRange(l,l);
-        for (auto t : tasks_in_level) {
-          max_exec_time_in_level = MAX(max_exec_time_in_level,  t->getFlops() / core_speed);
-        }
-        execution_time += max_exec_time_in_level;
-      }
+      double makespan = WorkflowUtil::estimateMakespan(this->workflow->getTasksInTopLevelRange(start_level, end_level), this->number_of_hosts, this->core_speed);
+
 
       // Figure out the estimated wait time
-//      std::map<std::string,double> getQueueWaitingTimeEstimate(std::set<std::tuple<std::string,unsigned int,unsigned int, double>>);
       std::set<std::tuple<std::string,unsigned int,unsigned int, double>> job_config;
-      job_config.insert(std::make_tuple("config", (unsigned int)parallelism, 1, execution_time));
+      job_config.insert(std::make_tuple("config", (unsigned int)parallelism, 1, makespan));
       std::map<std::string, double> estimates = this->batch_service->getQueueWaitingTimeEstimate(job_config);
       double wait_time_estimate = estimates["config"];
 
       WRENCH_INFO("GroupLevel(%ld,%ld): parallelism=%ld, wait_time=%.2lf, execution_time=%.2lf",
-                  start_level, end_level, parallelism, wait_time_estimate, execution_time);
+                  start_level, end_level, parallelism, wait_time_estimate, makespan);
 
-      return std::make_tuple(wait_time_estimate, execution_time, parallelism);
+      return std::make_tuple(wait_time_estimate, makespan, parallelism);
     }
-
-
 
 };

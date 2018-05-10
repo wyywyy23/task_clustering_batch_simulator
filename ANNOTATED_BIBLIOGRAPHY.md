@@ -87,7 +87,7 @@ groupByLevel():
    	  - ratio[i] = estimated wait time / execution time
    	  - if ratio[i] > ratio[i-1], break
    	  
-   - return (i-1, estimated wait time, execution time, num_hosts)
+   - return (i-1, estimated wait time, execution time, number_of_hosts)
 ```
 
 

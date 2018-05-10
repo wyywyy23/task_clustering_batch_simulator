@@ -34,7 +34,7 @@ namespace wrench {
         void submitSingleJob();
         void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) override;
         double core_speed;
-        unsigned long num_hosts;
+        unsigned long number_of_hosts;
 
         std::shared_ptr<JobManager> job_manager;
 

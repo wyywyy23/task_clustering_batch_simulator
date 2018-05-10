@@ -31,7 +31,7 @@ namespace wrench {
       // Find out core speed on the batch service
       this->core_speed = *(this->batch_service->getCoreFlopRate().begin());
       // Find out #hosts on the batch service
-      this->num_hosts = this->batch_service->getNumHosts();
+      this->number_of_hosts = this->batch_service->getNumHosts();
 
       // Create a job manager
       this->job_manager = this->createJobManager();
@@ -63,7 +63,7 @@ namespace wrench {
       double picked_makespan;
       double best_totaltime = DBL_MAX;
       WRENCH_INFO("Choosing best configuration:");
-      for (unsigned long num_hosts = 1; num_hosts <= parallelism; num_hosts++) {
+      for (unsigned long num_hosts = 1; num_hosts <= MIN(parallelism, this->number_of_hosts); num_hosts++) {
         double makespan = WorkflowUtil::estimateMakespan(this->workflow->getTasks(), num_hosts, this->core_speed);
 
           std::set<std::tuple<std::string,unsigned int,unsigned int, double>> job_config;
