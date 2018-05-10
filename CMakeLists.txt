@@ -8,6 +8,8 @@ include_directories(src/ /usr/local/include /usr/local/include/wrench)
 # source files
 set(SOURCE_FILES
         src/Simulator.cpp
+        src/WorkflowUtil/WorkflowUtil.cpp
+        src/WorkflowUtil/WorkflowUtil.h
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.cpp
         src/OneJobClusteringAlgorithm/OneJobClusteringWMS.h
         src/OneJobClusteringAlgorithm/OneJobClusteringWMS.cpp

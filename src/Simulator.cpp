@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
     std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
     std::cerr << "      - m: number of nodes used to execute each cluster" << "\n";
     std::cerr << "      (ready tasks are grouped into clustered \"arbitrarily\"\n";
-    std::cerr << "    - zhang (algorithm by Zhang, Koelbel, Cooper)" << "\n";
+    std::cerr << "    - zhang:[overlap|nooverlap] (algorithm by Zhang, Koelbel, Cooper)" << "\n";
     exit(1);
   }
   unsigned long num_compute_nodes;

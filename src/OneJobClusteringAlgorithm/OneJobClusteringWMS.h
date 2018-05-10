@@ -32,7 +32,6 @@ namespace wrench {
 
         int main() override;
         void submitSingleJob();
-        double computeWorkflowMakespan(unsigned long num_hosts);
         void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) override;
         double core_speed;
         unsigned long num_hosts;
