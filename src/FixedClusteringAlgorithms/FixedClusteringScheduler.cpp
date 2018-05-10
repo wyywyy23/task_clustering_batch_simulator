@@ -3,9 +3,12 @@
 // Created by Henri Casanova on 3/30/18.
 //
 
+#include <WorkflowUtil/WorkflowUtil.h>
 #include "FixedClusteringScheduler.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(fixed_clustering_scheduler, "Log category for Fixed Clustering Scheduler");
+
+#define EXECUTION_TIME_FUDGE_FACTOR 60
 
 namespace wrench {
 
@@ -16,6 +19,8 @@ namespace wrench {
       if ((num_tasks_per_cluster < 1) || (num_nodes_per_cluster < 1) || (max_num_submitted_jobs < 1)) {
         throw std::invalid_argument("FixedClusteringScheduler::FixedClusteringScheduler(): invalid arguments");
       }
+      this->core_speed = -1.0;
+
       this->num_tasks_per_cluster = num_tasks_per_cluster;
       this->num_nodes_per_cluster = num_nodes_per_cluster;
       this->max_num_submitted_jobs = max_num_submitted_jobs;
@@ -28,9 +33,15 @@ namespace wrench {
         return;
       }
 
+      BatchService *batch_service = (BatchService *)(*(compute_services.begin()));
+
+      // Acquire core speed the first time
+      if (this->core_speed < 0.0) {
+        this->core_speed = batch_service->getCoreFlopRate()[0];
+      }
+
       TerminalOutput::setThisProcessLoggingColor(COLOR_RED);
 
-      BatchService *batch_service = (BatchService *)(*(compute_services.begin()));
 
       // Create vector of ready tasks to get rid of the annoying clusters
       std::vector<WorkflowTask*> tasks_to_schedule;
@@ -60,11 +71,12 @@ namespace wrench {
         unsigned long num_nodes = MIN(num_tasks_in_batch, this->num_nodes_per_cluster);
 
         // Compute the time for the job (a bit conservative for now)
-        double max_flop_best_fit_time = computeJobTime(num_nodes, tasks_in_job);
+//        double max_flop_best_fit_time = computeJobTime(num_nodes, tasks_in_job);
+        double makespan = WorkflowUtil::estimateMakespan(tasks_in_job, num_nodes, this->core_speed);
 
         std::map<std::string, std::string> batch_job_args;
         batch_job_args["-N"] = std::to_string(num_nodes);
-        batch_job_args["-t"] = std::to_string((unsigned long)(1 + max_flop_best_fit_time / 60.0)); //time in minutes
+        batch_job_args["-t"] = std::to_string((unsigned long)(1 + (makespan + EXECUTION_TIME_FUDGE_FACTOR) / 60.0)); //time in minutes
         batch_job_args["-c"] = "1"; //number of cores per node
 
         StandardJob *job = this->getJobManager()->createStandardJob(tasks_in_job, {});
@@ -92,46 +104,5 @@ namespace wrench {
       return;
     }
 
-
-    double FixedClusteringScheduler::computeJobTime(
-            unsigned long num_nodes,
-            std::vector<WorkflowTask *> tasks) {
-
-      // Sort the tasks by decreasing flop count
-      std::sort(tasks.begin(), tasks.end(),
-                [](const WorkflowTask* t1, const WorkflowTask* t2) -> bool
-                {
-                    if (t1->getFlops() == t2->getFlops()) {
-                      return ((uintptr_t) t1 > (uintptr_t) t2);
-                    } else {
-                      return (t1->getFlops() > t2->getFlops());
-                    }
-                });
-
-      double completion_times[num_nodes];
-      for (int i=0; i < num_nodes; i++) {
-        completion_times[i] = 0.0;
-      }
-
-      for (auto t : tasks) {
-        // Find the node with the earliest completion time
-        unsigned long selected_node = 0;
-        for (unsigned long i = 1; i < num_nodes; i++) {
-          if (completion_times[i] < completion_times[selected_node]) {
-            selected_node = i;
-          }
-        }
-        // Assign the task to it
-        completion_times[selected_node] += t->getFlops();
-      }
-
-      double max_completion_time = 0;
-      for (unsigned long i=0; i < num_nodes; i++) {
-        if (completion_times[i] > max_completion_time) {
-          max_completion_time = completion_times[i];
-        }
-      }
-      return max_completion_time;
-    }
 
 };

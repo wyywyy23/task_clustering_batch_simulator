@@ -28,11 +28,12 @@ namespace wrench {
         std::set<StandardJob*> submitted_jobs;
 
     private:
+        double core_speed;
+
         unsigned long num_tasks_per_cluster;
         unsigned long num_nodes_per_cluster;
         unsigned long max_num_submitted_jobs;
 
-        double computeJobTime(unsigned long num_nodes, std::vector<WorkflowTask *> tasks);
     };
 }
 

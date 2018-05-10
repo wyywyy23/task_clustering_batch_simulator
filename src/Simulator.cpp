@@ -24,21 +24,33 @@ int main(int argc, char **argv) {
   // Parse command-line arguments
   if (argc != 7) {
     std::cerr << "Usage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <workflow specification> <workflow start time> <max num concurrent jobs> <algorithm>" << "\n";
-    std::cerr << "  * workflow specification options:" << "\n";
-    std::cerr << "    - indep:n:t1:t2 " << "\n";
+    std::cerr << "  ### workflow specification options ###" << "\n";
+    std::cerr << "    *  \e[1mindep:n:t1:t2\e[0m " << "\n";
+    std::cerr << "      - Just a set of independent tasks" << "\n";
     std::cerr << "      - n: number of tasks" << "\n";
-    std::cerr << "      - t1/t2: min/max task durations in integral second (uniformly distributed)" << "\n";
-    std::cerr << "      (just a set of independent tasks)" << "\n";
-    std::cerr << "    - levels:l0:l2:....:ln:t1:t2" << "\n";
+    std::cerr << "      - t1/t2: min/max task durations in integral seconds (actual times uniformly sampled)" << "\n";
+    std::cerr << "    * \e[1mlevels:l0:l2:....:ln:t1:t2\e[0m" << "\n";
+    std::cerr << "      - A strictly levelled workflow" << "\n";
     std::cerr << "      - lx: num tasks in level x" << "\n";
-    std::cerr << "      - t1/t2: min/max task durations in integral second (uniformly distributed)" << "\n";
-    std::cerr << "  * algorithm  options:" << "\n";
-    std::cerr << "    - one_job (picks job size according to queue predictions)" << "\n";
-    std::cerr << "    - fixed_clustering:n:m (no queue prediction)" << "\n";
+    std::cerr << "      - each task in level x depends on ALL tasks in level x-1" << "\n";
+    std::cerr << "      - t1/t2: min/max task durations in integral second (actual times uniformly sampled)" << "\n";
+    std::cerr << "\n";
+    std::cerr << "  ### algorithm options ###" << "\n";
+    std::cerr << "    * \e[1mone_job\e[0m" << "\n";
+    std::cerr << "      - run the workflow as a single job" << "\n";
+    std::cerr << "      - pick the job size (num of hosts) based on a estimation of the queue waiting time" << "\n";
+    std::cerr << "        and the makespan (estimated assuming some arbitrary list-scheduling heuristic)" << "\n";
+    std::cerr << "    * \e[1mfixed:n:m\e[0m" << "\n";
+    std::cerr << "      - Simply package groups of ready tasks in clusters, arbitrarily, and execute each cluster" << "\n";
+    std::cerr << "        on the same number of hosts " << "\n";
     std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
-    std::cerr << "      - m: number of nodes used to execute each cluster" << "\n";
-    std::cerr << "      (ready tasks are grouped into clustered \"arbitrarily\"\n";
-    std::cerr << "    - zhang:[overlap|nooverlap] (algorithm by Zhang, Koelbel, Cooper)" << "\n";
+    std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "    * \e[1mzhang:[overlap|nooverlap]\e[0m" << "\n";
+    std::cerr << "      - The algorithm by Zhang, Koelbel, and Cooper" << "\n";
+    std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
+    std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
+    std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
+    std::cerr << "\n";
     exit(1);
   }
   unsigned long num_compute_nodes;
@@ -86,6 +98,7 @@ int main(int argc, char **argv) {
       std::cerr << "Giving up\n";
       exit(1);
     }
+    std::cerr << "Successfully instanted a non-BATSCHED FCFS batch service!\n";
   }
 
   simulation->add(batch_service);
@@ -297,24 +310,37 @@ WMS *createWMS(std::string hostname,
   }
 
 
-  if (tokens[0] == "fixed_clustering") {
+  if (tokens[0] == "fixed") {
     if (tokens.size() != 3) {
-      throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed_clustering specification");
+      throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed specification");
     }
     unsigned long num_tasks_per_cluster;
     unsigned long num_nodes_per_cluster;
     if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
         (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
-      throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed_clustering specification");
+      throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed specification");
     }
     WMS *wms = new FixedClusteringWMS(hostname, new FixedClusteringScheduler(num_tasks_per_cluster, num_nodes_per_cluster,
                                                                          max_num_jobs), batch_service);
     return wms;
 
   } else if (tokens[0] == "zhang") {
-    return new ZhangClusteringWMS(hostname, batch_service);
+    if (tokens.size() != 2) {
+      throw std::invalid_argument("createStandardJobScheduler(): Invalid zhang specification");
+    }
+    bool overlap;
+    if (tokens[1] == "overlap") {
+      overlap = true;
+    } else if (tokens[1] == "nooverlap") {
+      overlap = false;
+    } else {
+      throw std::invalid_argument("createStandardJobScheduler(): Invalid zhang specification");
+    }
+    return new ZhangClusteringWMS(hostname, overlap, batch_service);
+
   } else if (tokens[0] == "one_job") {
     return new OneJobClusteringWMS(hostname, batch_service);
+
   } else {
     throw std::invalid_argument("createStandardJobScheduler(): Unknown workflow type " + tokens[0]);
   }

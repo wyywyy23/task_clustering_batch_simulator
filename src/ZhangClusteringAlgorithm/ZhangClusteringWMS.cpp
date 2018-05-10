@@ -19,8 +19,9 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(zhang_clustering_wms, "Log category for Zhang Clust
 
 namespace wrench {
 
-    ZhangClusteringWMS::ZhangClusteringWMS(std::string hostname, BatchService *batch_service) :
+    ZhangClusteringWMS::ZhangClusteringWMS(std::string hostname, bool overlap, BatchService *batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
+      this->overlap = overlap;
       this->batch_service = batch_service;
       this->pending_placeholder_job = nullptr;
       this->individual_mode = false;
@@ -222,8 +223,10 @@ namespace wrench {
         }
       }
 
-      // Re-submit a pilot job
-      this->applyGroupingHeuristic();
+      // Re-submit a pilot job so as to overlap execution of job n with waiting of job n+1
+      if (overlap) {
+        this->applyGroupingHeuristic();
+      }
 
     }
 
