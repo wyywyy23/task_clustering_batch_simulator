@@ -58,7 +58,7 @@ namespace wrench {
      */
     void ZhangClusteringWMS::applyGroupingHeuristic() {
 
-      WRENCH_INFO("APPLYING GROUPING HEURISTIC");
+//      WRENCH_INFO("APPLYING GROUPING HEURISTIC");
 
       // Don't schedule a pilot job if one is pending
       if (this->pending_placeholder_job) {
@@ -81,7 +81,7 @@ namespace wrench {
         return;
       }
 
-
+//      WRENCH_INFO("START LEVEL = %ld", start_level);
 
       double best_ratio = DBL_MAX;
       unsigned long end_level;
@@ -91,6 +91,7 @@ namespace wrench {
 
       // Apply the DAG GROUPING heuristic (Fig. 5 in the paper)
       for (unsigned long candidate_end_level = start_level; candidate_end_level < this->workflow->getNumLevels(); candidate_end_level++) {
+//        WRENCH_INFO("CANDIDATE_END_LEVEL=%ld", candidate_end_level);
         std::tuple<double, double, unsigned long> wait_run_par = computeLevelGroupingRatio(start_level, candidate_end_level);
         double wait_time = std::get<0>(wait_run_par);
         double run_time = std::get<1>(wait_run_par);

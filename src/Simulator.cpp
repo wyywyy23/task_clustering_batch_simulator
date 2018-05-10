@@ -254,7 +254,7 @@ Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
 
   unsigned long num_tasks[num_levels];
 
-  std::cerr << "Creating a 'levels' workflow...\n";
+  WRENCH_INFO("Creating a 'levels' workflow...");
 
   for (unsigned long l = 0; l < num_levels; l++) {
     if ((sscanf(spec_tokens[l+1].c_str(), "%lu", &(num_tasks[l])) != 1) or (num_tasks[l] < 1)) {

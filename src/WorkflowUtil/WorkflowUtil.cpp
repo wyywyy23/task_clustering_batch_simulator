@@ -11,7 +11,13 @@
 #include <workflow/Workflow.h>
 #include <cfloat>
 #include <xbt/base.h>
+#include <xbt/log.h>
+#include <wrench-dev.h>
+
 #include "WorkflowUtil.h"
+
+XBT_LOG_NEW_DEFAULT_CATEGORY(workflow_util, "Log category for Workflow Util");
+
 
 namespace wrench {
 
@@ -24,6 +30,8 @@ namespace wrench {
      * @return
      */
     double WorkflowUtil::estimateMakespan(std::vector<WorkflowTask *> tasks, unsigned long num_hosts, double core_speed) {
+
+      WRENCH_INFO("ESTIMATING MAKESPAN ON %ld HOSTS with %ld tasks", num_hosts, tasks.size());
 
       Workflow *workflow = tasks[0]->getWorkflow();
 
@@ -52,12 +60,15 @@ namespace wrench {
 
       while (num_scheduled_tasks < num_tasks) {
 
+//        WRENCH_INFO("ITERATION");
         bool scheduled_something = false;
+
         // Schedule ALL READY Tasks
         for (i=0; i <  num_tasks; i++)  {
 
           auto ft = fake_tasks[i];
 
+          // Already scheduled?
           if (std::get<1>(ft) >= 0.0) {
             continue;
           }
@@ -96,14 +107,14 @@ namespace wrench {
               double new_time = current_time + real_task->getFlops() / core_speed;
               fake_tasks[i] = std::make_tuple(std::get<0>(ft), new_time);
 
-//              for (int k=0; k < this->workflow->getNumberOfTasks(); k++) {
+//              for (int k=0; k < num_tasks; k++) {
 //                WRENCH_INFO("------> %.2lf", std::get<1>(fake_tasks[k]));
 //              }
 
               idle_date[j] = current_time + real_task->getFlops() / core_speed;
 //              WRENCH_INFO("SCHEDULED TASK %s on host %d from time %.2lf-%.2lf",
 //                          real_task->getId().c_str(), j, current_time,
-//                          current_time + real_task->getFlops() / this->core_speed);
+//                          current_time + real_task->getFlops() / core_speed);
               scheduled_something = true;
               num_scheduled_tasks++;
               break;
@@ -112,6 +123,7 @@ namespace wrench {
             }
           }
         }
+
 //        WRENCH_INFO("UPDATING CURRENT TIME");
         if (scheduled_something) {
           // Set current time to min idle time
@@ -123,20 +135,12 @@ namespace wrench {
           }
           current_time = min_idle_time;
         } else {
-          // Set current time to next-to-min idle time
-          double min_idle_time = DBL_MAX;
-          for (int j = 0; j < num_hosts; j++) {
-            if (idle_date[j] < min_idle_time) {
-              min_idle_time = idle_date[j];
-            }
-          }
           double second_min_idle_time = DBL_MAX;
           for (int j = 0; j < num_hosts; j++) {
-            if ((idle_date[j] > min_idle_time) and (idle_date[j] < second_min_idle_time)) {
+            if ((idle_date[j] > current_time) and (idle_date[j] < second_min_idle_time)) {
               second_min_idle_time = idle_date[j];
             }
           }
-
           current_time = second_min_idle_time;
         }
 //        WRENCH_INFO("UPDATED CURRENT TIME TO %.2lf", current_time);
