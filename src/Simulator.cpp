@@ -2,6 +2,7 @@
 #include <iostream>
 #include <wrench-dev.h>
 #include <services/compute/batch/BatchServiceProperty.h>
+#include <OneJobClusteringAlgorithm/OneJobClusteringWMS.h>
 #include "FixedClusteringAlgorithms/FixedClusteringWMS.h"
 #include "FixedClusteringAlgorithms/FixedClusteringScheduler.h"
 #include "ZhangClusteringAlgorithm/ZhangClusteringWMS.h"
@@ -32,8 +33,9 @@ int main(int argc, char **argv) {
     std::cerr << "      - lx: num tasks in level x" << "\n";
     std::cerr << "      - t1/t2: min/max task durations in integral second (uniformly distributed)" << "\n";
     std::cerr << "  * algorithm  options:" << "\n";
-    std::cerr << "    - fixed_clustering:n:m" << "\n";
-    std::cerr << "      - n: number of tasks in each cluster" << "\n";
+    std::cerr << "    - one_job (picks job size according to queue predictions)" << "\n";
+    std::cerr << "    - fixed_clustering:n:m (no queue prediction)" << "\n";
+    std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
     std::cerr << "      - m: number of nodes used to execute each cluster" << "\n";
     std::cerr << "      (ready tasks are grouped into clustered \"arbitrarily\"\n";
     std::cerr << "    - zhang (algorithm by Zhang, Koelbel, Cooper)" << "\n";
@@ -274,11 +276,6 @@ Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
     }
   }
 
-  // Make sure we have what we think:
-  for (auto t : workflow->getTasks()) {
-    std::cerr << "Task " << t->getId() << " has  has " << t->getNumberOfChildren() << " children\n";
-  }
-
 //  workflow->exportToEPS("/tmp/foo.eps");
 
   return workflow;
@@ -315,9 +312,9 @@ WMS *createWMS(std::string hostname,
     return wms;
 
   } else if (tokens[0] == "zhang") {
-
     return new ZhangClusteringWMS(hostname, batch_service);
-
+  } else if (tokens[0] == "one_job") {
+    return new OneJobClusteringWMS(hostname, batch_service);
   } else {
     throw std::invalid_argument("createStandardJobScheduler(): Unknown workflow type " + tokens[0]);
   }

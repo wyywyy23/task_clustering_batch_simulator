@@ -44,16 +44,16 @@ work?
 #### More details
 
 ```
-  - submitPilotJob(DAG)
+  - applyGroupingHeuristic(DAG)
   - Wait for an event
   - If event is "pilot job started":
     - schedule all the tasks for that pilot job
-    - submitPilotJob(DAG) 
+    - applyGroupingHeuristic(DAG) 
   - If event is "pilot job has expired":
     - cancel all pending pilot jobs 
     - "undo" tasks that were killed or not executed 
       and put them back into 
-    - submitPilotJob(DAG)
+    - applyGroupingHeuristic(DAG)
   - If event is "a task has finished"
   	 - mark it as done, make children ready
   	 - if the pilot job that did that task has no more tasks 
@@ -61,10 +61,10 @@ work?
 ```
 
 The above has at most one pending pilot job in the queue. The authors talk about "interference" between pilot jobs...
-The "smarts" of the above algorithm are in the submitPilotJob() function. 
+The "smarts" of the above algorithm are in the applyGroupingHeuristic() function. 
 
 ```
-submitPilotJob():
+applyGroupingHeuristic():
 	- job_description = groupByLevel()
 	- If the number of consecutive levels is the full DAG
 	  height then:

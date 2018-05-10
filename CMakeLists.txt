@@ -9,6 +9,8 @@ include_directories(src/ /usr/local/include /usr/local/include/wrench)
 set(SOURCE_FILES
         src/Simulator.cpp
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.cpp
+        src/OneJobClusteringAlgorithm/OneJobClusteringWMS.h
+        src/OneJobClusteringAlgorithm/OneJobClusteringWMS.cpp
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.h
         src/ZhangClusteringAlgorithm/PlaceHolderJob.h
         src/FixedClusteringAlgorithms/FixedClusteringWMS.cpp

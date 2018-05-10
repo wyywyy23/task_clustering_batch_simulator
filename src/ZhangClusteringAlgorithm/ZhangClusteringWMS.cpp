@@ -22,6 +22,7 @@ namespace wrench {
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
       this->batch_service = batch_service;
       this->pending_placeholder_job = nullptr;
+      this->individual_mode = false;
     }
 
     int ZhangClusteringWMS::main() {
@@ -39,7 +40,7 @@ namespace wrench {
       while (not workflow->isDone()) {
 
         // Submit a pilot job (if needed)
-        submitPilotJob();
+        applyGroupingHeuristic();
 
         this->waitForAndProcessNextEvent();
 
@@ -50,14 +51,20 @@ namespace wrench {
 
 
 
-    void ZhangClusteringWMS::submitPilotJob() {
+    /**
+     *
+     */
+    void ZhangClusteringWMS::applyGroupingHeuristic() {
 
       // Don't schedule a pilot job if one is pending
       if (this->pending_placeholder_job) {
         return;
       }
 
-
+      // Dont schedule a pilot job if we're in individual mode
+      if (this->individual_mode) {
+        return;
+      }
 
       // Compute my start level as the next "not started level"
       unsigned long start_level = 0;
@@ -73,6 +80,7 @@ namespace wrench {
       double best_ratio = DBL_MAX;
       unsigned long end_level;
       unsigned long requested_parallelism;
+      double estimated_wait_time;
       double requested_execution_time;
 
       // Apply the DAG GROUPING heuristic (Fig. 5 in the paper)
@@ -87,17 +95,60 @@ namespace wrench {
           best_ratio = ratio;
           requested_execution_time = run_time;
           requested_parallelism = parallelism;
+          estimated_wait_time = wait_time;
         } else {
           break;
         }
       }
+
+      this->individual_mode = (end_level == this->workflow->getNumLevels() -1) and
+                              (requested_execution_time * 2.0 >= estimated_wait_time);
+
+      if (not individual_mode) {
+        createAndSubmitPlaceholderJob(
+                requested_execution_time,
+                requested_parallelism,
+                start_level,
+                end_level);
+      } else {
+        WRENCH_INFO("Switching to individual mode!");
+        // Submit all READY tasks as individual jobs
+        for (auto task : this->workflow->getTasks()) {
+          if (task->getState() == WorkflowTask::State::READY) {
+            StandardJob *standard_job = this->job_manager->createStandardJob(task,{});
+            std::map<std::string, std::string> service_specific_args;
+            requested_execution_time = task->getFlops() / this->core_speed + EXECUTION_TIME_FUDGE_FACTOR;
+            service_specific_args["-N"] = "1";
+            service_specific_args["-c"] = "1";
+            service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
+            WRENCH_INFO("Submitting task %s individually!", task->getId().c_str());
+            this->job_manager->submitJob(standard_job, this->batch_service, service_specific_args);
+          }
+        }
+      }
+
+    }
+
+
+    /**
+     *
+     * @param requested_execution_time
+     * @param requested_parallelism
+     * @param start_level
+     * @param end_level
+     */
+    void ZhangClusteringWMS::createAndSubmitPlaceholderJob(
+            double requested_execution_time,
+            unsigned long requested_parallelism,
+            unsigned long start_level,
+            unsigned long end_level) {
 
       requested_execution_time = requested_execution_time + EXECUTION_TIME_FUDGE_FACTOR;
 
       // Aggregate tasks
       std::vector<WorkflowTask *> tasks;
       for (unsigned long l = start_level; l <= end_level; l++) {
-        std::vector<WorkflowTask *> tasks_in_level = this->workflow->getTasksInTopLevelRange(l,l);
+        std::vector<WorkflowTask *> tasks_in_level = this->workflow->getTasksInTopLevelRange(l, l);
         for (auto t : tasks_in_level) {
           if (t->getState() != WorkflowTask::COMPLETED) {
             tasks.push_back(t);
@@ -109,7 +160,7 @@ namespace wrench {
       std::map<std::string, std::string> service_specific_args;
       service_specific_args["-N"] = std::to_string(requested_parallelism);
       service_specific_args["-c"] = "1";
-      service_specific_args["-t"] = std::to_string(1 + ((unsigned long)requested_execution_time)/60);
+      service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
 
 
       // Keep track of the placeholder job
@@ -128,8 +179,8 @@ namespace wrench {
       }
 
       // submit the corresponding pilot job
-      this->job_manager->submitJob(this->pending_placeholder_job->pilot_job, this->batch_service, service_specific_args);
-
+      this->job_manager->submitJob(this->pending_placeholder_job->pilot_job, this->batch_service,
+                                   service_specific_args);
     }
 
 
@@ -149,7 +200,6 @@ namespace wrench {
 
         WRENCH_INFO("Must be for a placeholder I already cancelled... nevermind");
         return;
-//        throw std::runtime_error("A pilot job has started, but it doesn't match the pending pilot job!");
       }
 
       PlaceHolderJob *placeholder_job = this->pending_placeholder_job;
@@ -166,13 +216,13 @@ namespace wrench {
           output_string += " " + task->getId();
 
           WRENCH_INFO("Submitting task %s as part of placeholder job %ld-%ld",
-              task->getId().c_str(), placeholder_job->start_level, placeholder_job->end_level);
+                      task->getId().c_str(), placeholder_job->start_level, placeholder_job->end_level);
           this->job_manager->submitJob(standard_job, placeholder_job->pilot_job->getComputeService());
         }
       }
 
       // Re-submit a pilot job
-      this->submitPilotJob();
+      this->applyGroupingHeuristic();
 
     }
 
@@ -239,8 +289,8 @@ namespace wrench {
         this->running_placeholder_jobs.erase(ph);
       }
 
-      // Submit a new pilot job
-      submitPilotJob();
+      // Make decisions again
+      applyGroupingHeuristic();
 
     }
 
@@ -261,13 +311,30 @@ namespace wrench {
         }
       }
 
-      if (placeholder_job == nullptr) {
-        throw std::runtime_error("Got a task completion, but couldn't find a placeholder for the task");
+      if ((placeholder_job == nullptr) and (not this->individual_mode)) {
+        throw std::runtime_error("Got a task completion, but couldn't find a placeholder for the task, "
+                                         "and we're not in individual mode");
       }
 
-      placeholder_job->num_completed_tasks ++;
+      if (placeholder_job != nullptr) {
 
-      // Start all newly ready tasks that depended on the completed task, REGARDLESS OF PLACEHOLDER
+        placeholder_job->num_completed_tasks++;
+        // Terminate the standard job in case all its tasks are done
+        if (placeholder_job->num_completed_tasks == placeholder_job->tasks.size()) {
+          WRENCH_INFO("All tasks are completed in this placeholder job, so I am terminating it (%s)",
+                      placeholder_job->pilot_job->getName().c_str());
+          try {
+            this->job_manager->terminateJob(placeholder_job->pilot_job);
+          } catch (WorkflowExecutionException &e) {
+            // ignore
+          }
+          this->running_placeholder_jobs.erase(placeholder_job);
+        }
+
+      }
+
+      // Start all newly ready tasks that depended on the completed task, IN ANY PLACEHOLDER
+      // This shouldn't happen in individual mode, but can't hurt
       std::vector<WorkflowTask *>children = this->workflow->getTaskChildren(completed_task);
       for (auto ph : this->running_placeholder_jobs) {
         for (auto task : ph->tasks) {
@@ -281,17 +348,23 @@ namespace wrench {
         }
       }
 
-      // Terminate the standard job in case all its tasks are done
-      if (placeholder_job->num_completed_tasks == placeholder_job->tasks.size()) {
-        WRENCH_INFO("All tasks are completed in this placeholder job, so I am terminating it (%s)",
-                    placeholder_job->pilot_job->getName().c_str());
-        try {
-          this->job_manager->terminateJob(placeholder_job->pilot_job);
-        } catch (WorkflowExecutionException &e) {
-          // ignore
+      if (this->individual_mode) {
+        for (auto task : this->workflow->getTasks()) {
+          if (task->getState() == WorkflowTask::State::READY) {
+            StandardJob *standard_job = this->job_manager->createStandardJob(task,{});
+            WRENCH_INFO("Submitting task %s individually!",
+                        task->getId().c_str());
+            std::map<std::string, std::string> service_specific_args;
+            double requested_execution_time = task->getFlops() / this->core_speed + EXECUTION_TIME_FUDGE_FACTOR;
+            service_specific_args["-N"] = "1";
+            service_specific_args["-c"] = "1";
+            service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
+            this->job_manager->submitJob(standard_job, this->batch_service, service_specific_args);
+          }
         }
-        this->running_placeholder_jobs.erase(placeholder_job);
       }
+
+
 
     }
 
@@ -315,7 +388,7 @@ namespace wrench {
       for (unsigned long l = start_level; l <= end_level; l++) {
         unsigned long num_tasks_in_level = this->workflow->getTasksInTopLevelRange(l,l).size();
         if (num_tasks_in_level > this->num_hosts) {
-          throw std::runtime_error("ZhangClusteringWMS::submitPilotJob(): Workflow level " +
+          throw std::runtime_error("ZhangClusteringWMS::applyGroupingHeuristic(): Workflow level " +
                                    std::to_string(l) +
                                    " has more tasks than" +
                                    "number of hosts on the batch service, which is not" +
@@ -343,7 +416,7 @@ namespace wrench {
       double wait_time_estimate = estimates["config"];
 
       WRENCH_INFO("GroupLevel(%ld,%ld): parallelism=%ld, wait_time=%.2lf, execution_time=%.2lf",
-            start_level, end_level, parallelism, wait_time_estimate, execution_time);
+                  start_level, end_level, parallelism, wait_time_estimate, execution_time);
 
       return std::make_tuple(wait_time_estimate, execution_time, parallelism);
     }

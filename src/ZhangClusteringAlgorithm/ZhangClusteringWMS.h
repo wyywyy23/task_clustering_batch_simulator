@@ -31,16 +31,20 @@ namespace wrench {
         BatchService *batch_service;
 
         int main() override;
-        void submitPilotJob();
+        void applyGroupingHeuristic();
+        void createAndSubmitPlaceholderJob(double requested_execution_time,
+                                           unsigned long requested_parallelism,
+                                           unsigned long start_level,
+                                           unsigned long end_level);
         void processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) override;
         void processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) override;
         void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) override;
         void processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) override;
         std::tuple<double, double, unsigned long> computeLevelGroupingRatio(unsigned long start_level, unsigned long end_level);
 
+        bool individual_mode;
 
-
-          std::set<PlaceHolderJob *> running_placeholder_jobs;
+        std::set<PlaceHolderJob *> running_placeholder_jobs;
         PlaceHolderJob *pending_placeholder_job;
 
         double core_speed;
