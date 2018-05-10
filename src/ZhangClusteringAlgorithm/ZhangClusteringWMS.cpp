@@ -58,12 +58,14 @@ namespace wrench {
      */
     void ZhangClusteringWMS::applyGroupingHeuristic() {
 
+      WRENCH_INFO("APPLYING GROUPING HEURISTIC");
+
       // Don't schedule a pilot job if one is pending
       if (this->pending_placeholder_job) {
         return;
       }
 
-      // Dont schedule a pilot job if we're in individual mode
+      // Don't schedule a pilot job if we're in individual mode
       if (this->individual_mode) {
         return;
       }
@@ -78,6 +80,8 @@ namespace wrench {
       if (start_level >= this->workflow->getNumLevels()) {
         return;
       }
+
+
 
       double best_ratio = DBL_MAX;
       unsigned long end_level;
@@ -394,8 +398,8 @@ namespace wrench {
         if (num_tasks_in_level > this->number_of_hosts) {
           throw std::runtime_error("ZhangClusteringWMS::applyGroupingHeuristic(): Workflow level " +
                                    std::to_string(l) +
-                                   " has more tasks than" +
-                                   "number of hosts on the batch service, which is not" +
+                                   " has more tasks than " +
+                                   "number of hosts on the batch service, which is not " +
                                    "handled by the algorithm by Zhang et al.");
         }
         parallelism = MAX(parallelism, num_tasks_in_level);

@@ -7,6 +7,9 @@
 #include "FixedClusteringAlgorithms/FixedClusteringScheduler.h"
 #include "ZhangClusteringAlgorithm/ZhangClusteringWMS.h"
 
+XBT_LOG_NEW_DEFAULT_CATEGORY(task_clustering_simulator, "Log category for Task Clustering Simulator");
+
+
 using namespace wrench;
 
 void setupSimulationPlatform(Simulation *simulation, unsigned long num_compute_nodes);
@@ -14,6 +17,7 @@ Workflow *createWorkflow(std::string workflow_spec);
 Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens);
 Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens);
 WMS *createWMS(std::string scheduler_spec, std::string algorithm_name, BatchService *batch_service);
+
 
 int main(int argc, char **argv) {
 
@@ -23,8 +27,8 @@ int main(int argc, char **argv) {
 
   // Parse command-line arguments
   if (argc != 6) {
-    std::cerr << "Usage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <workflow specification> <workflow start time> <algorithm>" << "\n";
-    std::cerr << "  ### workflow specification options ###" << "\n";
+    std::cerr << "\e[1;31mUsage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <workflow specification> <workflow start time> <algorithm>\e[0m" << "\n";
+    std::cerr << "  \e[1;32m### workflow specification options ###\e[0m" << "\n";
     std::cerr << "    *  \e[1mindep:n:t1:t2\e[0m " << "\n";
     std::cerr << "      - Just a set of independent tasks" << "\n";
     std::cerr << "      - n: number of tasks" << "\n";
@@ -35,7 +39,7 @@ int main(int argc, char **argv) {
     std::cerr << "      - each task in level x depends on ALL tasks in level x-1" << "\n";
     std::cerr << "      - t1/t2: min/max task durations in integral second (actual times uniformly sampled)" << "\n";
     std::cerr << "\n";
-    std::cerr << "  ### algorithm options ###" << "\n";
+    std::cerr << "  \e[1;32m### algorithm options ###\e[0m" << "\n";
     std::cerr << "    * \e[1mone_job\e[0m" << "\n";
     std::cerr << "      - run the workflow as a single job" << "\n";
     std::cerr << "      - pick the job size (num of hosts) based on a estimation of the queue waiting time" << "\n";
@@ -82,19 +86,19 @@ int main(int argc, char **argv) {
                                       {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}
                                      });
   } catch (std::invalid_argument &e) {
-    std::cerr << "Cannot instantiate batch service: " << e.what() << "\n";
-    std::cerr << "Trying the non-BATSCHED option...\n";
+    WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
+    WRENCH_INFO("Trying the non-BATSCHED option...");
     try {
       batch_service = new BatchService(login_hostname, true, true, compute_nodes, nullptr,
                                        {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
                                         {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}
                                        });
     } catch (std::invalid_argument &e) {
-      std::cerr << "Cannot instantiate batch service: " << e.what() << "\n";
-      std::cerr << "Giving up\n";
+      WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
+      std::cerr << "Giving up as I cannot instantiate the Batch Service\n";
       exit(1);
     }
-    std::cerr << "Successfully instanted a non-BATSCHED FCFS batch service!\n";
+    WRENCH_INFO("Successfully instantiated a non-BATSCHED FCFS batch service!");
   }
 
   simulation->add(batch_service);
@@ -128,14 +132,16 @@ int main(int argc, char **argv) {
 
   // Launch the simulation
   try {
-    std::cerr << "Launching simulation!\n";
+    WRENCH_INFO("Launching simulation!");
     simulation->launch();
   } catch (std::runtime_error &e) {
     std::cerr << "Simulation failed: " << e.what() << "\n";
     exit(1);
   }
+  WRENCH_INFO("Simulation done!");
 
-  std::cerr << "Done!\n";
+
+  std::cout << "WORKFLOW MAKESPAN: " << (workflow->getCompletionDate() - workflow_start_time) << "\n";
 
 }
 

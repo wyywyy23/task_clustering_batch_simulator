@@ -1,7 +1,5 @@
 
-//
-// Created by Henri Casanova on 3/30/18.
-//
+
 
 #include <WorkflowUtil/WorkflowUtil.h>
 #include "FixedClusteringScheduler.h"
