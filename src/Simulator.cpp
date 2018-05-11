@@ -152,7 +152,7 @@ void setupSimulationPlatform(Simulation *simulation, unsigned long num_compute_n
           "<!DOCTYPE platform SYSTEM \"http://simgrid.gforge.inria.fr/simgrid/simgrid.dtd\">\n"
           "<platform version=\"4.1\">\n"
           "   <zone id=\"AS0\" routing=\"Full\"> "
-          "       <host id=\"Login\" speed=\"1f\" core=\"2\"/>\n";
+          "       <host id=\"Login\" speed=\"1f\" core=\"1\"/>\n";
   for (unsigned long i=0; i < num_compute_nodes; i++) {
     xml += "       <host id=\"ComputeNode_"+std::to_string(i)+"\" speed=\"1f\" core=\"1\"/>\n";
   }

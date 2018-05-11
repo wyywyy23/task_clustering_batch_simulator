@@ -25,9 +25,9 @@ namespace wrench {
     }
 
     void FixedClusteringScheduler::scheduleTasks(const std::set<ComputeService *> &compute_services,
-                                                           const std::map<std::string, std::vector<WorkflowTask *>> &tasks) {
+                                                           const std::vector<WorkflowTask *> &tasks_to_schedule) {
 
-      if (tasks.empty()) {
+      if (tasks_to_schedule.empty()) {
         return;
       }
 
@@ -41,18 +41,11 @@ namespace wrench {
       TerminalOutput::setThisProcessLoggingColor(COLOR_RED);
 
 
-      // Create vector of ready tasks to get rid of the annoying clusters
-      std::vector<WorkflowTask*> tasks_to_schedule;
-      for (auto t : tasks) {
-        tasks_to_schedule.push_back(*((t.second).begin()));
-      }
-
-
       unsigned long first_task_in_batch = 0;
       while ((first_task_in_batch < tasks_to_schedule.size()) and (this->submitted_jobs.size() < this->max_num_submitted_jobs)) {
 
 
-        unsigned long last_task_in_batch = MIN(first_task_in_batch + this->num_tasks_per_cluster -1 , tasks.size() -1);
+        unsigned long last_task_in_batch = MIN(first_task_in_batch + this->num_tasks_per_cluster -1 , tasks_to_schedule.size() -1);
         unsigned long num_tasks_in_batch = last_task_in_batch - first_task_in_batch + 1;
 
         WRENCH_INFO("Creating a Standard job with %lu tasks:", num_tasks_in_batch);

@@ -28,6 +28,8 @@ namespace wrench {
 
       TerminalOutput::setThisProcessLoggingColor(COLOR_WHITE);
 
+      this->checkDeferredStart();
+
       // Find out core speed on the batch service
       this->core_speed = *(this->batch_service->getCoreFlopRate().begin());
       // Find out #hosts on the batch service
@@ -66,15 +68,15 @@ namespace wrench {
       for (unsigned long num_hosts = 1; num_hosts <= MIN(parallelism, this->number_of_hosts); num_hosts++) {
         double makespan = WorkflowUtil::estimateMakespan(this->workflow->getTasks(), num_hosts, this->core_speed);
 
-          std::set<std::tuple<std::string,unsigned int,unsigned int, double>> job_config;
+        std::set<std::tuple<std::string,unsigned int,unsigned int, double>> job_config;
         job_config.insert(std::make_tuple("config", (unsigned int)parallelism, 1, makespan));
-        std::map<std::string, double> estimates = this->batch_service->getQueueWaitingTimeEstimate(job_config);
-        double waittime = estimates["config"];
+        std::map<std::string, double> estimates = this->batch_service->getStartTimeEstimates(job_config);
+        double waittime = estimates["config"] - this->simulation->getCurrentSimulatedDate();
 
         WRENCH_INFO(" - With %ld hosts, wait time + makespan = %.2lf + %.2lf = %.2lf",
                     num_hosts, waittime, makespan, waittime + makespan);
 
-        if (waittime + makespan  < best_totaltime) {
+        if (start_time + makespan  < best_totaltime) {
           picked_num_hosts = num_hosts;
           picked_makespan = makespan;
           best_totaltime = waittime + makespan;

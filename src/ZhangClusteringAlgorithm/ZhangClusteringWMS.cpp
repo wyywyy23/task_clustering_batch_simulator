@@ -29,7 +29,11 @@ namespace wrench {
 
     int ZhangClusteringWMS::main() {
 
+
+
       TerminalOutput::setThisProcessLoggingColor(COLOR_WHITE);
+
+      this->checkDeferredStart();
 
       // Find out core speed on the batch service
       this->core_speed = *(this->batch_service->getCoreFlopRate().begin());
@@ -47,7 +51,6 @@ namespace wrench {
         this->waitForAndProcessNextEvent();
 
       }
-
       return 0;
     }
 
@@ -70,8 +73,27 @@ namespace wrench {
         return;
       }
 
-      // Compute my start level as the next "not started level"
+      // Don't schedule a pilot job is overlap = false and anything is running
+      if ((not this->overlap) and (not this->running_placeholder_jobs.empty())) {
+        return;
+      }
+
+      // Compute my start level first as the first level that's not fully completed
       unsigned long start_level = 0;
+      for (unsigned long i=0; i < this->workflow->getNumLevels(); i++) {
+        std::vector<WorkflowTask*> tasks_in_level = this->workflow->getTasksInTopLevelRange(i,i);
+        bool all_completed = true;
+        for (auto task : tasks_in_level) {
+          if (task->getState() != WorkflowTask::State::COMPLETED) {
+            all_completed = false;
+          }
+        }
+        if (all_completed) {
+          start_level = i + 1;
+        }
+      }
+
+
       for (auto ph : this->running_placeholder_jobs) {
         start_level =  1 + MAX(start_level, ph->end_level);
       }
@@ -91,7 +113,6 @@ namespace wrench {
 
       // Apply the DAG GROUPING heuristic (Fig. 5 in the paper)
       for (unsigned long candidate_end_level = start_level; candidate_end_level < this->workflow->getNumLevels(); candidate_end_level++) {
-//        WRENCH_INFO("CANDIDATE_END_LEVEL=%ld", candidate_end_level);
         std::tuple<double, double, unsigned long> wait_run_par = computeLevelGroupingRatio(start_level, candidate_end_level);
         double wait_time = std::get<0>(wait_run_par);
         double run_time = std::get<1>(wait_run_par);
@@ -108,8 +129,14 @@ namespace wrench {
         }
       }
 
-      this->individual_mode = (end_level == this->workflow->getNumLevels() -1) and
-                              (requested_execution_time * 2.0 >= estimated_wait_time);
+      if ((start_level == 0) and (end_level == this->workflow->getNumLevels() -1)) {
+        if (requested_execution_time * 2.0 >= estimated_wait_time) {
+          this->individual_mode = true;
+        }
+      }
+
+      // TODO: REMOVE THIS
+      this->individual_mode = false;
 
       if (not individual_mode) {
         createAndSubmitPlaceholderJob(
@@ -229,9 +256,7 @@ namespace wrench {
       }
 
       // Re-submit a pilot job so as to overlap execution of job n with waiting of job n+1
-      if (overlap) {
-        this->applyGroupingHeuristic();
-      }
+      this->applyGroupingHeuristic();
 
     }
 
@@ -378,7 +403,7 @@ namespace wrench {
     }
 
     void ZhangClusteringWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
-//      WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS", e->standard_job->tasks[0]->getId().c_str());
+      WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS", e->standard_job->tasks[0]->getId().c_str());
     }
 
 
@@ -391,6 +416,8 @@ namespace wrench {
      */
     std::tuple<double, double, unsigned long> ZhangClusteringWMS::computeLevelGroupingRatio(
             unsigned long start_level, unsigned long end_level) {
+
+      static int sequence = 0;
 
       // Figure out parallelism
       unsigned long parallelism = 0;
@@ -406,15 +433,21 @@ namespace wrench {
         parallelism = MAX(parallelism, num_tasks_in_level);
       }
 
+      WRENCH_INFO("THERE ARE %ld tasks in level range %ld-%ld",
+              this->workflow->getTasksInTopLevelRange(start_level, end_level).size(), start_level, end_level);
       // Figure out the maximum execution time
-      double makespan = WorkflowUtil::estimateMakespan(this->workflow->getTasksInTopLevelRange(start_level, end_level), this->number_of_hosts, this->core_speed);
+      double makespan = WorkflowUtil::estimateMakespan(this->workflow->getTasksInTopLevelRange(start_level, end_level), parallelism, this->core_speed);
 
 
       // Figure out the estimated wait time
       std::set<std::tuple<std::string,unsigned int,unsigned int, double>> job_config;
-      job_config.insert(std::make_tuple("config", (unsigned int)parallelism, 1, makespan));
-      std::map<std::string, double> estimates = this->batch_service->getQueueWaitingTimeEstimate(job_config);
-      double wait_time_estimate = estimates["config"];
+      std::string config_key = "config_XXXX_" + std::to_string(sequence++);
+      job_config.insert(std::make_tuple(config_key, (unsigned int)parallelism, 1, makespan));
+      std::map<std::string, double> estimates = this->batch_service->getStartTimeEstimates(job_config);
+      if (estimates[config_key] < 0) {
+        throw std::runtime_error("Could not obtain start time estimate... aborting");
+      }
+      double wait_time_estimate = MAX(0, estimates[config_key] - this->simulation->getCurrentSimulatedDate());
 
       WRENCH_INFO("GroupLevel(%ld,%ld): parallelism=%ld, wait_time=%.2lf, execution_time=%.2lf",
                   start_level, end_level, parallelism, wait_time_estimate, makespan);
