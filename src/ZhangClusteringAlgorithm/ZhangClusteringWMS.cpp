@@ -433,8 +433,8 @@ namespace wrench {
         parallelism = MAX(parallelism, num_tasks_in_level);
       }
 
-      WRENCH_INFO("THERE ARE %ld tasks in level range %ld-%ld",
-              this->workflow->getTasksInTopLevelRange(start_level, end_level).size(), start_level, end_level);
+//      WRENCH_INFO("THERE ARE %ld tasks in level range %ld-%ld",
+//              this->workflow->getTasksInTopLevelRange(start_level, end_level).size(), start_level, end_level);
       // Figure out the maximum execution time
       double makespan = WorkflowUtil::estimateMakespan(this->workflow->getTasksInTopLevelRange(start_level, end_level), parallelism, this->core_speed);
 

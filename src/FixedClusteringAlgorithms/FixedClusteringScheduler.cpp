@@ -53,9 +53,9 @@ namespace wrench {
         std::vector<WorkflowTask*> tasks_in_job;
         for (unsigned long i=first_task_in_batch; i <= last_task_in_batch; i++) {
           tasks_in_job.push_back(tasks_to_schedule[i]);
-          WRENCH_INFO("  - task %s (%.2lf flops)",
-                      tasks_to_schedule[i]->getId().c_str(),
-                      tasks_to_schedule[i]->getFlops());
+//          WRENCH_INFO("  - task %s (%.2lf flops)",
+//                      tasks_to_schedule[i]->getId().c_str(),
+//                      tasks_to_schedule[i]->getFlops());
         }
 
         // Compute the number of nodes for the job
@@ -86,7 +86,7 @@ namespace wrench {
           throw std::runtime_error("Couldn't submit job: " + e.getCause()->toString());
         }
         first_task_in_batch = last_task_in_batch + 1;
-        WRENCH_INFO("----> ftib: %ld\n", first_task_in_batch);
+//        WRENCH_INFO("----> ftib: %ld\n", first_task_in_batch);
       }
 
       WRENCH_INFO("Done with scheduling decisions");
