@@ -33,17 +33,21 @@ int main(int argc, char **argv) {
     std::cerr << "      - Just a set of independent tasks" << "\n";
     std::cerr << "      - n: number of tasks" << "\n";
     std::cerr << "      - t1/t2: min/max task durations in integral seconds (actual times uniformly sampled)" << "\n";
-    std::cerr << "    * \e[1mlevels:l0:l2:....:ln:t1:t2\e[0m" << "\n";
+    std::cerr << "    * \e[1mlevels:l0:t0:T0:l1:t1:T1:....:ln:tn:Tn\e[0m" << "\n";
     std::cerr << "      - A strictly levelled workflow" << "\n";
     std::cerr << "      - lx: num tasks in level x" << "\n";
     std::cerr << "      - each task in level x depends on ALL tasks in level x-1" << "\n";
-    std::cerr << "      - t1/t2: min/max task durations in integral second (actual times uniformly sampled)" << "\n";
+    std::cerr << "      - tx/Tx: min/max task durations in level x, in integral second (times uniformly sampled)" << "\n";
     std::cerr << "\n";
     std::cerr << "  \e[1;32m### algorithm options ###\e[0m" << "\n";
     std::cerr << "    * \e[1mone_job\e[0m" << "\n";
     std::cerr << "      - run the workflow as a single job" << "\n";
     std::cerr << "      - pick the job size (num of hosts) based on a estimation of the queue waiting time" << "\n";
     std::cerr << "        and the makespan (estimated assuming some arbitrary list-scheduling heuristic)" << "\n";
+    std::cerr << "    * \e[1mone_job_per_task:M\e[0m" << "\n";
+    std::cerr << "      - run each task as a single on-host job" << "\n";
+    std::cerr << "      - Submit a job only once a task is ready, no queue wait time estimattion" << "\n";
+    std::cerr << "      - M: max number of pending/running jobs" << "\n";
     std::cerr << "    * \e[1mfixed:n:m:M\e[0m" << "\n";
     std::cerr << "      - Simply package groups of ready tasks in clusters, arbitrarily, and execute each cluster" << "\n";
     std::cerr << "        on the same number of hosts " << "\n";
@@ -200,7 +204,7 @@ Workflow *createWorkflow(std::string workflow_spec) {
     }
 
   } else if (tokens[0] == "levels") {
-    if (tokens.size() < 4) {
+    if ((tokens.size() == 1) or (tokens.size() - 1) % 3) {
       throw std::invalid_argument("createWorkflow(): Invalid workflow specification " + workflow_spec);
     }
     try {
@@ -246,27 +250,27 @@ Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens) {
 
 Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
 
-  unsigned long min_time;
-  unsigned long max_time;
   std::default_random_engine rng;
 
-  unsigned long num_levels = spec_tokens.size()-3;
+  unsigned long num_levels = (spec_tokens.size()-1)/3;
 
   unsigned long num_tasks[num_levels];
+  unsigned long min_times[num_levels];
+  unsigned long max_times[num_levels];
 
   WRENCH_INFO("Creating a 'levels' workflow...");
 
   for (unsigned long l = 0; l < num_levels; l++) {
-    if ((sscanf(spec_tokens[l+1].c_str(), "%lu", &(num_tasks[l])) != 1) or (num_tasks[l] < 1)) {
+    if ((sscanf(spec_tokens[1+l*3].c_str(), "%lu", &(num_tasks[l])) != 1) or (num_tasks[l] < 1)) {
       throw std::invalid_argument("createLevelsWorkflow(): invalid number of tasks in level " + std::to_string(l) + " workflow specification");
     }
-  }
 
-  if ((sscanf(spec_tokens[spec_tokens.size()-2].c_str(), "%lu", &min_time) != 1) or (min_time < 0.0)) {
-    throw std::invalid_argument("createLevelsWorkflow(): invalid min task exec time in workflow specification");
-  }
-  if ((sscanf(spec_tokens[spec_tokens.size()-1].c_str(), "%lu", &max_time) != 1) or (max_time < 0.0) or (max_time < min_time)) {
-    throw std::invalid_argument("createLevelsWorkflow(): invalid max task exec time in workflow specification");
+    if ((sscanf(spec_tokens[1+l*3+1].c_str(), "%lu", &(min_times[l])) != 1) or (min_times[l] < 0.0)) {
+      throw std::invalid_argument("createLevelsWorkflow(): invalid min task exec time in workflow specification");
+    }
+    if ((sscanf(spec_tokens[1+l*3+2].c_str(), "%lu", &(max_times[l])) != 1) or (max_times[l] < 0.0) or (max_times[l] < min_times[l])) {
+      throw std::invalid_argument("createLevelsWorkflow(): invalid max task exec time in workflow specification");
+    }
   }
 
   auto workflow = new Workflow();
@@ -274,10 +278,14 @@ Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
   // Create the tasks
   std::vector<wrench::WorkflowTask *> tasks[num_levels];
 
-  static std::uniform_int_distribution<unsigned long> m_udist(min_time, max_time);
+  std::uniform_int_distribution<unsigned long> *m_udists[num_levels];
+  for (unsigned long l=0; l < num_levels; l++) {
+    m_udists[l] = new std::uniform_int_distribution<unsigned long>(min_times[l], max_times[l]);
+  }
+
   for (unsigned long l=0; l < num_levels; l++) {
     for (unsigned long t=0; t < num_tasks[l]; t++) {
-      unsigned long flops = m_udist(rng);
+      unsigned long flops = (*m_udists[l])(rng);
       tasks[l].push_back(workflow->addTask("Task_l" + std::to_string(l) + "_" + std::to_string(t), (double) flops, 1, 1, 1.0, 0.0));
     }
   }
@@ -299,8 +307,8 @@ Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
 
 
 WMS *createWMS(std::string hostname,
-                                std::string scheduler_spec,
-                                BatchService *batch_service) {
+               std::string scheduler_spec,
+               BatchService *batch_service) {
 
   std::istringstream ss(scheduler_spec);
   std::string token;
@@ -312,9 +320,6 @@ WMS *createWMS(std::string hostname,
 
 
   if (tokens[0] == "fixed") {
-
-
-
 
     if (tokens.size() != 4) {
       throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed specification");
@@ -332,9 +337,21 @@ WMS *createWMS(std::string hostname,
     }
 
     WMS *wms = new FixedClusteringWMS(hostname, new FixedClusteringScheduler(num_tasks_per_cluster, num_nodes_per_cluster,
-                                                                         max_num_jobs), batch_service);
+                                                                             max_num_jobs), batch_service);
     return wms;
 
+  } else if (tokens[0] == "one_job_per_task") {
+    if (tokens.size() != 2) {
+      throw std::invalid_argument("createStandardJobScheduler(): Invalid one_job_per_task specification");
+    }
+    unsigned long max_num_jobs;
+    if ((sscanf(tokens[1].c_str(), "%lu", &max_num_jobs) != 1) or (max_num_jobs < 1)) {
+      std::cerr << "Invalid maximum number of concurrent jobs\n";
+    }
+
+    WMS *wms = new FixedClusteringWMS(hostname, new FixedClusteringScheduler(1, 1,
+                                                                             max_num_jobs), batch_service);
+    return wms;
   } else if (tokens[0] == "zhang") {
     if (tokens.size() != 2) {
       throw std::invalid_argument("createStandardJobScheduler(): Invalid zhang specification");
