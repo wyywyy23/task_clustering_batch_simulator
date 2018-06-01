@@ -139,7 +139,9 @@ Pretty far from what we do.  They have sets of DAGs.  They schedule sets of
 DAG levels to reduce flow time (HEFT within each level, careful scheduling
 of DAG levels to outperform seom global HEFT).  No notion of clustering to
 hide submission overhead.  No notion of background load (machine is
-dedicated).  Metric is over the set of workflows.  Not even clear that we
-should reference it.
+dedicated).  Metric is over the set of workflows.  
+Not even clear that we should reference it.  
+The "communication overlap" is simply picking whether to run a job locally or
+on a "remote" node. 
 
 
