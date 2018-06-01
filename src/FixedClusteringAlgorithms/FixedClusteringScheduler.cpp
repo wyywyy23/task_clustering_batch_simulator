@@ -38,7 +38,7 @@ namespace wrench {
         this->core_speed = batch_service->getCoreFlopRate()[0];
       }
 
-      TerminalOutput::setThisProcessLoggingColor(COLOR_RED);
+      TerminalOutput::setThisProcessLoggingColor(TerminalOutput::COLOR_RED);
 
 
       unsigned long first_task_in_batch = 0;
@@ -54,7 +54,7 @@ namespace wrench {
         for (unsigned long i=first_task_in_batch; i <= last_task_in_batch; i++) {
           tasks_in_job.push_back(tasks_to_schedule[i]);
 //          WRENCH_INFO("  - task %s (%.2lf flops)",
-//                      tasks_to_schedule[i]->getId().c_str(),
+//                      tasks_to_schedule[i]->getID().c_str(),
 //                      tasks_to_schedule[i]->getFlops());
         }
 
@@ -90,7 +90,7 @@ namespace wrench {
       }
 
       WRENCH_INFO("Done with scheduling decisions");
-      TerminalOutput::setThisProcessLoggingColor(COLOR_YELLOW);
+      TerminalOutput::setThisProcessLoggingColor(TerminalOutput::COLOR_YELLOW);
 
       return;
     }

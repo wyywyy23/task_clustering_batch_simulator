@@ -85,18 +85,18 @@ int main(int argc, char **argv) {
   BatchService *batch_service;
   std::string login_hostname = "Login";
   try {
-    batch_service = new BatchService(login_hostname, true, true, compute_nodes, nullptr,
+    batch_service = new BatchService(login_hostname, compute_nodes, 0,
                                      {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, "conservative_bf"},
                                       {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}
-                                     });
+                                     }, {});
   } catch (std::invalid_argument &e) {
     WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
     WRENCH_INFO("Trying the non-BATSCHED option...");
     try {
-      batch_service = new BatchService(login_hostname, true, true, compute_nodes, nullptr,
+      batch_service = new BatchService(login_hostname, compute_nodes, 0,
                                        {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
                                         {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}
-                                       });
+                                       }, {});
     } catch (std::invalid_argument &e) {
       WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
       std::cerr << "Giving up as I cannot instantiate the Batch Service\n";

@@ -135,4 +135,11 @@ by Shahid, Raza, Sajid
 
 [PDF](./papers/1-s2.0-S0164121215001260-main.pdf)
 
+Pretty far from what we do.  They have sets of DAGs.  They schedule sets of
+DAG levels to reduce flow time (HEFT within each level, careful scheduling
+of DAG levels to outperform seom global HEFT).  No notion of clustering to
+hide submission overhead.  No notion of background load (machine is
+dedicated).  Metric is over the set of workflows.  Not even clear that we
+should reference it.
+
 

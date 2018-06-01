@@ -17,10 +17,10 @@ int FixedClusteringWMS::main() {
 
   this->checkDeferredStart();
 
-  TerminalOutput::setThisProcessLoggingColor(COLOR_YELLOW);
+  TerminalOutput::setThisProcessLoggingColor(TerminalOutput::COLOR_YELLOW);
   WRENCH_INFO("Starting!");
 
-  WRENCH_INFO("About to execute a workflow with %lu tasks", this->workflow->getNumberOfTasks());
+  WRENCH_INFO("About to execute a workflow with %lu tasks", this->getWorkflow()->getNumberOfTasks());
 
   // Create a job manager
   std::shared_ptr<JobManager> job_manager = this->createJobManager();
@@ -30,11 +30,11 @@ int FixedClusteringWMS::main() {
 //    this->pilot_job_scheduler->schedulePilotJobs({this->batch_service});
 
     // Get the ready tasks
-    std::vector<wrench::WorkflowTask *> ready_tasks = this->workflow->getReadyTasks();
+    std::vector<wrench::WorkflowTask *> ready_tasks = this->getWorkflow()->getReadyTasks();
 
     // Schedule ready tasks
     WRENCH_INFO("Scheduling tasks %ld ready tasks...", ready_tasks.size());
-    this->standard_job_scheduler->scheduleTasks(
+    this->getStandardJobScheduler()->scheduleTasks(
             {this->batch_service},
             ready_tasks);
 
@@ -48,7 +48,7 @@ int FixedClusteringWMS::main() {
       continue;
     }
 
-    if (workflow->isDone()) {
+    if (this->getWorkflow()->isDone()) {
       break;
     }
   }
@@ -63,7 +63,7 @@ void FixedClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<Stand
   StandardJob *job = e->standard_job;
   WRENCH_INFO("Job %s has completed", job->getName().c_str());
   // Remove the job from the set of pending jobs
-  ((FixedClusteringScheduler *)(this->standard_job_scheduler.get()))->submitted_jobs.erase(job);
+  ((FixedClusteringScheduler *)(this->getStandardJobScheduler()))->submitted_jobs.erase(job);
 }
 
 

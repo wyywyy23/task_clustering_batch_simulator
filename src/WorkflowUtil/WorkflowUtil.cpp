@@ -75,14 +75,14 @@ namespace wrench {
 
           WorkflowTask *real_task = std::get<0>(ft);
 
-//          WRENCH_INFO("LOOKING AT TASK %s", real_task->getId().c_str());
+//          WRENCH_INFO("LOOKING AT TASK %s", real_task->getID().c_str());
 
           // Determine whether the task is schedulable
           bool schedulable = true;
           for (auto parent : workflow->getTaskParents(real_task)) {
             for (int k=0; k < num_tasks; k++) {
               if (std::get<0>(fake_tasks[k]) == parent) {
-//                WRENCH_INFO("    LOOKING AT PARENT %s:  %.2lf", parent->getId().c_str(), std::get<1>(fake_tasks[k]));
+//                WRENCH_INFO("    LOOKING AT PARENT %s:  %.2lf", parent->getID().c_str(), std::get<1>(fake_tasks[k]));
                 if ((std::get<1>(fake_tasks[k]) > current_time) or
                     (std::get<1>(fake_tasks[k]) < 0)) {
                   schedulable = false;
@@ -113,7 +113,7 @@ namespace wrench {
 
               idle_date[j] = current_time + real_task->getFlops() / core_speed;
 //              WRENCH_INFO("SCHEDULED TASK %s on host %d from time %.2lf-%.2lf",
-//                          real_task->getId().c_str(), j, current_time,
+//                          real_task->getID().c_str(), j, current_time,
 //                          current_time + real_task->getFlops() / core_speed);
               scheduled_something = true;
               num_scheduled_tasks++;

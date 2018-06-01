@@ -26,7 +26,7 @@ namespace wrench {
 
     int OneJobClusteringWMS::main() {
 
-      TerminalOutput::setThisProcessLoggingColor(COLOR_WHITE);
+      TerminalOutput::setThisProcessLoggingColor(TerminalOutput::COLOR_WHITE);
 
       this->checkDeferredStart();
 
@@ -42,7 +42,7 @@ namespace wrench {
 
       this->waitForAndProcessNextEvent();
 
-      if (not this->workflow->isDone()) {
+      if (not this->getWorkflow()->isDone()) {
         throw std::runtime_error("OneJobClusteringWMS::main(): The workflow should be done!");
       }
 
@@ -56,8 +56,8 @@ namespace wrench {
 
       // Compute parallelism
       unsigned long parallelism = 0;
-      for (int i=0; i < this->workflow->getNumLevels(); i++) {
-        parallelism = MAX(parallelism, this->workflow->getTasksInTopLevelRange(i,i).size());
+      for (int i=0; i < this->getWorkflow()->getNumLevels(); i++) {
+        parallelism = MAX(parallelism, this->getWorkflow()->getTasksInTopLevelRange(i,i).size());
       }
 
       // Find the best job configuration
@@ -66,7 +66,7 @@ namespace wrench {
       double best_totaltime = DBL_MAX;
       WRENCH_INFO("Choosing best configuration:");
       for (unsigned long num_hosts = 1; num_hosts <= MIN(parallelism, this->number_of_hosts); num_hosts++) {
-        double makespan = WorkflowUtil::estimateMakespan(this->workflow->getTasks(), num_hosts, this->core_speed);
+        double makespan = WorkflowUtil::estimateMakespan(this->getWorkflow()->getTasks(), num_hosts, this->core_speed);
 
         std::set<std::tuple<std::string,unsigned int,unsigned int, double>> job_config;
         job_config.insert(std::make_tuple("config", (unsigned int)parallelism, 1, makespan));
@@ -76,7 +76,7 @@ namespace wrench {
         WRENCH_INFO(" - With %ld hosts, wait time + makespan = %.2lf + %.2lf = %.2lf",
                     num_hosts, waittime, makespan, waittime + makespan);
 
-        if (start_time + makespan  < best_totaltime) {
+        if (waittime + makespan  < best_totaltime) {
           picked_num_hosts = num_hosts;
           picked_makespan = makespan;
           best_totaltime = waittime + makespan;
@@ -84,7 +84,7 @@ namespace wrench {
       }
 
       // Create job
-      StandardJob *job = this->job_manager->createStandardJob(this->workflow->getTasks(), {});
+      StandardJob *job = this->job_manager->createStandardJob(this->getWorkflow()->getTasks(), {});
 
       // Submit DAG in Job
       std::map<std::string, std::string> service_specific_args;
