@@ -34,6 +34,10 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
 
   /** A single Job **/
   if (tokens[0] == "one_job") {
+    if (tokens.size() != 2) {
+      throw std::invalid_argument("Invalid static:one_job specification");
+    }
+
     unsigned long num_nodes;
     if ((sscanf(tokens[1].c_str(), "%lu", &num_nodes) != 1) or (num_nodes < 1)) {
       throw std::invalid_argument("Invalid static:one_job-m specification");
@@ -49,6 +53,10 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
 
   /** One Job per Task **/
   if (tokens[0] == "one_job_per_task") {
+    if (tokens.size() != 1) {
+      throw std::invalid_argument("Invalid static:one_job_per_task specification");
+    }
+
     for (auto t : this->getWorkflow()->getTasks()) {
       ClusteredJob *job = new ClusteredJob();
       job->addTask(t);
@@ -60,12 +68,15 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
 
   /** Horizontal Clustering **/
   if (tokens[0] == "hc") {
-  unsigned long num_tasks_per_cluster;
-  unsigned long num_nodes_per_cluster;
-  if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
-      (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
-    throw std::invalid_argument("createStandardJobScheduler(): Invalid fixed specification");
-  }
+    if (tokens.size() != 3) {
+      throw std::invalid_argument("Invalid static:hc specification");
+    }
+    unsigned long num_tasks_per_cluster;
+    unsigned long num_nodes_per_cluster;
+    if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
+        (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+      throw std::invalid_argument("Invalid static:hc specification");
+    }
 
     return createHCJobs(num_tasks_per_cluster, num_nodes_per_cluster);
   }
@@ -90,7 +101,7 @@ int StaticClusteringWMS::main() {
   // Create a job manager
   this->job_manager = this->createJobManager();
 
-  // Compute the fixed clustering according to the method
+  // Compute the clustering according to the method
   std::set<ClusteredJob *> jobs = this->createClusteredJobs();
 
   this->num_jobs_in_systems = 0;
@@ -143,10 +154,25 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHCJobs(unsigned long num_ta
 
   // Go through each level and creates jobs
   for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
-    unsigned long num_tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l).size();
+    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
+    ClusteredJob *job = nullptr;
+    for (auto t : tasks_in_level) {
+      if (job == nullptr) {
+        job = new ClusteredJob();
+        job->setNumNodes(num_nodes_per_cluster);
+      }
+      job->addTask(t);
+      if (job->getNumTasks() == num_tasks_per_cluster) {
+        jobs.insert(job);
+        job = nullptr;
+      }
+    }
+    if (job != nullptr) {
+      jobs.insert(job);
+    }
   }
 
-  // TODO: To implement!!!
+  return jobs;
 
 }
 

@@ -48,9 +48,10 @@ int main(int argc, char **argv) {
     std::cerr << "      - run each task as a single one-host job" << "\n";
     std::cerr << "      - Submit a job only once a task is ready, no queue wait time estimation" << "\n";
     std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
-    std::cerr << "    * \e[1mstatic:fixed-n-m\e[0m" << "\n";
-    std::cerr << "      - Simply package groups of ready tasks in clusters, arbitrarily, and execute each cluster" << "\n";
-    std::cerr << "        on the same number of hosts " << "\n";
+    std::cerr << "    * \e[1mstatic:hc-n-m\e[0m" << "\n";
+    std::cerr << "      - Horizontal Clustering algorithm (ref [12] in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\' by Chen at al." << "\n";
+    std::cerr << "      - Simply clusters tasks in each level in whatever order and execute " << "\n";
+    std::cerr << "        each cluster on the same number of hosts " << "\n";
     std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
     std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
     std::cerr << "    * \e[1mzhang:[overlap|nooverlap]\e[0m" << "\n";
