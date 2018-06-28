@@ -138,6 +138,21 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     return createHIFBJobs(num_tasks_per_cluster, num_nodes_per_cluster);
   }
 
+  /** HIDB Clustering **/
+  if (tokens[0] == "hdb") {
+    if (tokens.size() != 3) {
+      throw std::invalid_argument("Invalid static:hdb specification");
+    }
+    unsigned long num_tasks_per_cluster;
+    unsigned long num_nodes_per_cluster;
+    if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
+        (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+      throw std::invalid_argument("Invalid static:hdb specification");
+    }
+
+    return createHDBJobs(num_tasks_per_cluster, num_nodes_per_cluster);
+  }
+
   throw std::runtime_error("Unknown Static Job Clustering method " + tokens[0]);
 
 }
@@ -312,7 +327,7 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHRBJobs(unsigned long num_t
   std::set<ClusteredJob *> jobs;
 
   // Go through each level and creates jobs
-  for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
+  for (unsigned long l = 0; l < this->getWorkflow()->getNumLevels(); l++) {
     auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
 
     // Create all the jobs
@@ -396,7 +411,7 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(unsigned long num_
 //  }
 
   /** Go through each level and creates jobs **/
-  for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
+  for (unsigned long l = 0; l < this->getWorkflow()->getNumLevels(); l++) {
 
     auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
 
@@ -425,21 +440,29 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(unsigned long num_
     // Assign each task to a job
     for (auto t : tasks_in_level) {
 
-      // Compute IF similarity between jobs and task
+      // Compute IF similarity between jobs and the task that needs to be put in a job
       std::vector<std::pair<ClusteredJob *, double>> IF_similarity;
       IF_similarity.clear();
       for (unsigned long i=0; i < num_level_jobs; i++) {
-        double average_similarity = 0.0;
-        if (level_jobs[i]->getNumTasks() == 0) { // empty job
-          average_similarity = 1.0; // some arbitrary value here
-        } else { // non-empty job
-          average_similarity = 0.0;
-          for (auto task_in_job : level_jobs[i]->getTasks()) {
-            average_similarity += fabs(impact_factors[task_in_job] - impact_factors[t]);
-          }
-          average_similarity /= level_jobs[i]->getNumTasks();
+
+        // compute average impact_factor value
+        double average_IF = 0.0;
+        for (auto task_in_job : level_jobs[i]->getTasks()) {
+          average_IF += impact_factors[task_in_job];
         }
-        IF_similarity.push_back(std::make_pair(level_jobs[i], average_similarity));
+        average_IF += impact_factors[t];
+        average_IF /= (level_jobs[i]->getNumTasks() + 1.0);
+
+        // compute standard deviation
+        double similarity = 0.0;
+        for (auto task_in_job : level_jobs[i]->getTasks()) {
+          similarity += pow(impact_factors[task_in_job] - average_IF, 2.0);
+        }
+        similarity += pow(impact_factors[t] - average_IF, 2.0);
+
+        similarity /= level_jobs[i]->getNumTasks();
+        similarity = sqrt(similarity);
+        IF_similarity.push_back(std::make_pair(level_jobs[i], similarity));
       }
 
 //      for (auto p : IF_similarity) {
@@ -503,30 +526,185 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(unsigned long num_
 
 
 
+std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(unsigned long num_tasks_per_cluster,
+                                                             unsigned long num_nodes_per_cluster) {
+  std::set<ClusteredJob *> jobs;
+
+  /** Compute all task distances **/
+  std::map<std::pair<wrench::WorkflowTask *, wrench::WorkflowTask *>, unsigned long> task_distances;
+  for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
+    unsigned long level = this->getWorkflow()->getNumLevels() -1  - l;
+    std::vector<wrench::WorkflowTask *> tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(level,level);
+    // Last level
+    if (level == this->getWorkflow()->getNumLevels() -1) {
+      for (auto u : tasks_in_level) {
+        for (auto v : tasks_in_level) {
+          if (u != v) {
+            task_distances.insert(std::make_pair(std::make_pair(u,v), 10000000.0));  // infty?
+          }
+        }
+      }
+    } else {
+      for (auto u : tasks_in_level) {
+        for (auto v : tasks_in_level) {
+          if (u != v) {
+            std::vector<wrench::WorkflowTask *> u_children = this->getWorkflow()->getTaskChildren(u);
+            std::vector<wrench::WorkflowTask *> v_children = this->getWorkflow()->getTaskChildren(v);
+            double min_distance = -1.0;
+            for (auto cu : u_children) {
+              for (auto cv : v_children) {
+                if ((min_distance == -1.0) or (task_distances[std::make_pair(cu,cv)] < min_distance)) {
+                  min_distance = task_distances[std::make_pair(cu, cv)];
+                }
+              }
+            }
+            task_distances.insert(std::make_pair(std::make_pair(u,v), 2 + min_distance));
+          }
+        }
+      }
+    }
+  }
+
+  // DEBUG
+  for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
+    WRENCH_INFO("LEVEL %ld", l);
+    std::vector<wrench::WorkflowTask *> tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l,l);
+
+    for (auto u : tasks_in_level) {
+      for (auto v : tasks_in_level) {
+        if (u != v) {
+          WRENCH_INFO("  DISTANCE(%s,%s) = %lu",
+          u->getID().c_str(), v->getID().c_str(), task_distances[std::make_pair(u,v)]);
+        }
+      }
+    }
+
+  }
 
 
+  /** Go through each level and creates jobs **/
+  for (unsigned long l = 0; l < this->getWorkflow()->getNumLevels(); l++) {
 
+    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
 
+    // Create all the jobs
+    unsigned long num_level_jobs = tasks_in_level.size() / num_tasks_per_cluster +
+                                   (tasks_in_level.size() % num_tasks_per_cluster != 0);
 
+    ClusteredJob **level_jobs = (ClusteredJob**)calloc(num_level_jobs, sizeof(ClusteredJob *));
+    for (unsigned long i = 0; i < num_level_jobs; i++) {
+      level_jobs[i] = new ClusteredJob();
+      level_jobs[i]->setNumNodes(num_nodes_per_cluster);
+    }
 
+    // Sort the tasks by decreasing Flops
+    std::sort(tasks_in_level.begin(), tasks_in_level.end(),
+              [](const wrench::WorkflowTask* t1, const wrench::WorkflowTask* t2) -> bool
+              {
 
+                  if (fabs(t1->getFlops() - t2->getFlops()) < 0.001) {
+                    return ((uintptr_t) t1 > (uintptr_t) t2);
+                  } else {
+                    return (t1->getFlops() > t2->getFlops());
+                  }
+              });
 
+    // Assign each task to a job
+    for (auto t : tasks_in_level) {
 
+      // Compute distance similarity between jobs and the task that needs to be put in a job
+      std::vector<std::pair<ClusteredJob *, double>> distance_similarity;
+      distance_similarity.clear();
 
+      for (unsigned long i=0; i < num_level_jobs; i++) {
 
+        // compute  distance similarity
+        double average_distance = 0.0;
+        for (auto u : level_jobs[i]->getTasks()) {
+          for (auto v : level_jobs[i]->getTasks()) {
+            if (u == v) {
+              continue;
+            }
+            average_distance += task_distances[std::make_pair(u,v)];
+          }
+          average_distance += task_distances[std::make_pair(u, t)];
+        }
+        average_distance /= pow(level_jobs[i]->getNumTasks(), 2.0);
 
+        // compute standard deviation
+        double similarity = 0.0;
+        for (auto u : level_jobs[i]->getTasks()) {
+          for (auto v : level_jobs[i]->getTasks()) {
+            if (u == v) {
+              continue;
+            }
+            similarity += pow(task_distances[std::make_pair(u,v)] - average_distance, 2.0);
+          }
+          similarity += pow(task_distances[std::make_pair(u,t)] - average_distance, 2.0);
+        }
 
+        similarity /= pow(level_jobs[i]->getNumTasks(), 2.0) - 1;
+        similarity = sqrt(similarity);
+        distance_similarity.push_back(std::make_pair(level_jobs[i], similarity));
+      }
 
+//      for (auto p : IF_similarity) {
+//        WRENCH_INFO("---> job with %ld tasks (%ld), %lf", p.first->getNumTasks(),  (unsigned long)(p.first), p.second);
+//      }
 
+      // Sort jobs by similarity, and makespan when similarity is the same
+      std::sort(distance_similarity.begin(), distance_similarity.end(),
+                [num_nodes_per_cluster](const std::pair<ClusteredJob*, double> &t1,
+                                        const std::pair<ClusteredJob*, double> &t2) -> bool
+                {
+                    double t1_similarity = t1.second;
+                    double t2_similarity = t2.second;
+                    ClusteredJob *t1_job = t1.first;
+                    ClusteredJob *t2_job = t2.first;
 
+//                    WRENCH_INFO("IN SORT: %lf %lf", t1_similarity, t2_similarity);
+//                    WRENCH_INFO("  IN SORT: %ld %ld", (unsigned long)t1_job, (unsigned long)t2_job);
 
+                    if (fabs(t1_similarity - t2_similarity) < 0.01) { // IMPORTANT TO NOT USE EQUAL!
+                      double t1_makespan = WorkflowUtil::estimateMakespan(t1_job->getTasks(), num_nodes_per_cluster, 1.0);
+                      double t2_makespan = WorkflowUtil::estimateMakespan(t2_job->getTasks(), num_nodes_per_cluster, 1.0);
+                      if (fabs(t1_makespan - t2_makespan) < 0.01) {
+                        return ((uintptr_t) &t1 > (uintptr_t) &t2);
+                      } else {
+                        return (t1_makespan < t2_makespan);
+                      }
+                    } else {
+                      return (t1_similarity < t2_similarity);
+                    }
+                    return true;
+                });
 
+      // Go through the list of j ob and add the task to the first one that works
+      bool task_was_put_into_job = false;
+      for (auto p : distance_similarity) {
+        ClusteredJob *job = std::get<0>(p);
+        if (job->getNumTasks() < num_tasks_per_cluster) {
+          job->addTask(t);
+//          WRENCH_INFO("PUTTING TASK %s into job %ld", t->getID().c_str(), (unsigned long)(job));
+          task_was_put_into_job = true;
+          break;
+        }
+      }
 
+      if (not task_was_put_into_job) {
+        throw std::runtime_error("Cannot put task " + t->getID() + " into any cluster!");
+      }
 
+    }
 
+    // Put the jobs into the overall job set
+    for (unsigned long i=0; i < num_level_jobs; i++) {
+      jobs.insert(level_jobs[i]);
+    }
 
+  }
 
-
-
+  return jobs;
+}
 
 

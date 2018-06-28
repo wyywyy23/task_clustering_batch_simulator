@@ -76,6 +76,13 @@ int main(int argc, char **argv) {
     std::cerr << "        (extended to deal with numbers of hosts)" << "\n";
     std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
     std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "    * \e[1mstatic:hdb-n-m\e[0m" << "\n";
+    std::cerr << "      - The HDB algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
+    std::cerr << "      - Modified to specify 'number of tasks per cluster' rather than 'number of clusters per level'" << "\n";
+    std::cerr << "      - Cluster tasks in each level so that clusters are load-balanced" << "\n";
+    std::cerr << "        (extended to deal with numbers of hosts)" << "\n";
+    std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
+    std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
     std::cerr << "    * \e[1mzhang:[overlap|nooverlap]\e[0m" << "\n";
     std::cerr << "      - The algorithm by Zhang, Koelbel, and Cooper" << "\n";
     std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
@@ -322,7 +329,8 @@ Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
   for (unsigned long l=0; l < num_levels; l++) {
     for (unsigned long t=0; t < num_tasks[l]; t++) {
       unsigned long flops = (*m_udists[l])(rng);
-      tasks[l].push_back(workflow->addTask("Task_l" + std::to_string(l) + "_" + std::to_string(t), (double) flops, 1, 1, 1.0, 0.0));
+      tasks[l].push_back(workflow->addTask("Task_l" + std::to_string(l) + "_" +
+                                                   std::to_string(t), (double) flops, 1, 1, 1.0, 0.0));
     }
   }
 
