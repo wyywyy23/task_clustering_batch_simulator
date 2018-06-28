@@ -10,6 +10,9 @@
 #include <WorkflowUtil/WorkflowUtil.h>
 #include "ClusteredJob.h"
 
+XBT_LOG_NEW_DEFAULT_CATEGORY(clustered_job, "Log category for Clustered Job");
+
+
 namespace wrench {
 
     void ClusteredJob::addTask(WorkflowTask *task) {
@@ -21,7 +24,8 @@ namespace wrench {
         return true;
       }
       for (auto p : task->getWorkflow()->getTaskParents(task)) {
-        if (not isTaskOK(p)) {
+        if ((p->getState() != wrench::WorkflowTask::COMPLETED) &&
+                (std::find(this->tasks.begin(), this->tasks.end(), p) == this->tasks.end())) {
           return false;
         }
       }

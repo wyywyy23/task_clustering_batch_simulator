@@ -21,11 +21,11 @@ public:
 private:
 
     std::set<ClusteredJob *> createClusteredJobs();
-    std::set<ClusteredJob *> createHCJobs(unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster);
-    std::set<ClusteredJob *> createDFJSJobs(unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
-    std::set<ClusteredJob *> createHRBJobs(unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
-    std::set<ClusteredJob *> createHIFBJobs(unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
-    std::set<ClusteredJob *> createHDBJobs(unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
+    std::set<ClusteredJob *> createHCJobs(std::string vc, unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster);
+    std::set<ClusteredJob *> createDFJSJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
+    std::set<ClusteredJob *> createHRBJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
+    std::set<ClusteredJob *> createHIFBJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
+    std::set<ClusteredJob *> createHDBJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
     std::set<ClusteredJob *> createVCJobs();
 
     void mergeSingleParentSingleChildPairs();

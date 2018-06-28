@@ -80,77 +80,89 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
 
   /** Horizontal Clustering (HC) **/
   if (tokens[0] == "hc") {
-    if (tokens.size() != 3) {
+    if (tokens.size() != 4) {
       throw std::invalid_argument("Invalid static:hc specification");
     }
     unsigned long num_tasks_per_cluster;
     unsigned long num_nodes_per_cluster;
-    if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
-        (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+    if ((sscanf(tokens[2].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
+        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
       throw std::invalid_argument("Invalid static:hc specification");
     }
+    WRENCH_INFO("TOKENS[1] = %s", tokens[1].c_str());
 
-    return createHCJobs(num_tasks_per_cluster, num_nodes_per_cluster);
+    if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {
+      throw std::runtime_error("Invalid static:hc specification");
+    }
+    return createHCJobs(tokens[1], num_tasks_per_cluster, num_nodes_per_cluster);
   }
 
   /** DFJS Clustering **/
   if (tokens[0] == "dfjs") {
-    if (tokens.size() != 3) {
+    if (tokens.size() != 4) {
       throw std::invalid_argument("Invalid static:dfjs specification");
     }
     unsigned long num_seconds_per_cluster;
     unsigned long num_nodes_per_cluster;
-    if ((sscanf(tokens[1].c_str(), "%lu", &num_seconds_per_cluster) != 1) or (num_seconds_per_cluster < 1) or
-        (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+    if ((sscanf(tokens[2].c_str(), "%lu", &num_seconds_per_cluster) != 1) or (num_seconds_per_cluster < 1) or
+        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
       throw std::invalid_argument("Invalid static:hc specification");
     }
-
-    return createDFJSJobs(num_seconds_per_cluster, num_nodes_per_cluster);
+    if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {
+      throw std::runtime_error("Invalid static:dfjs specification");
+    }
+    return createDFJSJobs(tokens[1], num_seconds_per_cluster, num_nodes_per_cluster);
   }
 
   /** HRB Clustering **/
   if (tokens[0] == "hrb") {
-    if (tokens.size() != 3) {
+    if (tokens.size() != 4) {
       throw std::invalid_argument("Invalid static:hrb specification");
     }
     unsigned long num_tasks_per_cluster;
     unsigned long num_nodes_per_cluster;
-    if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
-        (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+    if ((sscanf(tokens[2].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
+        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
       throw std::invalid_argument("Invalid static:hrb specification");
     }
-
-    return createHRBJobs(num_tasks_per_cluster, num_nodes_per_cluster);
+    if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {
+      throw std::runtime_error("Invalid static:hrb specification");
+    }
+    return createHRBJobs(tokens[1], num_tasks_per_cluster, num_nodes_per_cluster);
   }
 
   /** HIFB Clustering **/
   if (tokens[0] == "hifb") {
-    if (tokens.size() != 3) {
+    if (tokens.size() != 4) {
       throw std::invalid_argument("Invalid static:hifb specification");
     }
     unsigned long num_tasks_per_cluster;
     unsigned long num_nodes_per_cluster;
-    if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
-        (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+    if ((sscanf(tokens[2].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
+        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
       throw std::invalid_argument("Invalid static:hifb specification");
     }
-
-    return createHIFBJobs(num_tasks_per_cluster, num_nodes_per_cluster);
+    if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {
+      throw std::runtime_error("Invalid static:hifb specification");
+    }
+    return createHIFBJobs(tokens[1], num_tasks_per_cluster, num_nodes_per_cluster);
   }
 
   /** HDB Clustering **/
   if (tokens[0] == "hdb") {
-    if (tokens.size() != 3) {
+    if (tokens.size() != 4) {
       throw std::invalid_argument("Invalid static:hdb specification");
     }
     unsigned long num_tasks_per_cluster;
     unsigned long num_nodes_per_cluster;
-    if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
-        (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+    if ((sscanf(tokens[2].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
+        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
       throw std::invalid_argument("Invalid static:hdb specification");
     }
-
-    return createHDBJobs(num_tasks_per_cluster, num_nodes_per_cluster);
+    if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {
+      throw std::runtime_error("Invalid static:hdb specification");
+    }
+    return createHDBJobs(tokens[1], num_tasks_per_cluster, num_nodes_per_cluster);
   }
 
   /** VC Clustering **/
@@ -194,6 +206,10 @@ int StaticClusteringWMS::main() {
       // Try to find a ready job
       ClusteredJob *to_submit = nullptr;
       for (auto j : jobs) {
+//        WRENCH_INFO("IS THIS JOB READY?");
+//        for (auto t : j->getTasks()) {
+//          WRENCH_INFO("    - %s", t->getID().c_str());
+//        }
         if (j->isReady()) {
           to_submit = j;
           break;
@@ -204,7 +220,6 @@ int StaticClusteringWMS::main() {
       }
 
       // Submit the job
-//      WRENCH_INFO("SUBMITTING!");
       submitClusteredJob(to_submit);
       jobs.erase(to_submit);
       this->num_jobs_in_systems++;
@@ -262,9 +277,13 @@ void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
 
 }
 
-std::set<ClusteredJob *>  StaticClusteringWMS::createHCJobs(unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster) {
+std::set<ClusteredJob *>  StaticClusteringWMS::createHCJobs(std::string vc, unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster) {
 
   std::set<ClusteredJob *> jobs;
+
+  if (vc == "vprior") {
+    mergeSingleParentSingleChildPairs();
+  }
 
   // Go through each level and creates jobs
   for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
@@ -286,13 +305,21 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHCJobs(unsigned long num_ta
     }
   }
 
+  if (vc == "vposterior") {
+    throw std::runtime_error("Posterior not implemneted");
+  }
+
   return jobs;
 }
 
 
-std::set<ClusteredJob *> StaticClusteringWMS::createDFJSJobs(unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster) {
+std::set<ClusteredJob *> StaticClusteringWMS::createDFJSJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster) {
   std::set<ClusteredJob *> jobs;
 
+
+  if (vc == "vprior") {
+    mergeSingleParentSingleChildPairs();
+  }
 
   // Go through each level and creates jobs
   for (unsigned long l = 0; l < this->getWorkflow()->getNumLevels(); l++) {
@@ -323,6 +350,10 @@ std::set<ClusteredJob *> StaticClusteringWMS::createDFJSJobs(unsigned long num_s
     jobs.insert(job);
   }
 
+  if (vc == "vposterior") {
+    throw std::runtime_error("Posterior not implemneted");
+  }
+
   // Sanity check
   for (auto job : jobs) {
     if (job->getNumTasks() == 0) {
@@ -335,9 +366,13 @@ std::set<ClusteredJob *> StaticClusteringWMS::createDFJSJobs(unsigned long num_s
 }
 
 
-std::set<ClusteredJob *>  StaticClusteringWMS::createHRBJobs(unsigned long num_tasks_per_cluster,
+std::set<ClusteredJob *>  StaticClusteringWMS::createHRBJobs(std::string vc, unsigned long num_tasks_per_cluster,
                                                              unsigned long num_nodes_per_cluster) {
   std::set<ClusteredJob *> jobs;
+
+  if (vc == "vprior") {
+    mergeSingleParentSingleChildPairs();
+  }
 
   // Go through each level and creates jobs
   for (unsigned long l = 0; l < this->getWorkflow()->getNumLevels(); l++) {
@@ -391,14 +426,22 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHRBJobs(unsigned long num_t
 
   }
 
+  if (vc == "vposterior") {
+    throw std::runtime_error("Posterior not implemneted");
+  }
+
   return jobs;
 }
 
 
 
-std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(unsigned long num_tasks_per_cluster,
+std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(std::string vc, unsigned long num_tasks_per_cluster,
                                                               unsigned long num_nodes_per_cluster) {
   std::set<ClusteredJob *> jobs;
+
+  if (vc == "vprior") {
+    mergeSingleParentSingleChildPairs();
+  }
 
   /** Compute all task "Impact Factors" **/
 //  WRENCH_INFO("Compute all IFs");
@@ -534,14 +577,22 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(unsigned long num_
 
   }
 
+  if (vc == "vposterior") {
+    throw std::runtime_error("Posterior not implemented");
+  }
+
   return jobs;
 }
 
 
 
-std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(unsigned long num_tasks_per_cluster,
+std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(std::string vc, unsigned long num_tasks_per_cluster,
                                                              unsigned long num_nodes_per_cluster) {
   std::set<ClusteredJob *> jobs;
+
+  if (vc == "vprior") {
+    mergeSingleParentSingleChildPairs();
+  }
 
   /** Compute all task distances **/
   std::map<std::pair<wrench::WorkflowTask *, wrench::WorkflowTask *>, unsigned long> task_distances;
@@ -579,20 +630,20 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(unsigned long num_t
   }
 
   // DEBUG
-  for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
-    WRENCH_INFO("LEVEL %ld", l);
-    std::vector<wrench::WorkflowTask *> tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l,l);
-
-    for (auto u : tasks_in_level) {
-      for (auto v : tasks_in_level) {
-        if (u != v) {
-          WRENCH_INFO("  DISTANCE(%s,%s) = %lu",
-                      u->getID().c_str(), v->getID().c_str(), task_distances[std::make_pair(u,v)]);
-        }
-      }
-    }
-
-  }
+//  for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
+//    WRENCH_INFO("LEVEL %ld", l);
+//    std::vector<wrench::WorkflowTask *> tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l,l);
+//
+//    for (auto u : tasks_in_level) {
+//      for (auto v : tasks_in_level) {
+//        if (u != v) {
+//          WRENCH_INFO("  DISTANCE(%s,%s) = %lu",
+//                      u->getID().c_str(), v->getID().c_str(), task_distances[std::make_pair(u,v)]);
+//        }
+//      }
+//    }
+//
+//  }
 
 
   /** Go through each level and creates jobs **/
@@ -717,8 +768,13 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(unsigned long num_t
 
   }
 
+  if (vc == "vposterior") {
+    throw std::runtime_error("Posterior not implemented");
+  }
+
   return jobs;
 }
+
 
 void StaticClusteringWMS::mergeSingleParentSingleChildPairs() {
 // Modify the workflow to cluster tasks
@@ -737,8 +793,8 @@ void StaticClusteringWMS::mergeSingleParentSingleChildPairs() {
     if (parent_to_merge == nullptr) {
       break;
     }
-// do the merge
-//    WRENCH_INFO("MERGING %s and %s", parent_to_merge->getID().c_str(), child_to_merge->getID().c_str());
+    // do the merge
+    // WRENCH_INFO("MERGING %s and %s", parent_to_merge->getID().c_str(), child_to_merge->getID().c_str());
 
     wrench::WorkflowTask *merged_task = this->getWorkflow()->addTask(
             parent_to_merge->getID() + "_" + child_to_merge->getID(),
