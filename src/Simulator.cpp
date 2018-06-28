@@ -28,15 +28,17 @@ int main(int argc, char **argv) {
   if (argc != 7) {
     std::cerr << "\e[1;31mUsage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm>\e[0m" << "\n";
     std::cerr << "  \e[1;32m### workflow specification options ###\e[0m" << "\n";
-    std::cerr << "    *  \e[1mindep:n:t1:t2\e[0m " << "\n";
+    std::cerr << "    *  \e[1mindep:s:n:t1:t2\e[0m " << "\n";
     std::cerr << "      - Just a set of independent tasks" << "\n";
     std::cerr << "      - n: number of tasks" << "\n";
     std::cerr << "      - t1/t2: min/max task durations in integral seconds (actual times uniformly sampled)" << "\n";
-    std::cerr << "    * \e[1mlevels:l0:t0:T0:l1:t1:T1:....:ln:tn:Tn\e[0m" << "\n";
+    std::cerr << "      - s: rng seed" << "\n";
+    std::cerr << "    * \e[1mlevels:s:l0:t0:T0:l1:t1:T1:....:ln:tn:Tn\e[0m" << "\n";
     std::cerr << "      - A strictly levelled workflow" << "\n";
     std::cerr << "      - lx: num tasks in level x" << "\n";
     std::cerr << "      - each task in level x depends on ALL tasks in level x-1" << "\n";
     std::cerr << "      - tx/Tx: min/max task durations in level x, in integral second (times uniformly sampled)" << "\n";
+    std::cerr << "      - s: rng seed" << "\n";
     std::cerr << "\n";
     std::cerr << "  \e[1;32m### algorithm options ###\e[0m" << "\n";
     std::cerr << "    * \e[1mstatic:one_job-m\e[0m" << "\n";
@@ -53,6 +55,12 @@ int main(int argc, char **argv) {
     std::cerr << "      - Simply clusters tasks in each level in whatever order and execute " << "\n";
     std::cerr << "        each cluster on the same number of hosts " << "\n";
     std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
+    std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "    * \e[1mstatic:dfjs-t-m\e[0m" << "\n";
+    std::cerr << "      - DFJS algorithm (ref [5] in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\' by Chen at al." << "\n";
+    std::cerr << "      - Simply greedily clusters tasks in each level in whatever order so that " << "\n";
+    std::cerr << "        each cluster has a runtime that's bounded. (extended to deal with numbers of hosts)" << "\n";
+    std::cerr << "      - t: bound on runtime (in seconds)" << "\n";
     std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
     std::cerr << "    * \e[1mzhang:[overlap|nooverlap]\e[0m" << "\n";
     std::cerr << "      - The algorithm by Zhang, Koelbel, and Cooper" << "\n";
@@ -200,7 +208,7 @@ Workflow *createWorkflow(std::string workflow_spec) {
   }
 
   if (tokens[0] == "indep") {
-    if (tokens.size() != 4) {
+    if (tokens.size() != 5) {
       throw std::invalid_argument("createWorkflow(): Invalid workflow specification " + workflow_spec);
     }
     try {
@@ -210,7 +218,7 @@ Workflow *createWorkflow(std::string workflow_spec) {
     }
 
   } else if (tokens[0] == "levels") {
-    if ((tokens.size() == 1) or (tokens.size() - 1) % 3) {
+    if ((tokens.size() == 2) or (tokens.size() - 2) % 3) {
       throw std::invalid_argument("createWorkflow(): Invalid workflow specification " + workflow_spec);
     }
     try {
@@ -225,19 +233,23 @@ Workflow *createWorkflow(std::string workflow_spec) {
 }
 
 Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens) {
+  unsigned int seed;
+  if (sscanf(spec_tokens[1].c_str(), "%u", &seed) != 1) {
+    throw std::invalid_argument("createIndepWorkflow(): invalid RNG ssed in workflow specification");
+  }
+  std::default_random_engine rng(seed);
+
   unsigned long num_tasks;
   unsigned long min_time;
   unsigned long max_time;
 
-  std::default_random_engine rng;
-
-  if ((sscanf(spec_tokens[1].c_str(), "%lu", &num_tasks) != 1) or (num_tasks < 1)) {
+  if ((sscanf(spec_tokens[2].c_str(), "%lu", &num_tasks) != 1) or (num_tasks < 1)) {
     throw std::invalid_argument("createIndepWorkflow(): invalid number of tasks in workflow specification");
   }
-  if ((sscanf(spec_tokens[2].c_str(), "%lu", &min_time) != 1) or (min_time < 0.0)) {
+  if ((sscanf(spec_tokens[3].c_str(), "%lu", &min_time) != 1) or (min_time < 0.0)) {
     throw std::invalid_argument("createIndepWorkflow(): invalid min task exec time in workflow specification");
   }
-  if ((sscanf(spec_tokens[3].c_str(), "%lu", &max_time) != 1) or (max_time < 0.0) or (max_time < min_time)) {
+  if ((sscanf(spec_tokens[4].c_str(), "%lu", &max_time) != 1) or (max_time < 0.0) or (max_time < min_time)) {
     throw std::invalid_argument("createIndepWorkflow(): invalid max task exec time in workflow specification");
   }
 
@@ -256,7 +268,11 @@ Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens) {
 
 Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
 
-  std::default_random_engine rng;
+  unsigned int seed;
+  if (sscanf(spec_tokens[1].c_str(), "%u", &seed) != 1) {
+    throw std::invalid_argument("createLevelsWorkflow(): invalid RNG ssed in workflow specification");
+  }
+  std::default_random_engine rng(seed);
 
   unsigned long num_levels = (spec_tokens.size()-1)/3;
 
@@ -267,14 +283,14 @@ Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
   WRENCH_INFO("Creating a 'levels' workflow...");
 
   for (unsigned long l = 0; l < num_levels; l++) {
-    if ((sscanf(spec_tokens[1+l*3].c_str(), "%lu", &(num_tasks[l])) != 1) or (num_tasks[l] < 1)) {
+    if ((sscanf(spec_tokens[2+l*3].c_str(), "%lu", &(num_tasks[l])) != 1) or (num_tasks[l] < 1)) {
       throw std::invalid_argument("createLevelsWorkflow(): invalid number of tasks in level " + std::to_string(l) + " workflow specification");
     }
 
-    if ((sscanf(spec_tokens[1+l*3+1].c_str(), "%lu", &(min_times[l])) != 1) or (min_times[l] < 0.0)) {
+    if ((sscanf(spec_tokens[2+l*3+1].c_str(), "%lu", &(min_times[l])) != 1)) {
       throw std::invalid_argument("createLevelsWorkflow(): invalid min task exec time in workflow specification");
     }
-    if ((sscanf(spec_tokens[1+l*3+2].c_str(), "%lu", &(max_times[l])) != 1) or (max_times[l] < 0.0) or (max_times[l] < min_times[l])) {
+    if ((sscanf(spec_tokens[2+l*3+2].c_str(), "%lu", &(max_times[l])) != 1) or (max_times[l] < min_times[l])) {
       throw std::invalid_argument("createLevelsWorkflow(): invalid max task exec time in workflow specification");
     }
   }

@@ -36,7 +36,9 @@ namespace wrench {
         throw std::runtime_error("Cannot estimate makespan with 0 hosts!");
       }
 
-//      WRENCH_INFO("ESTIMATING MAKESPAN ON %ld HOSTS with %ld tasks", num_hosts, tasks.size());
+      if (tasks.size() == 0) {
+        throw std::runtime_error("Cannot estimate makespan with 0 tasks!");
+      }
 
       Workflow *workflow = tasks[0]->getWorkflow();
 

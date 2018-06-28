@@ -22,6 +22,7 @@ private:
 
     std::set<ClusteredJob *> createClusteredJobs();
     std::set<ClusteredJob *> createHCJobs(unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster);
+    std::set<ClusteredJob *> createDFJSJobs(unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
     void submitClusteredJob(ClusteredJob *clustered_job);
     std::map<wrench::StandardJob *, ClusteredJob *> job_map;
 
@@ -29,7 +30,7 @@ private:
     unsigned long max_num_jobs;
     unsigned long num_jobs_in_systems;
     std::string algorithm_spec;
-    double core_speed;
+    double core_speed = 0.0;
 
     std::shared_ptr<JobManager> job_manager;
 

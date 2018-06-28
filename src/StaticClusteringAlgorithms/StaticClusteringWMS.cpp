@@ -20,6 +20,18 @@ StaticClusteringWMS::StaticClusteringWMS(std::string hostname, BatchService *bat
 }
 
 
+void StaticClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
+  StandardJob *job = e->standard_job;
+  WRENCH_INFO("Job %s has completed", job->getName().c_str());
+  this->num_jobs_in_systems--;
+}
+
+
+void StaticClusteringWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
+  throw std::runtime_error("A job has failed, which shouldn't happen");
+}
+
+
 std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
 
   std::istringstream ss(this->algorithm_spec);
@@ -66,7 +78,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     return jobs;
   }
 
-  /** Horizontal Clustering **/
+  /** Horizontal Clustering (HC) **/
   if (tokens[0] == "hc") {
     if (tokens.size() != 3) {
       throw std::invalid_argument("Invalid static:hc specification");
@@ -79,6 +91,21 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     }
 
     return createHCJobs(num_tasks_per_cluster, num_nodes_per_cluster);
+  }
+
+  /** DFJS Clustering **/
+  if (tokens[0] == "dfjs") {
+    if (tokens.size() != 3) {
+      throw std::invalid_argument("Invalid static:dfjs specification");
+    }
+    unsigned long num_seconds_per_cluster;
+    unsigned long num_nodes_per_cluster;
+    if ((sscanf(tokens[1].c_str(), "%lu", &num_seconds_per_cluster) != 1) or (num_seconds_per_cluster < 1) or
+        (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+      throw std::invalid_argument("Invalid static:hc specification");
+    }
+
+    return createDFJSJobs(num_seconds_per_cluster, num_nodes_per_cluster);
   }
 
   throw std::runtime_error("Unknown Static Job Clustering method " + tokens[0]);
@@ -148,34 +175,6 @@ int StaticClusteringWMS::main() {
   return 0;
 }
 
-std::set<ClusteredJob *>  StaticClusteringWMS::createHCJobs(unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster) {
-
-  std::set<ClusteredJob *> jobs;
-
-  // Go through each level and creates jobs
-  for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
-    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
-    ClusteredJob *job = nullptr;
-    for (auto t : tasks_in_level) {
-      if (job == nullptr) {
-        job = new ClusteredJob();
-        job->setNumNodes(num_nodes_per_cluster);
-      }
-      job->addTask(t);
-      if (job->getNumTasks() == num_tasks_per_cluster) {
-        jobs.insert(job);
-        job = nullptr;
-      }
-    }
-    if (job != nullptr) {
-      jobs.insert(job);
-    }
-  }
-
-  return jobs;
-
-}
-
 void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
 
   // Compute the number of nodes for the job
@@ -206,15 +205,81 @@ void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
 
 }
 
-void StaticClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
-  StandardJob *job = e->standard_job;
-  WRENCH_INFO("Job %s has completed", job->getName().c_str());
-  this->num_jobs_in_systems--;
+std::set<ClusteredJob *>  StaticClusteringWMS::createHCJobs(unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster) {
+
+  std::set<ClusteredJob *> jobs;
+
+  // Go through each level and creates jobs
+  for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
+    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
+    ClusteredJob *job = nullptr;
+    for (auto t : tasks_in_level) {
+      if (job == nullptr) {
+        job = new ClusteredJob();
+        job->setNumNodes(num_nodes_per_cluster);
+      }
+      job->addTask(t);
+      if (job->getNumTasks() == num_tasks_per_cluster) {
+        jobs.insert(job);
+        job = nullptr;
+      }
+    }
+    if (job != nullptr) {
+      jobs.insert(job);
+    }
+  }
+
+  return jobs;
+
 }
 
 
-void StaticClusteringWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
-  throw std::runtime_error("A job has failed, which shouldn't happen");
+std::set<ClusteredJob *> StaticClusteringWMS::createDFJSJobs(unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster) {
+  std::set<ClusteredJob *> jobs;
+
+
+  // Go through each level and creates jobs
+  for (unsigned long l = 0; l < this->getWorkflow()->getNumLevels(); l++) {
+    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
+
+//    WRENCH_INFO("DEALING WITH LEVEL %ld", l);
+//    WRENCH_INFO("CREATING AN INITIAL JOB");
+    auto job = new ClusteredJob();
+    job->setNumNodes(num_nodes_per_cluster);
+    for (auto t : tasks_in_level) {
+      unsigned long task_execution_time = (unsigned long)(ceil(t->getFlops() / this->core_speed));
+      if (task_execution_time > num_seconds_per_cluster) {
+        throw std::runtime_error("Task " + t->getID() + " by itself takes longer (" + std::to_string(task_execution_time) +
+                                         " sec) than the cluster duration upper bound ( " +
+                                         std::to_string(num_seconds_per_cluster) + " sec)!");
+      }
+//      WRENCH_INFO("CONSIDERING TASK %s which takes time %lf", t->getID().c_str(), t->getFlops());
+      // Should we add to the job?
+      std::vector<wrench::WorkflowTask *> tentative_tasks = job->getTasks();
+      tentative_tasks.push_back(t);
+//      WRENCH_INFO("ESTIMATING MAKESPAN HERE with %ld nodes", num_nodes_per_cluster);
+      double estimated_makespan = WorkflowUtil::estimateMakespan(tentative_tasks, num_nodes_per_cluster, this->core_speed);
+      if ((unsigned long)(ceil(estimated_makespan)) <= num_seconds_per_cluster) {
+        job->addTask(t);
+      } else {
+        jobs.insert(job);
+        job = new ClusteredJob();
+        job->setNumNodes(num_nodes_per_cluster);
+        job->addTask(t);
+      }
+    }
+    jobs.insert(job);
+  }
+
+  // Sanity check
+  for (auto job : jobs) {
+    if (job->getNumTasks() == 0) {
+      throw std::runtime_error("DFJS Failure: some jobs have no tasks (likely the time bound is too low");
+    }
+  }
+
+  WRENCH_INFO("DFJS clustering: %ld clusters", jobs.size());
+  return jobs;
 }
 
 
