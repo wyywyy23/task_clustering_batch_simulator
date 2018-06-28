@@ -25,6 +25,7 @@ namespace wrench {
      * @brief Estimate a workflow's makespan
      * @param tasks: a set of tasks. For any task that has parents outside of this set, it is assumed that
      *         those parents are completed. For instance, a task with no parents in this set is assumed ready.
+     *         If no task is given, then makespan will be zero.
      * @param num_hosts
      * @param core_speed
      * @return
@@ -37,7 +38,7 @@ namespace wrench {
       }
 
       if (tasks.size() == 0) {
-        throw std::runtime_error("Cannot estimate makespan with 0 tasks!");
+        return 0.0;
       }
 
       Workflow *workflow = tasks[0]->getWorkflow();

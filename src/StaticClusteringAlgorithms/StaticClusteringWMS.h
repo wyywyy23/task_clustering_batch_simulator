@@ -23,6 +23,8 @@ private:
     std::set<ClusteredJob *> createClusteredJobs();
     std::set<ClusteredJob *> createHCJobs(unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster);
     std::set<ClusteredJob *> createDFJSJobs(unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
+    std::set<ClusteredJob *> createHRBJobs(unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
+    std::set<ClusteredJob *> createHIFBJobs(unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
     void submitClusteredJob(ClusteredJob *clustered_job);
     std::map<wrench::StandardJob *, ClusteredJob *> job_map;
 

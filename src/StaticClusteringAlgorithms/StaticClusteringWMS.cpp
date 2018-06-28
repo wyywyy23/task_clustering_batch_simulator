@@ -108,8 +108,37 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     return createDFJSJobs(num_seconds_per_cluster, num_nodes_per_cluster);
   }
 
-  throw std::runtime_error("Unknown Static Job Clustering method " + tokens[0]);
+  /** HRB Clustering **/
+  if (tokens[0] == "hrb") {
+    if (tokens.size() != 3) {
+      throw std::invalid_argument("Invalid static:hrb specification");
+    }
+    unsigned long num_tasks_per_cluster;
+    unsigned long num_nodes_per_cluster;
+    if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
+        (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+      throw std::invalid_argument("Invalid static:hrb specification");
+    }
 
+    return createHRBJobs(num_tasks_per_cluster, num_nodes_per_cluster);
+  }
+
+  /** HIFB Clustering **/
+  if (tokens[0] == "hifb") {
+    if (tokens.size() != 3) {
+      throw std::invalid_argument("Invalid static:hifb specification");
+    }
+    unsigned long num_tasks_per_cluster;
+    unsigned long num_nodes_per_cluster;
+    if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
+        (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+      throw std::invalid_argument("Invalid static:hifb specification");
+    }
+
+    return createHIFBJobs(num_tasks_per_cluster, num_nodes_per_cluster);
+  }
+
+  throw std::runtime_error("Unknown Static Job Clustering method " + tokens[0]);
 
 }
 
@@ -230,7 +259,6 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHCJobs(unsigned long num_ta
   }
 
   return jobs;
-
 }
 
 
@@ -242,22 +270,18 @@ std::set<ClusteredJob *> StaticClusteringWMS::createDFJSJobs(unsigned long num_s
   for (unsigned long l = 0; l < this->getWorkflow()->getNumLevels(); l++) {
     auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
 
-//    WRENCH_INFO("DEALING WITH LEVEL %ld", l);
-//    WRENCH_INFO("CREATING AN INITIAL JOB");
     auto job = new ClusteredJob();
     job->setNumNodes(num_nodes_per_cluster);
     for (auto t : tasks_in_level) {
-      unsigned long task_execution_time = (unsigned long)(ceil(t->getFlops() / this->core_speed));
+      auto task_execution_time = (unsigned long)(ceil(t->getFlops() / this->core_speed));
       if (task_execution_time > num_seconds_per_cluster) {
         throw std::runtime_error("Task " + t->getID() + " by itself takes longer (" + std::to_string(task_execution_time) +
-                                         " sec) than the cluster duration upper bound ( " +
-                                         std::to_string(num_seconds_per_cluster) + " sec)!");
+                                 " sec) than the cluster duration upper bound ( " +
+                                 std::to_string(num_seconds_per_cluster) + " sec)!");
       }
-//      WRENCH_INFO("CONSIDERING TASK %s which takes time %lf", t->getID().c_str(), t->getFlops());
       // Should we add to the job?
       std::vector<wrench::WorkflowTask *> tentative_tasks = job->getTasks();
       tentative_tasks.push_back(t);
-//      WRENCH_INFO("ESTIMATING MAKESPAN HERE with %ld nodes", num_nodes_per_cluster);
       double estimated_makespan = WorkflowUtil::estimateMakespan(tentative_tasks, num_nodes_per_cluster, this->core_speed);
       if ((unsigned long)(ceil(estimated_makespan)) <= num_seconds_per_cluster) {
         job->addTask(t);
@@ -281,6 +305,208 @@ std::set<ClusteredJob *> StaticClusteringWMS::createDFJSJobs(unsigned long num_s
   WRENCH_INFO("DFJS clustering: %ld clusters", jobs.size());
   return jobs;
 }
+
+
+std::set<ClusteredJob *>  StaticClusteringWMS::createHRBJobs(unsigned long num_tasks_per_cluster,
+                                                             unsigned long num_nodes_per_cluster) {
+  std::set<ClusteredJob *> jobs;
+
+  // Go through each level and creates jobs
+  for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
+    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
+
+    // Create all the jobs
+    unsigned long num_level_jobs = tasks_in_level.size() / num_tasks_per_cluster +
+                                   (tasks_in_level.size() % num_tasks_per_cluster != 0);
+
+    ClusteredJob *level_jobs[num_level_jobs];
+    for (unsigned long i = 0; i < num_level_jobs; i++) {
+      level_jobs[i] = new ClusteredJob();
+      level_jobs[i]->setNumNodes(num_nodes_per_cluster);
+    }
+
+    // Sort the tasks by decreasing Flops
+    std::sort(tasks_in_level.begin(), tasks_in_level.end(),
+              [](const wrench::WorkflowTask* t1, const wrench::WorkflowTask* t2) -> bool
+              {
+
+                  if (t1->getFlops() == t2->getFlops()) {
+                    return ((uintptr_t) t1 > (uintptr_t) t2);
+                  } else {
+                    return (t1->getFlops() > t2->getFlops());
+                  }
+              });
+
+    // Assign each task to a job
+    for (auto t : tasks_in_level) {
+      // Find the job with the min completion time
+      unsigned long selected_index = 0;
+      for (unsigned long i=1; i < num_level_jobs; i++) {
+        double currently_selected_makespan = WorkflowUtil::estimateMakespan(
+                level_jobs[selected_index]->getTasks(),
+                num_nodes_per_cluster, this->core_speed);
+        double candidate_makespan = WorkflowUtil::estimateMakespan(
+                level_jobs[i]->getTasks(),
+                num_nodes_per_cluster, this->core_speed);
+        if ((candidate_makespan < currently_selected_makespan) and
+            (level_jobs[i]->getNumTasks() < num_tasks_per_cluster)) {
+          selected_index = i;
+        }
+      }
+//      WRENCH_INFO("ADDING TASK (%lf) TO JOB %ld", t->getFlops(), selected_index);
+      level_jobs[selected_index]->addTask(t);
+    }
+
+    // Put the jobs into the overall job set
+    for (unsigned long i=0; i < num_level_jobs; i++) {
+      jobs.insert(level_jobs[i]);
+    }
+
+  }
+
+  return jobs;
+}
+
+
+
+std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(unsigned long num_tasks_per_cluster,
+                                                              unsigned long num_nodes_per_cluster) {
+  std::set<ClusteredJob *> jobs;
+
+  /** Compute all task "Impact Factors" **/
+//  WRENCH_INFO("Compute all IFs");
+  std::map<wrench::WorkflowTask *, double> impact_factors;
+  for (unsigned long l = 0; l < this->getWorkflow()->getNumLevels(); l++) {
+    unsigned long level = this->getWorkflow()->getNumLevels() -1 - l;
+    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(level,level);
+    for (auto t : tasks_in_level) {
+      if (t->getNumberOfChildren() == 0) {
+        impact_factors.insert(std::make_pair(t, 1.0));
+      } else {
+        double impact_factor = 0.0;
+        for (auto child : this->getWorkflow()->getTaskChildren(t)) {
+          impact_factor += impact_factors[child] / child->getNumberOfParents();
+        }
+        impact_factors.insert(std::make_pair(t, impact_factor));
+      }
+    }
+  }
+
+//  for (auto f : impact_factors) {
+//    WRENCH_INFO("   --> IF(%s) = %lf", f.first->getID().c_str(), f.second);
+//  }
+
+  /** Go through each level and creates jobs **/
+  for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
+
+    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
+
+    // Create all the jobs
+    unsigned long num_level_jobs = tasks_in_level.size() / num_tasks_per_cluster +
+                                   (tasks_in_level.size() % num_tasks_per_cluster != 0);
+
+    WRENCH_INFO("NUM LEVEL JOBS = %ld", num_level_jobs);
+
+    ClusteredJob **level_jobs = (ClusteredJob**)calloc(num_level_jobs, sizeof(ClusteredJob *));
+    for (unsigned long i = 0; i < num_level_jobs; i++) {
+      level_jobs[i] = new ClusteredJob();
+      level_jobs[i]->setNumNodes(num_nodes_per_cluster);
+    }
+
+    // Sort the tasks by decreasing Flops
+    std::sort(tasks_in_level.begin(), tasks_in_level.end(),
+              [](const wrench::WorkflowTask* t1, const wrench::WorkflowTask* t2) -> bool
+              {
+
+                  if (t1->getFlops() == t2->getFlops()) {
+                    return ((uintptr_t) t1 > (uintptr_t) t2);
+                  } else {
+                    return (t1->getFlops() > t2->getFlops());
+                  }
+              });
+
+    // Assign each task to a job
+    for (auto t : tasks_in_level) {
+
+      WRENCH_INFO("FOR TASK %s", t->getID().c_str());
+
+      // Compute IF similarity between jobs and task
+      std::vector<std::pair<ClusteredJob *, double>> IF_similarity;
+      IF_similarity.clear();
+      for (unsigned long i=0; i < num_level_jobs; i++) {
+        double average_similarity = 0.0;
+        if (level_jobs[i]->getNumTasks() == 0) { // empty job
+          average_similarity = 1.0; // some arbitrary value here
+        } else { // non-empty job
+          average_similarity = 0.0;
+          for (auto task_in_job : level_jobs[i]->getTasks()) {
+            average_similarity += fabs(impact_factors[task_in_job] - impact_factors[t]);
+          }
+          average_similarity /= level_jobs[i]->getNumTasks();
+        }
+        IF_similarity.push_back(std::make_pair(level_jobs[i], average_similarity));
+      }
+
+      for (auto p : IF_similarity) {
+        WRENCH_INFO("---> job with %ld tasks (%ld), %lf", p.first->getNumTasks(),  (unsigned long)(p.first), p.second);
+      }
+
+      // Sort jobs by similarity, and makespan when similarity is the same
+      std::sort(IF_similarity.begin(), IF_similarity.end(),
+                [num_nodes_per_cluster](const std::pair<ClusteredJob*, double> &t1,
+                                        const std::pair<ClusteredJob*, double> &t2) -> bool
+                {
+
+                    WRENCH_INFO("IN SEOT1: job %ld", (unsigned long)(t1.first));
+                    WRENCH_INFO("IN SEOT1: job with %ld tasks (%ld), %lf", t1.first->getNumTasks(), (unsigned long)(t1.first), t1.second);
+//                    double t1_similarity = t1.second;
+//                    double t2_similarity = t2.second;
+//                    ClusteredJob *t1_job = t1.first;
+//                    ClusteredJob *t2_job = t2.first;
+//
+//                    if (t1_similarity == t2_similarity) {
+//                      double t1_makespan = WorkflowUtil::estimateMakespan(t1_job->getTasks(), num_nodes_per_cluster, 1.0);
+//                      double t2_makespan = WorkflowUtil::estimateMakespan(t2_job->getTasks(), num_nodes_per_cluster, 1.0);
+//                      if (t1_makespan == t2_makespan) {
+//                        return ((uintptr_t) &t1 > (uintptr_t) &t2);
+//                      } else {
+//                        return (t1_makespan < t2_makespan);
+//                      }
+//                    } else {
+//                      return (t1_similarity < t2_similarity);
+//                    }
+                    return true;
+                });
+
+      WRENCH_INFO("DONE WITH SORTING");
+      // Go through the list of j ob and add the task to the first one that works
+      bool task_was_put_into_job = false;
+      for (auto p : IF_similarity) {
+        ClusteredJob *job = std::get<0>(p);
+        if (job->getNumTasks() < num_tasks_per_cluster) {
+          job->addTask(t);
+//          WRENCH_INFO("PUTTING TASK %s into job %ld", t->getID().c_str(), (unsigned long)(job));
+          task_was_put_into_job = true;
+          break;
+        }
+      }
+
+      if (not task_was_put_into_job) {
+        throw std::runtime_error("Cannot put task " + t->getID() + " into any cluster!");
+      }
+
+    }
+
+    // Put the jobs into the overall job set
+    for (unsigned long i=0; i < num_level_jobs; i++) {
+      jobs.insert(level_jobs[i]);
+    }
+
+  }
+
+  return jobs;
+}
+
 
 
 
