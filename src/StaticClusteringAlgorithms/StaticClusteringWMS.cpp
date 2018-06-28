@@ -138,7 +138,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     return createHIFBJobs(num_tasks_per_cluster, num_nodes_per_cluster);
   }
 
-  /** HIDB Clustering **/
+  /** HDB Clustering **/
   if (tokens[0] == "hdb") {
     if (tokens.size() != 3) {
       throw std::invalid_argument("Invalid static:hdb specification");
@@ -151,6 +151,14 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     }
 
     return createHDBJobs(num_tasks_per_cluster, num_nodes_per_cluster);
+  }
+
+  /** VC Clustering **/
+  if (tokens[0] == "vc") {
+    if (tokens.size() != 1) {
+      throw std::invalid_argument("Invalid static:vc specification");
+    }
+    return createVCJobs();
   }
 
   throw std::runtime_error("Unknown Static Job Clustering method " + tokens[0]);
@@ -175,6 +183,9 @@ int StaticClusteringWMS::main() {
   // Compute the clustering according to the method
   std::set<ClusteredJob *> jobs = this->createClusteredJobs();
 
+//  WRENCH_INFO("NUMBER OF CLUSTERS JOBS = %ld", jobs.size());
+//  WRENCH_INFO("MAX NUM JOBS = %ld", this->max_num_jobs);
+
   this->num_jobs_in_systems = 0;
 
   while (true) {
@@ -193,7 +204,9 @@ int StaticClusteringWMS::main() {
       }
 
       // Submit the job
+//      WRENCH_INFO("SUBMITTING!");
       submitClusteredJob(to_submit);
+      jobs.erase(to_submit);
       this->num_jobs_in_systems++;
     }
 
@@ -574,7 +587,7 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(unsigned long num_t
       for (auto v : tasks_in_level) {
         if (u != v) {
           WRENCH_INFO("  DISTANCE(%s,%s) = %lu",
-          u->getID().c_str(), v->getID().c_str(), task_distances[std::make_pair(u,v)]);
+                      u->getID().c_str(), v->getID().c_str(), task_distances[std::make_pair(u,v)]);
         }
       }
     }
@@ -705,6 +718,56 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(unsigned long num_t
   }
 
   return jobs;
+}
+
+std::set<ClusteredJob *> StaticClusteringWMS::createVCJobs() {
+
+  // Modify the workflow to cluster tasks
+  while (true) {
+    std::vector<wrench::WorkflowTask*> tasks = this->getWorkflow()->getTasks();
+    wrench::WorkflowTask *parent_to_merge = nullptr;
+    wrench::WorkflowTask *child_to_merge = nullptr;
+    for (auto t : tasks) {
+      if ((t->getNumberOfChildren() == 1) and
+          (this->getWorkflow()->getTaskChildren(t)[0]->getNumberOfParents() == 1)) {
+        parent_to_merge = t;
+        child_to_merge = this->getWorkflow()->getTaskChildren(t)[0];
+        break;
+      }
+    }
+    if (parent_to_merge == nullptr) {
+      break;
+    }
+    // do the merge
+//    WRENCH_INFO("MERGING %s and %s", parent_to_merge->getID().c_str(), child_to_merge->getID().c_str());
+
+    wrench::WorkflowTask *merged_task = this->getWorkflow()->addTask(
+            parent_to_merge->getID() + "_" + child_to_merge->getID(),
+            parent_to_merge->getFlops() + child_to_merge->getFlops(),
+            1,1,1.0, 0);
+
+    for (auto parent : this->getWorkflow()->getTaskParents(parent_to_merge)) {
+      this->getWorkflow()->addControlDependency(parent, merged_task);
+    }
+    for (auto child : this->getWorkflow()->getTaskChildren(child_to_merge)) {
+      this->getWorkflow()->addControlDependency(merged_task, child);
+    }
+
+    this->getWorkflow()->removeTask(parent_to_merge);
+    this->getWorkflow()->removeTask(child_to_merge);
+
+  }
+
+  // Created one job per "task"
+  std::set<ClusteredJob *> jobs;
+  for (auto t : this->getWorkflow()->getTasks()) {
+    ClusteredJob *job = new ClusteredJob();
+    job->addTask(t);
+    job->setNumNodes(1);
+    jobs.insert(job);
+  }
+  return jobs;
+
 }
 
 

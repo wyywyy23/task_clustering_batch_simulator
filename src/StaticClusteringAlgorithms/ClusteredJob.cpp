@@ -16,10 +16,21 @@ namespace wrench {
       this->tasks.push_back(task);
     }
 
+    bool ClusteredJob::isTaskOK(wrench::WorkflowTask *task) {
+      if (task->getState() == wrench::WorkflowTask::READY) {
+        return true;
+      }
+      for (auto p : task->getWorkflow()->getTaskParents(task)) {
+        if (not isTaskOK(p)) {
+          return false;
+        }
+      }
+      return true;
+    }
 
     bool ClusteredJob::isReady() {
       for (auto t : this->tasks) {
-        if (t->getState() != wrench::WorkflowTask::READY) {
+        if (not isTaskOK(t)) {
           return false;
         }
       }

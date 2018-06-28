@@ -23,6 +23,7 @@ namespace wrench {
         std::vector<wrench::WorkflowTask *>  getTasks();
         void addTask(wrench::WorkflowTask *task);
         bool isReady();
+        bool isTaskOK(wrench::WorkflowTask *task);
         double estimateMakespan(double core_speed);
 
     private:
