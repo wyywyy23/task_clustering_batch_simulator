@@ -720,11 +720,10 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(unsigned long num_t
   return jobs;
 }
 
-std::set<ClusteredJob *> StaticClusteringWMS::createVCJobs() {
-
-  // Modify the workflow to cluster tasks
+void StaticClusteringWMS::mergeSingleParentSingleChildPairs() {
+// Modify the workflow to cluster tasks
   while (true) {
-    std::vector<wrench::WorkflowTask*> tasks = this->getWorkflow()->getTasks();
+    std::vector<wrench::WorkflowTask *> tasks = this->getWorkflow()->getTasks();
     wrench::WorkflowTask *parent_to_merge = nullptr;
     wrench::WorkflowTask *child_to_merge = nullptr;
     for (auto t : tasks) {
@@ -738,13 +737,13 @@ std::set<ClusteredJob *> StaticClusteringWMS::createVCJobs() {
     if (parent_to_merge == nullptr) {
       break;
     }
-    // do the merge
+// do the merge
 //    WRENCH_INFO("MERGING %s and %s", parent_to_merge->getID().c_str(), child_to_merge->getID().c_str());
 
     wrench::WorkflowTask *merged_task = this->getWorkflow()->addTask(
             parent_to_merge->getID() + "_" + child_to_merge->getID(),
             parent_to_merge->getFlops() + child_to_merge->getFlops(),
-            1,1,1.0, 0);
+            1, 1, 1.0, 0);
 
     for (auto parent : this->getWorkflow()->getTaskParents(parent_to_merge)) {
       this->getWorkflow()->addControlDependency(parent, merged_task);
@@ -757,6 +756,11 @@ std::set<ClusteredJob *> StaticClusteringWMS::createVCJobs() {
     this->getWorkflow()->removeTask(child_to_merge);
 
   }
+}
+
+std::set<ClusteredJob *> StaticClusteringWMS::createVCJobs() {
+
+  mergeSingleParentSingleChildPairs();
 
   // Created one job per "task"
   std::set<ClusteredJob *> jobs;
