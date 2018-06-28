@@ -29,9 +29,14 @@ namespace wrench {
      * @param core_speed
      * @return
      */
-    double WorkflowUtil::estimateMakespan(std::vector<WorkflowTask *> tasks, unsigned long num_hosts, double core_speed) {
+    double WorkflowUtil::estimateMakespan(std::vector<WorkflowTask *> tasks,
+                                          unsigned long num_hosts, double core_speed) {
 
-      WRENCH_INFO("ESTIMATING MAKESPAN ON %ld HOSTS with %ld tasks", num_hosts, tasks.size());
+      if (num_hosts == 0) {
+        throw std::runtime_error("Cannot estimate makespan with 0 hosts!");
+      }
+
+//      WRENCH_INFO("ESTIMATING MAKESPAN ON %ld HOSTS with %ld tasks", num_hosts, tasks.size());
 
       Workflow *workflow = tasks[0]->getWorkflow();
 
@@ -43,7 +48,7 @@ namespace wrench {
 
       unsigned long num_tasks = tasks.size();
 
-      // Create a list of "fake" fake_tasks
+      // Create a list of "fake" tasks
       std::tuple<WorkflowTask *, double> fake_tasks[num_tasks];  // WorkflowTask, completion time
 
       // Insert all fake_tasks
@@ -53,7 +58,6 @@ namespace wrench {
         fake_task = std::make_tuple(task, -1.0);
         fake_tasks[i++] = fake_task;
       }
-
 
       unsigned long num_scheduled_tasks = 0;
       double current_time = 0.0;
@@ -107,9 +111,9 @@ namespace wrench {
               double new_time = current_time + real_task->getFlops() / core_speed;
               fake_tasks[i] = std::make_tuple(std::get<0>(ft), new_time);
 
-//              for (int k=0; k < num_tasks; k++) {
+              for (int k=0; k < num_tasks; k++) {
 //                WRENCH_INFO("------> %.2lf", std::get<1>(fake_tasks[k]));
-//              }
+              }
 
               idle_date[j] = current_time + real_task->getFlops() / core_speed;
 //              WRENCH_INFO("SCHEDULED TASK %s on host %d from time %.2lf-%.2lf",

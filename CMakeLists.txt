@@ -11,14 +11,12 @@ set(SOURCE_FILES
         src/WorkflowUtil/WorkflowUtil.cpp
         src/WorkflowUtil/WorkflowUtil.h
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.cpp
-        src/OneJobClusteringAlgorithm/OneJobClusteringWMS.h
-        src/OneJobClusteringAlgorithm/OneJobClusteringWMS.cpp
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.h
         src/ZhangClusteringAlgorithm/PlaceHolderJob.h
-        src/FixedClusteringAlgorithms/FixedClusteringWMS.cpp
-        src/FixedClusteringAlgorithms/FixedClusteringWMS.h
-        src/FixedClusteringAlgorithms/FixedClusteringScheduler.cpp
-        src/FixedClusteringAlgorithms/FixedClusteringScheduler.h
+        src/StaticClusteringAlgorithms/ClusteredJob.cpp
+        src/StaticClusteringAlgorithms/ClusteredJob.h
+        src/StaticClusteringAlgorithms/StaticClusteringWMS.cpp
+        src/StaticClusteringAlgorithms/StaticClusteringWMS.h
         )
 
 # wrench library and dependencies
