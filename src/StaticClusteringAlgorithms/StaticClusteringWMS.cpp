@@ -2,7 +2,6 @@
 
 #include <WorkflowUtil/WorkflowUtil.h>
 #include "StaticClusteringWMS.h"
-#include "StaticClusteringScheduler.h"
 #include "ClusteredJob.h"
 
 using namespace wrench;

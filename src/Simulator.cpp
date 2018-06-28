@@ -4,7 +4,6 @@
 #include <services/compute/batch/BatchServiceProperty.h>
 #include <OneJobClusteringAlgorithm/OneJobClusteringWMS.h>
 #include "StaticClusteringAlgorithms/StaticClusteringWMS.h"
-#include "StaticClusteringAlgorithms/StaticClusteringScheduler.h"
 #include "ZhangClusteringAlgorithm/ZhangClusteringWMS.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(task_clustering_simulator, "Log category for Task Clustering Simulator");
