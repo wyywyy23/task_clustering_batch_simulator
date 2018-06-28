@@ -329,8 +329,7 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHRBJobs(unsigned long num_t
     std::sort(tasks_in_level.begin(), tasks_in_level.end(),
               [](const wrench::WorkflowTask* t1, const wrench::WorkflowTask* t2) -> bool
               {
-
-                  if (t1->getFlops() == t2->getFlops()) {
+                  if (fabs(t1->getFlops() - t2->getFlops()) < 0.001) {
                     return ((uintptr_t) t1 > (uintptr_t) t2);
                   } else {
                     return (t1->getFlops() > t2->getFlops());
@@ -416,7 +415,7 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(unsigned long num_
               [](const wrench::WorkflowTask* t1, const wrench::WorkflowTask* t2) -> bool
               {
 
-                  if (t1->getFlops() == t2->getFlops()) {
+                  if (fabs(t1->getFlops() - t2->getFlops()) < 0.001) {
                     return ((uintptr_t) t1 > (uintptr_t) t2);
                   } else {
                     return (t1->getFlops() > t2->getFlops());
@@ -474,7 +473,6 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(unsigned long num_
                     return true;
                 });
 
-      WRENCH_INFO("DONE WITH SORTING");
       // Go through the list of j ob and add the task to the first one that works
       bool task_was_put_into_job = false;
       for (auto p : IF_similarity) {
