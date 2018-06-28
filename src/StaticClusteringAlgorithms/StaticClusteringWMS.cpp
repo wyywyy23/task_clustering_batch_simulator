@@ -405,8 +405,6 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(unsigned long num_
     unsigned long num_level_jobs = tasks_in_level.size() / num_tasks_per_cluster +
                                    (tasks_in_level.size() % num_tasks_per_cluster != 0);
 
-    WRENCH_INFO("NUM LEVEL JOBS = %ld", num_level_jobs);
-
     ClusteredJob **level_jobs = (ClusteredJob**)calloc(num_level_jobs, sizeof(ClusteredJob *));
     for (unsigned long i = 0; i < num_level_jobs; i++) {
       level_jobs[i] = new ClusteredJob();
@@ -428,8 +426,6 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(unsigned long num_
     // Assign each task to a job
     for (auto t : tasks_in_level) {
 
-      WRENCH_INFO("FOR TASK %s", t->getID().c_str());
-
       // Compute IF similarity between jobs and task
       std::vector<std::pair<ClusteredJob *, double>> IF_similarity;
       IF_similarity.clear();
@@ -447,34 +443,34 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(unsigned long num_
         IF_similarity.push_back(std::make_pair(level_jobs[i], average_similarity));
       }
 
-      for (auto p : IF_similarity) {
-        WRENCH_INFO("---> job with %ld tasks (%ld), %lf", p.first->getNumTasks(),  (unsigned long)(p.first), p.second);
-      }
+//      for (auto p : IF_similarity) {
+//        WRENCH_INFO("---> job with %ld tasks (%ld), %lf", p.first->getNumTasks(),  (unsigned long)(p.first), p.second);
+//      }
 
       // Sort jobs by similarity, and makespan when similarity is the same
       std::sort(IF_similarity.begin(), IF_similarity.end(),
                 [num_nodes_per_cluster](const std::pair<ClusteredJob*, double> &t1,
                                         const std::pair<ClusteredJob*, double> &t2) -> bool
                 {
+                    double t1_similarity = t1.second;
+                    double t2_similarity = t2.second;
+                    ClusteredJob *t1_job = t1.first;
+                    ClusteredJob *t2_job = t2.first;
 
-                    WRENCH_INFO("IN SEOT1: job %ld", (unsigned long)(t1.first));
-                    WRENCH_INFO("IN SEOT1: job with %ld tasks (%ld), %lf", t1.first->getNumTasks(), (unsigned long)(t1.first), t1.second);
-//                    double t1_similarity = t1.second;
-//                    double t2_similarity = t2.second;
-//                    ClusteredJob *t1_job = t1.first;
-//                    ClusteredJob *t2_job = t2.first;
-//
-//                    if (t1_similarity == t2_similarity) {
-//                      double t1_makespan = WorkflowUtil::estimateMakespan(t1_job->getTasks(), num_nodes_per_cluster, 1.0);
-//                      double t2_makespan = WorkflowUtil::estimateMakespan(t2_job->getTasks(), num_nodes_per_cluster, 1.0);
-//                      if (t1_makespan == t2_makespan) {
-//                        return ((uintptr_t) &t1 > (uintptr_t) &t2);
-//                      } else {
-//                        return (t1_makespan < t2_makespan);
-//                      }
-//                    } else {
-//                      return (t1_similarity < t2_similarity);
-//                    }
+//                    WRENCH_INFO("IN SORT: %lf %lf", t1_similarity, t2_similarity);
+//                    WRENCH_INFO("  IN SORT: %ld %ld", (unsigned long)t1_job, (unsigned long)t2_job);
+
+                    if (fabs(t1_similarity - t2_similarity) < 0.01) { // IMPORTANT TO NOT USE EQUAL!
+                      double t1_makespan = WorkflowUtil::estimateMakespan(t1_job->getTasks(), num_nodes_per_cluster, 1.0);
+                      double t2_makespan = WorkflowUtil::estimateMakespan(t2_job->getTasks(), num_nodes_per_cluster, 1.0);
+                      if (fabs(t1_makespan - t2_makespan) < 0.01) {
+                        return ((uintptr_t) &t1 > (uintptr_t) &t2);
+                      } else {
+                        return (t1_makespan < t2_makespan);
+                      }
+                    } else {
+                      return (t1_similarity < t2_similarity);
+                    }
                     return true;
                 });
 
