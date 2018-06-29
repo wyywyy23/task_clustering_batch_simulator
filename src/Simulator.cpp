@@ -90,11 +90,15 @@ int main(int argc, char **argv) {
     std::cerr << "    * \e[1mstatic:vc\e[0m" << "\n";
     std::cerr << "      - The VC algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
     std::cerr << "      - Cluster tasks with single-parent-single-child depepdencies" << "\n";
-    std::cerr << "    * \e[1mzhang:[overlap|nooverlap]\e[0m" << "\n";
+    std::cerr << "    * \e[1mzhang:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
     std::cerr << "      - The algorithm by Zhang, Koelbel, and Cooper" << "\n";
     std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
     std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
     std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
+    std::cerr << "      - [plimit|pnolimit]: plimit is the original algorithm that will complain if the workflow" << "\n";
+    std::cerr << "        parallelism is larger than the number of hosts. pnolimit is an extension that will not" << "\n";
+    std::cerr << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although" << "\n";
+    std::cerr << "        not intended by its authors" << "\n";
     std::cerr << "\n";
     exit(1);
   }
@@ -381,7 +385,7 @@ WMS *createWMS(std::string hostname,
 
   } else if (tokens[0] == "zhang") {
 
-    if (tokens.size() != 2) {
+    if (tokens.size() != 3) {
       throw std::invalid_argument("createStandardJobScheduler(): Invalid zhang specification");
     }
     bool overlap;
@@ -392,7 +396,15 @@ WMS *createWMS(std::string hostname,
     } else {
       throw std::invalid_argument("createStandardJobScheduler(): Invalid zhang specification");
     }
-    return new ZhangClusteringWMS(hostname, overlap, batch_service);
+    bool plimit;
+    if (tokens[2] == "plimit") {
+      plimit = true;
+    } else if (tokens[2] == "pnolimit") {
+      plimit = false;
+    } else {
+      throw std::invalid_argument("createStandardJobScheduler(): Invalid zhang specification");
+    }
+    return new ZhangClusteringWMS(hostname, overlap, plimit, batch_service);
 
   } else {
     throw std::invalid_argument("createStandardJobScheduler(): Unknown workflow type " + tokens[0]);

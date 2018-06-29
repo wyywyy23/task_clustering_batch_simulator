@@ -24,7 +24,7 @@ namespace wrench {
 
     public:
 
-        ZhangClusteringWMS(std::string hostname, bool overlap, BatchService *batch_service);
+        ZhangClusteringWMS(std::string hostname, bool overlap, bool plimit, BatchService *batch_service);
 
     private:
 
@@ -44,6 +44,7 @@ namespace wrench {
 
         bool individual_mode;
         bool overlap;
+        bool plimit;
 
         std::set<PlaceHolderJob *> running_placeholder_jobs;
         PlaceHolderJob *pending_placeholder_job;

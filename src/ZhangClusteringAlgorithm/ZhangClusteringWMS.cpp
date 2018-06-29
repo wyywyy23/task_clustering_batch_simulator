@@ -19,9 +19,10 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(zhang_clustering_wms, "Log category for Zhang Clust
 
 namespace wrench {
 
-    ZhangClusteringWMS::ZhangClusteringWMS(std::string hostname, bool overlap, BatchService *batch_service) :
+    ZhangClusteringWMS::ZhangClusteringWMS(std::string hostname, bool overlap, bool plimit, BatchService *batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
       this->overlap = overlap;
+      this->plimit = plimit;
       this->batch_service = batch_service;
       this->pending_placeholder_job = nullptr;
       this->individual_mode = false;
@@ -423,14 +424,17 @@ namespace wrench {
       unsigned long parallelism = 0;
       for (unsigned long l = start_level; l <= end_level; l++) {
         unsigned long num_tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l,l).size();
-        if (num_tasks_in_level > this->number_of_hosts) {
-          throw std::runtime_error("ZhangClusteringWMS::applyGroupingHeuristic(): Workflow level " +
-                                   std::to_string(l) +
-                                   " has more tasks than " +
-                                   "number of hosts on the batch service, which is not " +
-                                   "handled by the algorithm by Zhang et al.");
+        if (this->plimit) {
+          if (num_tasks_in_level > this->number_of_hosts) {
+            throw std::runtime_error("ZhangClusteringWMS::applyGroupingHeuristic(): Workflow level " +
+                                     std::to_string(l) +
+                                     " has more tasks than " +
+                                     "number of hosts on the batch service, which is not " +
+                                     "handled by the algorithm by Zhang et al.");
+          }
         }
-        parallelism = MAX(parallelism, num_tasks_in_level);
+        unsigned long level_parallelism = MIN(num_tasks_in_level, this->number_of_hosts);
+        parallelism = MAX(parallelism, level_parallelism);
       }
 
 //      WRENCH_INFO("THERE ARE %ld tasks in level range %ld-%ld",
@@ -441,7 +445,7 @@ namespace wrench {
 
       // Figure out the estimated wait time
       std::set<std::tuple<std::string,unsigned int,unsigned int, double>> job_config;
-      std::string config_key = "config_XXXX_" + std::to_string(sequence++);
+      std::string config_key = "config_XXXX_" + std::to_string(sequence++); // need to make it unique for BATSCHED
       job_config.insert(std::make_tuple(config_key, (unsigned int)parallelism, 1, makespan));
       std::map<std::string, double> estimates = this->batch_service->getStartTimeEstimates(job_config);
       if (estimates[config_key] < 0) {
