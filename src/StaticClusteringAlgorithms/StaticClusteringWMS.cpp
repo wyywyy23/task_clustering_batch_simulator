@@ -6,7 +6,7 @@
 
 using namespace wrench;
 
-#define EXECUTION_TIME_FUDGE_FACTOR 60
+#define EXECUTION_TIME_FUDGE_FACTOR 1.05
 
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(static_clustering_wms, "Log category for Static Clustering WMS");
@@ -258,7 +258,7 @@ void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
 
   std::map<std::string, std::string> batch_job_args;
   batch_job_args["-N"] = std::to_string(num_nodes);
-  batch_job_args["-t"] = std::to_string((unsigned long)(1 + (makespan + EXECUTION_TIME_FUDGE_FACTOR) / 60.0)); //time in minutes
+  batch_job_args["-t"] = std::to_string((unsigned long)(1 + (makespan * EXECUTION_TIME_FUDGE_FACTOR) / 60.0)); //time in minutes
   batch_job_args["-c"] = "1"; //number of cores per node
 
   StandardJob *standard_job = this->job_manager->createStandardJob(clustered_job->getTasks(), {});

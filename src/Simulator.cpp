@@ -15,6 +15,7 @@ void setupSimulationPlatform(Simulation *simulation, unsigned long num_compute_n
 Workflow *createWorkflow(std::string workflow_spec);
 Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens);
 Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens);
+Workflow *createDAXWorkflow(std::vector<std::string> spec_tokens);
 WMS *createWMS(std::string scheduler_spec, BatchService *batch_service, unsigned long max_num_jobs, std::string algorithm_name);
 
 
@@ -39,6 +40,9 @@ int main(int argc, char **argv) {
     std::cerr << "      - each task in level x depends on ALL tasks in level x-1" << "\n";
     std::cerr << "      - tx/Tx: min/max task durations in level x, in integral second (times uniformly sampled)" << "\n";
     std::cerr << "      - s: rng seed" << "\n";
+    std::cerr << "    * \e[1mldax:filename\e[0m" << "\n";
+    std::cerr << "      - A workflow imported from a DAX file" << "\n";
+    std::cerr << "      - Files and Data dependencies are ignored. Only control dependencies are preserved" << "\n";
     std::cerr << "\n";
     std::cerr << "  \e[1;32m### algorithm options ###\e[0m" << "\n";
     std::cerr << "    * \e[1mstatic:one_job-m\e[0m" << "\n";
@@ -259,6 +263,16 @@ Workflow *createWorkflow(std::string workflow_spec) {
       throw;
     }
 
+  } else if (tokens[0] == "dax") {
+    if (tokens.size() != 2) {
+      throw std::invalid_argument("createWorkflow(): Invalid workflow specification " + workflow_spec);
+    }
+    try {
+      return createDAXWorkflow(tokens);
+    } catch (std::invalid_argument &e) {
+      throw;
+    }
+
   } else {
     throw std::invalid_argument("createWorkflow(): Unknown workflow type " + tokens[0]);
   }
@@ -355,6 +369,46 @@ Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
   }
 
 //  workflow->exportToEPS("/tmp/foo.eps");
+
+  return workflow;
+
+}
+
+Workflow *createDAXWorkflow(std::vector<std::string> spec_tokens) {
+  std::string filename = spec_tokens[1];
+
+  auto original_workflow = new Workflow();
+  try {
+    original_workflow->loadFromDAX(filename, "1");
+  } catch (std::invalid_argument &e) {
+    throw std::runtime_error("Cannot import workflow from DAX");
+  }
+
+  auto workflow = new Workflow();
+
+  // Add task replicas
+  for (auto t : original_workflow->getTasks()) {
+//    WRENCH_INFO("t->getFlops() = %lf", t->getFlops());
+    workflow->addTask(t->getID(), t->getFlops(), 1, 1, 1.0, 0);
+  }
+
+  // Deal with all dependencies (brute-force, but whatever)
+  for (auto t : original_workflow->getTasks()) {
+    std::vector<wrench::WorkflowTask *> parents = original_workflow->getTaskParents(t);
+    std::vector<wrench::WorkflowTask *> children = original_workflow->getTaskChildren(t);
+
+    for (auto p : parents) {
+      std::string parent_id = p->getID();
+      std::string child_id = t->getID();
+      workflow->addControlDependency(workflow->getTaskByID(parent_id), workflow->getTaskByID(child_id));
+    }
+    for (auto c : children) {
+      std::string parent_id = t->getID();
+      std::string child_id = c->getID();
+      workflow->addControlDependency(workflow->getTaskByID(parent_id), workflow->getTaskByID(child_id));
+    }
+  }
+//  WRENCH_INFO("NEW WORKFLOW HAS %ld TASKS and %ld LEVELS", workflow->getNumberOfTasks(), workflow->getNumLevels());
 
   return workflow;
 

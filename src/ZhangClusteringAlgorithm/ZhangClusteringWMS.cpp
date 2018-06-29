@@ -15,7 +15,7 @@
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(zhang_clustering_wms, "Log category for Zhang Clustering WMS");
 
-#define EXECUTION_TIME_FUDGE_FACTOR 60
+#define EXECUTION_TIME_FUDGE_FACTOR 1.1
 
 namespace wrench {
 
@@ -152,7 +152,7 @@ namespace wrench {
           if (task->getState() == WorkflowTask::State::READY) {
             StandardJob *standard_job = this->job_manager->createStandardJob(task,{});
             std::map<std::string, std::string> service_specific_args;
-            requested_execution_time = task->getFlops() / this->core_speed + EXECUTION_TIME_FUDGE_FACTOR;
+            requested_execution_time = (task->getFlops() / this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
             service_specific_args["-N"] = "1";
             service_specific_args["-c"] = "1";
             service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
@@ -178,7 +178,7 @@ namespace wrench {
             unsigned long start_level,
             unsigned long end_level) {
 
-      requested_execution_time = requested_execution_time + EXECUTION_TIME_FUDGE_FACTOR;
+      requested_execution_time = requested_execution_time * EXECUTION_TIME_FUDGE_FACTOR;
 
       // Aggregate tasks
       std::vector<WorkflowTask *> tasks;
@@ -390,7 +390,7 @@ namespace wrench {
             WRENCH_INFO("Submitting task %s individually!",
                         task->getID().c_str());
             std::map<std::string, std::string> service_specific_args;
-            double requested_execution_time = task->getFlops() / this->core_speed + EXECUTION_TIME_FUDGE_FACTOR;
+            double requested_execution_time = (task->getFlops() / this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
             service_specific_args["-N"] = "1";
             service_specific_args["-c"] = "1";
             service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
