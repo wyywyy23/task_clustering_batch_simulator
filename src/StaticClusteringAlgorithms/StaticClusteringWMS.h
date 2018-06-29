@@ -27,6 +27,9 @@ private:
     std::set<ClusteredJob *> createHIFBJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
     std::set<ClusteredJob *> createHDBJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
     std::set<ClusteredJob *> createVCJobs();
+    std::set<ClusteredJob *> applyPosteriorVC(std::set<ClusteredJob *>);
+    bool areJobsMergable(ClusteredJob *j1, ClusteredJob *j2);
+    bool isSingleParentSingleChildPair(ClusteredJob *pj, ClusteredJob *cj);
 
     void mergeSingleParentSingleChildPairs();
 

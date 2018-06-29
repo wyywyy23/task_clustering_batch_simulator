@@ -306,7 +306,7 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHCJobs(std::string vc, unsi
   }
 
   if (vc == "vposterior") {
-    throw std::runtime_error("Posterior not implemneted");
+    jobs = applyPosteriorVC(jobs);
   }
 
   return jobs;
@@ -351,7 +351,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createDFJSJobs(std::string vc, uns
   }
 
   if (vc == "vposterior") {
-    throw std::runtime_error("Posterior not implemneted");
+    jobs = applyPosteriorVC(jobs);
   }
 
   // Sanity check
@@ -427,7 +427,7 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHRBJobs(std::string vc, uns
   }
 
   if (vc == "vposterior") {
-    throw std::runtime_error("Posterior not implemneted");
+    jobs = applyPosteriorVC(jobs);
   }
 
   return jobs;
@@ -578,7 +578,7 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(std::string vc, un
   }
 
   if (vc == "vposterior") {
-    throw std::runtime_error("Posterior not implemented");
+    jobs = applyPosteriorVC(jobs);
   }
 
   return jobs;
@@ -769,7 +769,7 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(std::string vc, uns
   }
 
   if (vc == "vposterior") {
-    throw std::runtime_error("Posterior not implemented");
+    jobs = applyPosteriorVC(jobs);
   }
 
   return jobs;
@@ -831,3 +831,80 @@ std::set<ClusteredJob *> StaticClusteringWMS::createVCJobs() {
 }
 
 
+std::set<ClusteredJob *> StaticClusteringWMS::applyPosteriorVC(std::set<ClusteredJob *> input_jobs) {
+  std::set<ClusteredJob *> output_jobs;
+
+  // Copy input to output
+  for (auto j : input_jobs) {
+    output_jobs.insert(j);
+  }
+
+
+  while (true) {
+    ClusteredJob *to_merge_1 = nullptr, *to_merge_2 = nullptr;
+    for (auto j1 : output_jobs) {
+      for (auto j2 : output_jobs) {
+        if (j1 == j2) continue;
+        if (areJobsMergable(j1, j2)) {
+          to_merge_1 = j1;
+          to_merge_2 = j2;
+          break;
+        }
+      }
+      if (to_merge_1 != nullptr) {
+        break;
+      }
+    }
+
+    if (to_merge_1 != nullptr) {
+      /** Do the merge **/
+      ClusteredJob *new_job = new ClusteredJob();
+      // Set the number of nodes
+      if (to_merge_1->getNumNodes() != to_merge_2->getNumNodes()) {
+        throw std::runtime_error("Posterior VC: Don't know how to merge jobs with different numbers of nodes");
+      }
+      new_job->setNumNodes(to_merge_1->getNumNodes());
+      // Add the tasks
+      for (auto t : to_merge_1->getTasks()) {
+        new_job->addTask(t);
+      }
+      for (auto t : to_merge_2->getTasks()) {
+        new_job->addTask(t);
+      }
+      // Add the job
+      output_jobs.insert(new_job);
+      // Remove the old ones
+      output_jobs.erase(to_merge_1);
+      output_jobs.erase(to_merge_2);
+
+
+    } else {
+      // Couldn't find another merge
+      break;
+    }
+  }
+
+  return output_jobs;
+}
+
+bool StaticClusteringWMS::areJobsMergable(ClusteredJob *j1, ClusteredJob *j2) {
+
+  return isSingleParentSingleChildPair(j1, j2) or isSingleParentSingleChildPair(j2,j1);
+
+}
+
+bool StaticClusteringWMS::isSingleParentSingleChildPair(ClusteredJob *pj, ClusteredJob *cj) {
+
+  for (auto parent_task : pj->getTasks()) {
+    for (auto child_task : this->getWorkflow()->getTaskChildren(parent_task)) {
+      std::vector<wrench::WorkflowTask*> cj_tasks = cj->getTasks();
+      bool child_task_in_cj = std::find(cj_tasks.begin(), cj_tasks.end(), child_task) != cj_tasks.end();
+      std::vector<wrench::WorkflowTask*> pj_tasks = pj->getTasks();
+      bool child_task_in_pj = std::find(pj_tasks.begin(), pj_tasks.end(), child_task) != pj_tasks.end();
+      if ((not child_task_in_cj) and (not child_task_in_pj)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
