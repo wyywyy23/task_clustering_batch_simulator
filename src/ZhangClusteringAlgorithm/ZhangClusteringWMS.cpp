@@ -96,7 +96,7 @@ namespace wrench {
 
 
       for (auto ph : this->running_placeholder_jobs) {
-        start_level =  1 + MAX(start_level, ph->end_level);
+        start_level =  1 + std::max<unsigned long>(start_level, ph->end_level);
       }
 
       // Nothing to do?
@@ -433,30 +433,39 @@ namespace wrench {
                                      "handled by the algorithm by Zhang et al.");
           }
         }
-        unsigned long level_parallelism = MIN(num_tasks_in_level, this->number_of_hosts);
-        parallelism = MAX(parallelism, level_parallelism);
+        unsigned long level_parallelism = std::min<unsigned long>(num_tasks_in_level, this->number_of_hosts);
+        parallelism = std::max<unsigned long>(parallelism, level_parallelism);
       }
 
 //      WRENCH_INFO("THERE ARE %ld tasks in level range %ld-%ld",
 //              this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level).size(), start_level, end_level);
       // Figure out the maximum execution time
-      double makespan = WorkflowUtil::estimateMakespan(this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level), parallelism, this->core_speed);
+      // TODO: Do a search between 1 and parallelism to pick the best job size
+      unsigned long picked_parallelism = -1;
+      double best_makespan = 0.0;
 
+      for (unsigned long i=1; i <= parallelism; i++) {
+        double makespan = WorkflowUtil::estimateMakespan(this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level), i, this->core_speed);
+        if ((picked_parallelism == -1) or (makespan < best_makespan)) {
+          picked_parallelism = i;
+          best_makespan = makespan;
+        }
+      }
 
       // Figure out the estimated wait time
       std::set<std::tuple<std::string,unsigned int,unsigned int, double>> job_config;
       std::string config_key = "config_XXXX_" + std::to_string(sequence++); // need to make it unique for BATSCHED
-      job_config.insert(std::make_tuple(config_key, (unsigned int)parallelism, 1, makespan));
+      job_config.insert(std::make_tuple(config_key, (unsigned int)picked_parallelism, 1, best_makespan));
       std::map<std::string, double> estimates = this->batch_service->getStartTimeEstimates(job_config);
       if (estimates[config_key] < 0) {
         throw std::runtime_error("Could not obtain start time estimate... aborting");
       }
-      double wait_time_estimate = MAX(0, estimates[config_key] - this->simulation->getCurrentSimulatedDate());
+      double wait_time_estimate = std::max<double>(0, estimates[config_key] - this->simulation->getCurrentSimulatedDate());
 
       WRENCH_INFO("GroupLevel(%ld,%ld): parallelism=%ld, wait_time=%.2lf, execution_time=%.2lf",
-                  start_level, end_level, parallelism, wait_time_estimate, makespan);
+                  start_level, end_level, picked_parallelism, wait_time_estimate, best_makespan);
 
-      return std::make_tuple(wait_time_estimate, makespan, parallelism);
+      return std::make_tuple(wait_time_estimate, best_makespan, picked_parallelism);
     }
 
 };

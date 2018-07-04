@@ -155,7 +155,7 @@ namespace wrench {
 
       double makespan = 0;
       for (int i=0; i < num_hosts; i++) {
-        makespan = MAX(makespan, idle_date[i]);
+        makespan = std::max<double>(makespan, idle_date[i]);
       }
       return makespan;
 

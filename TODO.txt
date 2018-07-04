@@ -1,22 +1,66 @@
 
-* Job unlimited
+CURRENT STORY
 
-    - No pilot job:
-            - 1 job / 1 task
-            - A-priori clustering (Chen et al.):  n tasks -> 1 sequential task:    1 job / 1 task
-            - clustering de task into jobs:
-                    - choose job shape based on queue-wait time prediction
-                    - whatever tasks make sense in a job
+    - Algorithms (JOBS UNLIMITED):
+        - Baseline:
+            - 1 job / 1 tasks
+            - 1 job / workflow (number of hosts picked statically or based on queue wait time prediction)
+                - show that queue wait time prediction is not useless
+            
+         - Zhang et al:
+            - Problem #1: DAG parallelism too large
+            - Problem #2: Granularity is a level: too big!
+                        - waste backfilling opportunities
 
-    - Pilot job:
-            - Keith Cooper (level-by-level)
-            - Queue-aware pilot job, dynamic-scheduling: heuristic to submit appropriate pilot jobs
+            - Problem #1: eaxy to fix (fixed de facon stupide - TO CHECK)
 
-    - Scheduler effect overhead (to deal with submitting too many jobs)
+            - Problem #2: cut levels into jobs
+                    - Idea already proposed by Chen et al. but without picking number of nodes
+                    - We pick number of nodes based on 
+                            - fixed (parameter)
+                            - based on queue wait time predictions
+
+
+     - What happens with LIMITED JOBS?
+            - It's relevant to many prodcution queues
+            - How do we change our strategies?
+            - The "A bunch of pilot jobs" approach: does it work???
+
+
+-----------------------------------
+            
+
+    - Never submit a job that contains a task that's not ready due to a parent in another job (no aggressive overlap)
+            A) 1 job / 1 task
+
+            B) 1 job for the whole workflow
+            C) A-priori clustering (Chen et al.):  n tasks -> 1 sequential task:    1 job / 1 task
+            D) Zhang et al WITHOUT overlap
+
+            B, C, D above:  clustering without picking number of nodes for jobs
+            
+            Idea #1: augment B, C and D with "pick number of nodes, ultimately based on queue wait time prediction"
+
+            Question: How to augment previously proposed clustering techniques to better pick number of nodes? 
+                        - What is the potential impact?
+                        - Simple heuristic to pick? (likely using queue prediction works better)
+
+    - Allow for aggressive overlap
+            - Zhang et al. (batch-of-level-by-batch-of-level)
+
+
+    - Pilot-jobs only:
+            - Keep submitting pilot jobs
+            - Do purely dynamic task scheduling...
+
+
+    - Detail: Scheduler effect overhead (to deal with submitting too many jobs)
 
 
 * If jobs are limited, what do we do?
 
+
+--------------------------------------
 
 Much later: data transfers
 
