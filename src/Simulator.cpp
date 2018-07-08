@@ -102,7 +102,8 @@ int main(int argc, char **argv) {
     std::cerr << "      - [plimit|pnolimit]: plimit is the original algorithm that will complain if the workflow" << "\n";
     std::cerr << "        parallelism is larger than the number of hosts. pnolimit is an extension that will not" << "\n";
     std::cerr << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although" << "\n";
-    std::cerr << "        not intended by its authors" << "\n";
+    std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts" << "\n";
+    std::cerr << "        to pack that tasks into a job" << "\n";
     std::cerr << "\n";
     exit(1);
   }

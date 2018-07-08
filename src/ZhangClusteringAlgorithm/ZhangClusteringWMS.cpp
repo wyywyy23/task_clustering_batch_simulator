@@ -354,11 +354,12 @@ namespace wrench {
       if (placeholder_job != nullptr) {
 
         placeholder_job->num_completed_tasks++;
-        // Terminate the standard job in case all its tasks are done
+        // Terminate the pilot job in case all its tasks are done
         if (placeholder_job->num_completed_tasks == placeholder_job->tasks.size()) {
           WRENCH_INFO("All tasks are completed in this placeholder job, so I am terminating it (%s)",
                       placeholder_job->pilot_job->getName().c_str());
           try {
+            WRENCH_INFO("TERMINATING A PILOT JOB");
             this->job_manager->terminateJob(placeholder_job->pilot_job);
           } catch (WorkflowExecutionException &e) {
             // ignore
@@ -437,18 +438,30 @@ namespace wrench {
         parallelism = std::max<unsigned long>(parallelism, level_parallelism);
       }
 
+      // At this point, parallelism is the max parallelism in the DAG
+
 //      WRENCH_INFO("THERE ARE %ld tasks in level range %ld-%ld",
 //              this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level).size(), start_level, end_level);
-      // Figure out the maximum execution time
-      // TODO: Do a search between 1 and parallelism to pick the best job size
+
       unsigned long picked_parallelism = -1;
       double best_makespan = 0.0;
 
-      for (unsigned long i=1; i <= parallelism; i++) {
-        double makespan = WorkflowUtil::estimateMakespan(this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level), i, this->core_speed);
-        if ((picked_parallelism == -1) or (makespan < best_makespan)) {
-          picked_parallelism = i;
-          best_makespan = makespan;
+      if (this->plimit) { //Ensure strict application of Zhang's
+        picked_parallelism = parallelism;
+        best_makespan = WorkflowUtil::estimateMakespan(this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
+                                                       picked_parallelism, this->core_speed);
+
+      } else { // Fix Zhang Problem #1 and also potentially improves resource usage for smaller jobs
+
+        // Figure out the maximum execution time
+        for (unsigned long i = 1; i <= parallelism; i++) {
+
+          double makespan = WorkflowUtil::estimateMakespan(this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
+                                                           i, this->core_speed);
+          if ((picked_parallelism == -1) or (makespan < best_makespan)) {
+            picked_parallelism = i;
+            best_makespan = makespan;
+          }
         }
       }
 

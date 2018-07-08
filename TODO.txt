@@ -1,66 +1,157 @@
+- Pick experimental framework
+        - Worklows
+            - Real-world: Pegasus usual suspects (Cybershake, Montage, Genome, LIGO???)
+                - using the Pegasus Generator [HENRI]
+
+            - Synthetic:
+                - level by level
+                
+        - Logs
+            - Use the same logs as wht Millian used in him dissertation 
+                - Put URLs here [PF]:
+
+        - Scheduling Algorihtms
+            [PF  ]    FCFS (to implement in Batsched)
+            -  CBF
+            - NO EASY because it affords no batch prediction
+                - Perhaps add it for "no prediction" results with Solution #1
+
+- Implement execution efficiency as an output to the simulator [HENRI]
+
+- UNLIMITED JOBS: 
+    - Implement Solution #1 below
+            [HENRI] "just code" 
+    
+    - Implement Solution #2 below
+            [HENRI] "just code"
+            [HENRI + PF] define heuristics
+
+- LIMITED JOBS:
+    [HENRI + PF] Come up with Heuristics for Solutions #1 and #2
+
+- Run experiments
+    UNLIMITED JOBS: 
+        - Phase #1: 
+                - 1 job / task
+                - 1 job / workflow
+                - Zhang original
+                - Zhang no overlap
+                - Zhang improed (for Problem #1)
+    
+            - Good to be between extremes
+            - Overlap is key (but difficult to do it more aggressively, i.e., more than 1 level ahead?)
+            - Efficiency of Zhang is not good (perhaps with a specific case study)
+    
+        - Phase #2:
+                - Solution #1
+    
+        - Phase #3:
+                - Solution #2
+
+    LIMIT JOBS:
+        - Re-run the exact same solutions, and see the effect
+        - Run our "adapted" heuristics
+
+
+- Write paper
+
+------------------------
 
 CURRENT STORY
 
     - Algorithms (JOBS UNLIMITED):
-        - Baseline:
-            - 1 job / 1 tasks
+
+          -----------------------------------------------------------------------------
+
+         Baseline:
+            - 1 job / task
             - 1 job / workflow (number of hosts picked statically or based on queue wait time prediction)
                 - show that queue wait time prediction is not useless
             
-         - Zhang et al:
-            - Problem #1: DAG parallelism too large
-            - Problem #2: Granularity is a level: too big!
+         Zhang et al:
+            - Show some results (one observation: overlap idea works)
+            - Problem #1: DAG parallelism too large -> fail
+            - Problem #2: Can lead to very large jobs
                         - waste backfilling opportunities
-
-            - Problem #1: eaxy to fix (fixed de facon stupide - TO CHECK)
-
-            - Problem #2: cut levels into jobs
-                    - Idea already proposed by Chen et al. but without picking number of nodes
-                    - We pick number of nodes based on 
-                            - fixed (parameter)
-                            - based on queue wait time predictions
+            - Problem #3: choice is only on makespan, without accounting for parallel efficiency within a job
+                    - Not necessarily good for makespan due batch scheduling algorithms
+                    - Could be problematic in terms of charges, etc. 
 
 
-     - What happens with LIMITED JOBS?
-            - It's relevant to many prodcution queues
+            - How to address Problem #1: 
+                - Solution: easy to fix : fold levels 
+                    - AND uses the smallest job size (# nodes) that achieves the best Makespan
+                - Comparison with original Zhang and with improved Zhang
+
+         -----------------------------------------------------------------------------
+
+            - How to address Problem #2: Create smaller jobs
+
+                - Solution #1: Reuse the overlap idea by Zhang, but go level-by-level since each level
+                               is split into jobs
+                    - Offline HORIZONTAL clustering: Some idea already proposed by Chen et al. (all static/parameterized)
+                    - Level-by-level
+                    - ALGO_CLUSTER_LEVEL: Cluster tasks in a level into multiple jobs
+                        - pick num_nodes per job based on: parameters or queue wait-time predictions
+                    - Submit these jobs 
+                    - OVERLAP: Once ALL of them have started, submit the next "batch" of jobs for the next level as 
+                        a "pilot job" in the sense of Zhang et al.
+                    - Repeat
+
+            -----------------------------------------------------------------------------
+    
+
+                - Solution #2: 
+                    - Same as Solution #1 but ALGO_CLUSTER_LEVEL is different
+                    - Objective: avoid "wasting" resources due to bad packing of tasks into jobs
+                    - Greedy/increment ALGO_CLUSTER_LEVEL:
+                            - Ask for a big job with all tasks and "max" number of nodes
+                            - Check the wait time vs. runtime compromise
+                            - Try a bunch job configurations
+                                - To determine: HEURISTICS
+                            - Make some decision based on some notion of "bang for your buck"
+                              and stop with some criterion (to avoid devolving to one job per task?)
+                    - Once ALL of them have started, submit the next "batch" of jobs for the next level as 
+                        a "pilot job" in the sense of Zhang et al.
+                    - Repeat
+
+            -----------------------------------------------------------------------------
+
+                - Solution #3: "A bunch of pilot jobs" (this paper?)
+                        - IDEA: Run Zhang to find overall job AREA, but then submit individual
+                                pilot job of same duration with variable number of nodes
+                                for better backfilling. And then do totally dynamic scheduling based
+                                on pilot jobs
+                        - ONE PILOT JOB PER SPECIFIC TASK: single pilot job flooding with unable "aggressivity"
+                            - Only "1 level ahead" submissions
+                            - aggressivity: if a task tasks time T, then submit for it a pilot job of time T*(1+x)
+                            - study cost/benefit of aggressivity (makespan vs. resource consumption/reservation)
+                        - PILOT JOBS OF FIXED SIZE (SEQUENTIAL)
+                            - Keep n jobs in the system, where n dependens on workflow parallelism 
+                                    (e.g., max parallelism of levels l, l+1, l+2
+                            - job duration = duration of longest task * (1 + x)
+                            - if pilot job starts and there is nothing to be done, kill it
+
+     - SAME but with LIMITED JOBS?
+            - It's relevant to many production queues
             - How do we change our strategies?
-            - The "A bunch of pilot jobs" approach: does it work???
+
+
+            - Questions:
+                - Is the VC thing useful?
+                - What about Scheduler overhead
+
+
+    - What about exploiting independent sub-structures??? (part of this paper?)
+
+             - Identify independent sub-structures to avoid the level-by-level
+               behavior, which, in the presence of sub-structures creates phantom
+               temporal dependencies
+
+                        - Could "check it" only on cases in which we know the structure
+            - But not easy: what if the sub-structures are big? And would it really help? 
+
+            - Perhaps the answer is: do it completely offline
 
 
 -----------------------------------
-            
-
-    - Never submit a job that contains a task that's not ready due to a parent in another job (no aggressive overlap)
-            A) 1 job / 1 task
-
-            B) 1 job for the whole workflow
-            C) A-priori clustering (Chen et al.):  n tasks -> 1 sequential task:    1 job / 1 task
-            D) Zhang et al WITHOUT overlap
-
-            B, C, D above:  clustering without picking number of nodes for jobs
-            
-            Idea #1: augment B, C and D with "pick number of nodes, ultimately based on queue wait time prediction"
-
-            Question: How to augment previously proposed clustering techniques to better pick number of nodes? 
-                        - What is the potential impact?
-                        - Simple heuristic to pick? (likely using queue prediction works better)
-
-    - Allow for aggressive overlap
-            - Zhang et al. (batch-of-level-by-batch-of-level)
-
-
-    - Pilot-jobs only:
-            - Keep submitting pilot jobs
-            - Do purely dynamic task scheduling...
-
-
-    - Detail: Scheduler effect overhead (to deal with submitting too many jobs)
-
-
-* If jobs are limited, what do we do?
-
-
---------------------------------------
-
-Much later: data transfers
-
