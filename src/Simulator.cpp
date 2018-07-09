@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
 
   // Create a BatchService
   std::vector<std::string> compute_nodes;
-  for (int i=0; i < num_compute_nodes; i++) {
+  for (unsigned int i=0; i < num_compute_nodes; i++) {
     compute_nodes.push_back("ComputeNode_" + std::to_string(i));
   }
   BatchService *batch_service;

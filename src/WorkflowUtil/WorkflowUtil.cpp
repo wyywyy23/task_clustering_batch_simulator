@@ -45,7 +45,7 @@ namespace wrench {
 
       // Initialize host idle dates
       double idle_date[num_hosts];
-      for (int i=0; i < num_hosts; i++) {
+      for (unsigned int i=0; i < num_hosts; i++) {
         idle_date[i] = 0.0;
       }
 
@@ -55,7 +55,7 @@ namespace wrench {
       std::tuple<WorkflowTask *, double> fake_tasks[num_tasks];  // WorkflowTask, completion time
 
       // Insert all fake_tasks
-      int i=0;
+      unsigned int i=0;
       for (auto task : tasks) {
         std::tuple<WorkflowTask *, double> fake_task;
         fake_task = std::make_tuple(task, -1.0);
@@ -87,7 +87,7 @@ namespace wrench {
           // Determine whether the task is schedulable
           bool schedulable = true;
           for (auto parent : workflow->getTaskParents(real_task)) {
-            for (int k=0; k < num_tasks; k++) {
+            for (unsigned int k=0; k < num_tasks; k++) {
               if (std::get<0>(fake_tasks[k]) == parent) {
 //                WRENCH_INFO("    LOOKING AT PARENT %s:  %.2lf", parent->getID().c_str(), std::get<1>(fake_tasks[k]));
                 if ((std::get<1>(fake_tasks[k]) > current_time) or
@@ -107,14 +107,14 @@ namespace wrench {
             continue;
           }
 
-          for (int j=0; j < num_hosts; j++) {
+          for (unsigned int j=0; j < num_hosts; j++) {
 //            WRENCH_INFO("LOOKING AT HOST %d: %.2lf", j, idle_date[j]);
             if (idle_date[j] <= current_time) {
 //              WRENCH_INFO("SCHEDULING TASK on HOST %d", j);
               double new_time = current_time + real_task->getFlops() / core_speed;
               fake_tasks[i] = std::make_tuple(std::get<0>(ft), new_time);
 
-              for (int k=0; k < num_tasks; k++) {
+              for (unsigned int k=0; k < num_tasks; k++) {
 //                WRENCH_INFO("------> %.2lf", std::get<1>(fake_tasks[k]));
               }
 
@@ -135,7 +135,7 @@ namespace wrench {
         if (scheduled_something) {
           // Set current time to min idle time
           double min_idle_time = DBL_MAX;
-          for (int j = 0; j < num_hosts; j++) {
+          for (unsigned int j = 0; j < num_hosts; j++) {
             if (idle_date[j] < min_idle_time) {
               min_idle_time = idle_date[j];
             }
@@ -143,7 +143,7 @@ namespace wrench {
           current_time = min_idle_time;
         } else {
           double second_min_idle_time = DBL_MAX;
-          for (int j = 0; j < num_hosts; j++) {
+          for (unsigned int j = 0; j < num_hosts; j++) {
             if ((idle_date[j] > current_time) and (idle_date[j] < second_min_idle_time)) {
               second_min_idle_time = idle_date[j];
             }
@@ -154,7 +154,7 @@ namespace wrench {
       }
 
       double makespan = 0;
-      for (int i=0; i < num_hosts; i++) {
+      for (unsigned int i=0; i < num_hosts; i++) {
         makespan = std::max<double>(makespan, idle_date[i]);
       }
       return makespan;
