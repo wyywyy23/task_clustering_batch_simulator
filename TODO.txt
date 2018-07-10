@@ -8,7 +8,7 @@
                 
         - Logs
             - Use the same logs as wht Millian used in him dissertation 
-                - Put URLs here [PF]:
+                - All available at: http://dirt00.ics.hawaii.edu/~henric/swf_traces_json/
 
         - Scheduling Algorihtms
             [PF  ]    FCFS (to implement in Batsched)
