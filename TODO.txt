@@ -11,7 +11,7 @@
                 - All available at: http://dirt00.ics.hawaii.edu/~henric/swf_traces_json/
 
         - Scheduling Algorihtms
-            [PF  ]    FCFS (to implement in Batsched)
+            [PF(DONE-TESTS NEEDED)]    FCFS (to implement in Batsched)
             -  CBF
             - NO EASY because it affords no batch prediction
                 - Perhaps add it for "no prediction" results with Solution #1
