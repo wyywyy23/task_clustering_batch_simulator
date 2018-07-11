@@ -115,79 +115,73 @@ int main(int argc, char **argv) {
     std::cerr << "\n";
     exit(1);
   }
-//  unsigned long num_compute_nodes;
-//  if ((sscanf(argv[1], "%lu", &num_compute_nodes) != 1) or (num_compute_nodes < 1)) {
-//    std::cerr << "Invalid number of compute nodes\n";
-//  }
-//
-//  unsigned long max_num_jobs;
-//  if ((sscanf(argv[3], "%lu", &max_num_jobs) != 1) or (max_num_jobs < 1)) {
-//    std::cerr << "Invalid maximum number of jobs\n";
-//  }
-//
-//
-//  double workflow_start_time;
-//  if ((sscanf(argv[5], "%lf", &workflow_start_time) != 1) or (workflow_start_time < 0)) {
-//    std::cerr << "Invalid workflow start time\n";
-//  }
-//
-//  std::string scheduler_spec = std::string(argv[6]);
+  unsigned long num_compute_nodes;
+  if ((sscanf(argv[1], "%lu", &num_compute_nodes) != 1) or (num_compute_nodes < 1)) {
+    std::cerr << "Invalid number of compute nodes\n";
+  }
+
+  unsigned long max_num_jobs;
+  if ((sscanf(argv[3], "%lu", &max_num_jobs) != 1) or (max_num_jobs < 1)) {
+    std::cerr << "Invalid maximum number of jobs\n";
+  }
+
+
+  double workflow_start_time;
+  if ((sscanf(argv[5], "%lf", &workflow_start_time) != 1) or (workflow_start_time < 0)) {
+    std::cerr << "Invalid workflow start time\n";
+  }
+
+  std::string scheduler_spec = std::string(argv[6]);
 
   // Setup the simulation platform
-  setupSimulationPlatform(simulation, 2);
-//  setupSimulationPlatform(simulation, num_compute_nodes);
+  setupSimulationPlatform(simulation, num_compute_nodes);
 
-//  // Create a BatchService
-//  std::vector<std::string> compute_nodes;
-//  for (unsigned int i=0; i < num_compute_nodes; i++) {
-//    compute_nodes.push_back(std::string("ComputeNode_") + std::to_string(i));
-//  }
+  // Create a BatchService
+  std::vector<std::string> compute_nodes;
+  for (unsigned int i=0; i < num_compute_nodes; i++) {
+    compute_nodes.push_back(std::string("ComputeNode_") + std::to_string(i));
+  }
   BatchService *batch_service;
   std::string login_hostname = "Login";
 
   std::string csv_batch_log = "/tmp/batch_log.csv";
-//  if (argc == 9) {
-//    csv_batch_log = std::string(argv[8]);
-//  }
+  if (argc == 9) {
+    csv_batch_log = std::string(argv[8]);
+  }
 
-//  for (auto s : compute_nodes) {
-//    std::cerr << "----> " << s << "\n";
-//  }
+  for (auto s : compute_nodes) {
+    std::cerr << "----> " << s << "\n";
+  }
 
   try {
-    batch_service = new BatchService(login_hostname, {"foo"}, 0,
-                                     {
+    batch_service = new BatchService(login_hostname, compute_nodes, 0,
+                                     {{BatchServiceProperty::OUTPUT_CSV_JOB_LOG, csv_batch_log},
+                                      {BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, std::string(argv[7])},
+                                      {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])}
                                      }, {});
-
-//    batch_service = new BatchService(login_hostname, compute_nodes, 0,
-//                                     {{BatchServiceProperty::OUTPUT_CSV_JOB_LOG, csv_batch_log},
-//                                      {BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, std::string(argv[7])},
-//                                      {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])}
-//                                     }, {});
   } catch (std::invalid_argument &e) {
 
     return 0;
 
-//    for (auto s : compute_nodes) {
-//      std::cerr << "----> " << s << "\n";
-//    }
+    for (auto s : compute_nodes) {
+      std::cerr << "----> " << s << "\n";
+    }
 
-//    WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
-//    WRENCH_INFO("Trying the non-BATSCHED option...");
-//    try {
-//      batch_service = new BatchService(login_hostname, compute_nodes, 0,
-//                                       {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
-//                                        {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])}
-//                                       }, {});
-//    } catch (std::invalid_argument &e) {
-//      WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
-//      std::cerr << "Giving up as I cannot instantiate the Batch Service\n";
-//      exit(1);
-//    }
+    WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
+    WRENCH_INFO("Trying the non-BATSCHED option...");
+    try {
+      batch_service = new BatchService(login_hostname, compute_nodes, 0,
+                                       {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
+                                        {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])}
+                                       }, {});
+    } catch (std::invalid_argument &e) {
+      WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
+      std::cerr << "Giving up as I cannot instantiate the Batch Service\n";
+      exit(1);
+    }
     WRENCH_INFO("Successfully instantiated a non-BATSCHED FCFS batch service!");
   }
 
-  #if 0
   simulation->add(batch_service);
 
   // Create the WMS
@@ -230,8 +224,6 @@ int main(int argc, char **argv) {
 
   std::cout << "WORKFLOW MAKESPAN: " << (workflow->getCompletionDate() - workflow_start_time) << "\n";
   std::cerr << "CSV Log file create at " << csv_batch_log << "\n";
-
-  #endif
 
 }
 
@@ -391,7 +383,7 @@ Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
     for (unsigned long t=0; t < num_tasks[l]; t++) {
       unsigned long flops = (*m_udists[l])(rng);
       tasks[l].push_back(workflow->addTask("Task_l" + std::to_string(l) + "_" +
-                                           std::to_string(t), (double) flops, 1, 1, 1.0, 0.0));
+                                                   std::to_string(t), (double) flops, 1, 1, 1.0, 0.0));
     }
   }
 
