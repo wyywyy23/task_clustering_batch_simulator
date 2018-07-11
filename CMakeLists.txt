@@ -1,4 +1,4 @@
-SET(CMAKE_C_FLAGS_DEBUG "-D_DEBUG")
+#SET(CMAKE_C_FLAGS_DEBUG "-D_DEBUG")
 cmake_minimum_required(VERSION 3.2)
 message(STATUS "Cmake version ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 project(task_clustering_batch_simulator)

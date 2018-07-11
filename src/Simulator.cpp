@@ -149,10 +149,6 @@ int main(int argc, char **argv) {
     csv_batch_log = std::string(argv[8]);
   }
 
-  for (auto s : compute_nodes) {
-    std::cerr << "----> " << s << "\n";
-  }
-
   try {
     batch_service = new BatchService(login_hostname, compute_nodes, 0,
                                      {{BatchServiceProperty::OUTPUT_CSV_JOB_LOG, csv_batch_log},
@@ -160,10 +156,6 @@ int main(int argc, char **argv) {
                                       {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])}
                                      }, {});
   } catch (std::invalid_argument &e) {
-
-    for (auto s : compute_nodes) {
-      std::cerr << "----> " << s << "\n";
-    }
 
     WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
     WRENCH_INFO("Trying the non-BATSCHED option...");
@@ -177,7 +169,6 @@ int main(int argc, char **argv) {
       std::cerr << "Giving up as I cannot instantiate the Batch Service\n";
       exit(1);
     }
-    WRENCH_INFO("Successfully instantiated a non-BATSCHED FCFS batch service!");
   }
 
   simulation->add(batch_service);
