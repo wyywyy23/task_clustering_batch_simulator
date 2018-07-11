@@ -141,13 +141,15 @@ int main(int argc, char **argv) {
   for (unsigned int i=0; i < num_compute_nodes; i++) {
     compute_nodes.push_back(std::string("ComputeNode_") + std::to_string(i));
   }
-  BatchService *batch_service;
+  wrench::BatchService *batch_service = nullptr;
   std::string login_hostname = "Login";
 
   std::string csv_batch_log = "/tmp/batch_log.csv";
   if (argc == 9) {
     csv_batch_log = std::string(argv[8]);
   }
+
+  std::cout << "SIZE = " << sizeof(BatchService) << "\n";
 
   try {
     batch_service = new BatchService(login_hostname, compute_nodes, 0,
