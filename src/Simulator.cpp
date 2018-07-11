@@ -26,8 +26,8 @@ int main(int argc, char **argv) {
   simulation->init(&argc, argv);
 
   // Parse command-line arguments
-  if (argc != 7) {
-    std::cerr << "\e[1;31mUsage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm>\e[0m" << "\n";
+  if ((argc != 7) and (argc != 8)) {
+    std::cerr << "\e[1;31mUsage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm> [csv batch log]\e[0m" << "\n";
     std::cerr << "  \e[1;32m### workflow specification options ###\e[0m" << "\n";
     std::cerr << "    *  \e[1mindep:s:n:t1:t2\e[0m " << "\n";
     std::cerr << "      - Just a set of independent tasks" << "\n";
@@ -135,9 +135,16 @@ int main(int argc, char **argv) {
   }
   BatchService *batch_service;
   std::string login_hostname = "Login";
+
+  std::string csv_batch_log = "/tmp/batch_log.csv";
+  if (argc == 8) {
+    csv_batch_log = std::string(argv[8]);
+  }
+
   try {
     batch_service = new BatchService(login_hostname, compute_nodes, 0,
                                      {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, "conservative_bf"},
+                                      {BatchServiceProperty::OUTPUT_CSV_JOB_LOG, csv_batch_log},
                                       {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}
                                      }, {});
   } catch (std::invalid_argument &e) {
