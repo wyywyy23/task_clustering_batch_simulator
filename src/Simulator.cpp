@@ -26,8 +26,8 @@ int main(int argc, char **argv) {
   simulation->init(&argc, argv);
 
   // Parse command-line arguments
-  if (argc != 7) {
-    std::cerr << "\e[1;31mUsage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm>\e[0m" << "\n";
+  if (argc != 8) {
+    std::cerr << "\e[1;31mUsage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm> <batch algorithm>\e[0m" << "\n";
     std::cerr << "  \e[1;32m### workflow specification options ###\e[0m" << "\n";
     std::cerr << "    *  \e[1mindep:s:n:t1:t2\e[0m " << "\n";
     std::cerr << "      - Just a set of independent tasks" << "\n";
@@ -105,6 +105,14 @@ int main(int argc, char **argv) {
     std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts" << "\n";
     std::cerr << "        to pack that tasks into a job" << "\n";
     std::cerr << "\n";
+    std::cerr << "  \e[1;32m### batch algorithm options ###\e[0m" << "\n";
+    std::cerr << "    * \e[1mconservative_bf\e[0m" << "\n";
+    std::cerr << "      - classical conservative backfilling" << "\n";
+    std::cerr << "    * \e[1mfast_conservative_bf\e[0m" << "\n";
+    std::cerr << "      - faster backfilling algorithm, still conservative but not exactly canon" << "\n";
+    std::cerr << "    * \e[1mfcfs_fast\e[0m" << "\n";
+    std::cerr << "      - first come, first serve" << "\n";
+    std::cerr << "\n";
     exit(1);
   }
   unsigned long num_compute_nodes;
@@ -137,7 +145,7 @@ int main(int argc, char **argv) {
   std::string login_hostname = "Login";
   try {
     batch_service = new BatchService(login_hostname, compute_nodes, 0,
-                                     {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, "conservative_bf"},
+                                     {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, argv[7]},
                                       {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, argv[2]}
                                      }, {});
   } catch (std::invalid_argument &e) {

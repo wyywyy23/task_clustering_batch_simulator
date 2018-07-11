@@ -9,9 +9,9 @@ a batch scheduled service.
 
 
 <tt>
-  - ./simulator --log=root.threshold:critical --log=zhang_clustering_wms.threshold=info  10 ./NASA-iPSC-1993-3.swf 10 levels:42:10:10:1000 0 zhang:overlap:plimit
+  - ./simulator --log=root.threshold:critical --log=zhang_clustering_wms.threshold=info  10 ./NASA-iPSC-1993-3.swf 10 levels:42:10:10:1000 0 zhang:overlap:plimit conservative_bf
 
-  - ./simulator 10 ./NASA-iPSC-1993-3.swf 10 levels:42:10:10:1000 0 static:one_job-2
+  - ./simulator 10 ./NASA-iPSC-1993-3.swf 10 levels:42:10:10:1000 0 static:one_job-2 conservative_bf
 
 </tt>
 
