@@ -223,8 +223,7 @@ namespace wrench {
       // Just for kicks, check it was the pending one
       WRENCH_INFO("Got a Pilot Job Start event: %s", e->pilot_job->getName().c_str());
       if (this->pending_placeholder_job == nullptr) {
-        WRENCH_INFO("FATAL!!! Got a PILOT JOB START EVENT, but PENDING_PLACEHOLDER == NULLPTR");
-        exit(1);
+        throw std::runtime_error("Fatal Error: couldn't find a placeholder job for a pilob job that just started");
       }
 //      WRENCH_INFO("Got a Pilot Job Start event e->pilot_job = %ld, this->pending->pilot_job = %ld (%s)",
 //                  (unsigned long) e->pilot_job,

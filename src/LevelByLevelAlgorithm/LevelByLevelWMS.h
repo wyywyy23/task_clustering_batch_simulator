@@ -23,15 +23,20 @@ namespace wrench {
 
         LevelByLevelWMS(std::string hostname, bool overlap, std::string clustering_spec, BatchService *batch_service);
 
+
     private:
 
         int main() override;
+        void processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) override;
+        void processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) override;
+        void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) override;
+        void processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) override;
+
         void submitPilotJobsForNextLevel();
+
         std::set<PlaceHolderJob *> createPlaceHolderJobsForLevel(unsigned long level);
 
-
-
-          bool overlap;
+        bool overlap;
         std::string clustering_spec;
         BatchService *batch_service;
 
