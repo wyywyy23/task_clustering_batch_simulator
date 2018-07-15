@@ -94,7 +94,8 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {
       throw std::runtime_error("Invalid static:hc specification");
     }
-    return createHCJobs(tokens[1], num_tasks_per_cluster, num_nodes_per_cluster);
+    return createHCJobs(tokens[1], num_tasks_per_cluster, num_nodes_per_cluster,
+                        this->getWorkflow(), 0, this->getWorkflow()->getNumLevels()-1);
   }
 
   /** DFJS Clustering **/
@@ -111,7 +112,8 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {
       throw std::runtime_error("Invalid static:dfjs specification");
     }
-    return createDFJSJobs(tokens[1], num_seconds_per_cluster, num_nodes_per_cluster);
+    return createDFJSJobs(tokens[1], num_seconds_per_cluster, num_nodes_per_cluster,
+                          this->core_speed, this->getWorkflow(), 0, this->getWorkflow()->getNumLevels()-1);
   }
 
   /** HRB Clustering **/
@@ -128,7 +130,8 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {
       throw std::runtime_error("Invalid static:hrb specification");
     }
-    return createHRBJobs(tokens[1], num_tasks_per_cluster, num_nodes_per_cluster);
+    return createHRBJobs(tokens[1], num_tasks_per_cluster, num_nodes_per_cluster,
+                         this->core_speed, this->getWorkflow(), 0, this->getWorkflow()->getNumLevels()-1);
   }
 
   /** HIFB Clustering **/
@@ -145,7 +148,8 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {
       throw std::runtime_error("Invalid static:hifb specification");
     }
-    return createHIFBJobs(tokens[1], num_tasks_per_cluster, num_nodes_per_cluster);
+    return createHIFBJobs(tokens[1], num_tasks_per_cluster, num_nodes_per_cluster,
+                          this->getWorkflow(), 0, this->getWorkflow()->getNumLevels()-1);
   }
 
   /** HDB Clustering **/
@@ -162,7 +166,8 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {
       throw std::runtime_error("Invalid static:hdb specification");
     }
-    return createHDBJobs(tokens[1], num_tasks_per_cluster, num_nodes_per_cluster);
+    return createHDBJobs(tokens[1], num_tasks_per_cluster, num_nodes_per_cluster,
+                         this->getWorkflow(), 0, this->getWorkflow()->getNumLevels()-1);
   }
 
   /** VC Clustering **/
@@ -277,17 +282,19 @@ void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
 
 }
 
-std::set<ClusteredJob *>  StaticClusteringWMS::createHCJobs(std::string vc, unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster) {
+std::set<ClusteredJob *>  StaticClusteringWMS::createHCJobs(
+        std::string vc, unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster,
+        Workflow *workflow, unsigned long start_level, unsigned long end_level) {
 
   std::set<ClusteredJob *> jobs;
 
   if (vc == "vprior") {
-    mergeSingleParentSingleChildPairs();
+    mergeSingleParentSingleChildPairs(workflow);
   }
 
   // Go through each level and creates jobs
-  for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
-    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
+  for (unsigned long l = start_level; l <= end_level; l++) {
+    auto tasks_in_level = workflow->getTasksInTopLevelRange(l, l);
     ClusteredJob *job = nullptr;
     for (auto t : tasks_in_level) {
       if (job == nullptr) {
@@ -306,29 +313,32 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHCJobs(std::string vc, unsi
   }
 
   if (vc == "vposterior") {
-    jobs = applyPosteriorVC(jobs);
+    jobs = applyPosteriorVC(workflow, jobs);
   }
 
   return jobs;
 }
 
 
-std::set<ClusteredJob *> StaticClusteringWMS::createDFJSJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster) {
+std::set<ClusteredJob *> StaticClusteringWMS::createDFJSJobs(
+        std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster,
+        double core_speed,
+        Workflow *workflow, unsigned long start_level, unsigned long end_level) {
   std::set<ClusteredJob *> jobs;
 
 
   if (vc == "vprior") {
-    mergeSingleParentSingleChildPairs();
+    mergeSingleParentSingleChildPairs(workflow);
   }
 
   // Go through each level and creates jobs
-  for (unsigned long l = 0; l < this->getWorkflow()->getNumLevels(); l++) {
-    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
+  for (unsigned long l = start_level; l <= end_level; l++) {
+    auto tasks_in_level = workflow->getTasksInTopLevelRange(l, l);
 
     auto job = new ClusteredJob();
     job->setNumNodes(num_nodes_per_cluster);
     for (auto t : tasks_in_level) {
-      auto task_execution_time = (unsigned long)(ceil(t->getFlops() / this->core_speed));
+      auto task_execution_time = (unsigned long)(ceil(t->getFlops() / core_speed));
       if (task_execution_time > num_seconds_per_cluster) {
         throw std::runtime_error("Task " + t->getID() + " by itself takes longer (" + std::to_string(task_execution_time) +
                                  " sec) than the cluster duration upper bound ( " +
@@ -337,7 +347,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createDFJSJobs(std::string vc, uns
       // Should we add to the job?
       std::vector<wrench::WorkflowTask *> tentative_tasks = job->getTasks();
       tentative_tasks.push_back(t);
-      double estimated_makespan = WorkflowUtil::estimateMakespan(tentative_tasks, num_nodes_per_cluster, this->core_speed);
+      double estimated_makespan = WorkflowUtil::estimateMakespan(tentative_tasks, num_nodes_per_cluster, core_speed);
       if ((unsigned long)(ceil(estimated_makespan)) <= num_seconds_per_cluster) {
         job->addTask(t);
       } else {
@@ -351,7 +361,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createDFJSJobs(std::string vc, uns
   }
 
   if (vc == "vposterior") {
-    jobs = applyPosteriorVC(jobs);
+    jobs = applyPosteriorVC(workflow, jobs);
   }
 
   // Sanity check
@@ -366,17 +376,18 @@ std::set<ClusteredJob *> StaticClusteringWMS::createDFJSJobs(std::string vc, uns
 }
 
 
-std::set<ClusteredJob *>  StaticClusteringWMS::createHRBJobs(std::string vc, unsigned long num_tasks_per_cluster,
-                                                             unsigned long num_nodes_per_cluster) {
+std::set<ClusteredJob *>  StaticClusteringWMS::createHRBJobs(
+        std::string vc, unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster,
+        double core_speed, Workflow *workflow, unsigned long start_level, unsigned long end_level) {
   std::set<ClusteredJob *> jobs;
 
   if (vc == "vprior") {
-    mergeSingleParentSingleChildPairs();
+    mergeSingleParentSingleChildPairs(workflow);
   }
 
   // Go through each level and creates jobs
-  for (unsigned long l = 0; l < this->getWorkflow()->getNumLevels(); l++) {
-    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
+  for (unsigned long l = start_level; l <= end_level; l++) {
+    auto tasks_in_level = workflow->getTasksInTopLevelRange(l, l);
 
     // Create all the jobs
     unsigned long num_level_jobs = tasks_in_level.size() / num_tasks_per_cluster +
@@ -406,10 +417,10 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHRBJobs(std::string vc, uns
       for (unsigned long i=1; i < num_level_jobs; i++) {
         double currently_selected_makespan = WorkflowUtil::estimateMakespan(
                 level_jobs[selected_index]->getTasks(),
-                num_nodes_per_cluster, this->core_speed);
+                num_nodes_per_cluster, core_speed);
         double candidate_makespan = WorkflowUtil::estimateMakespan(
                 level_jobs[i]->getTasks(),
-                num_nodes_per_cluster, this->core_speed);
+                num_nodes_per_cluster, core_speed);
         if ((candidate_makespan < currently_selected_makespan) and
             (level_jobs[i]->getNumTasks() < num_tasks_per_cluster)) {
           selected_index = i;
@@ -427,7 +438,7 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHRBJobs(std::string vc, uns
   }
 
   if (vc == "vposterior") {
-    jobs = applyPosteriorVC(jobs);
+    jobs = applyPosteriorVC(workflow, jobs);
   }
 
   return jobs;
@@ -435,26 +446,27 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHRBJobs(std::string vc, uns
 
 
 
-std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(std::string vc, unsigned long num_tasks_per_cluster,
-                                                              unsigned long num_nodes_per_cluster) {
+std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(
+        std::string vc, unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster,
+        Workflow *workflow, unsigned long start_level, unsigned long end_level) {
   std::set<ClusteredJob *> jobs;
 
   if (vc == "vprior") {
-    mergeSingleParentSingleChildPairs();
+    mergeSingleParentSingleChildPairs(workflow);
   }
 
   /** Compute all task "Impact Factors" **/
 //  WRENCH_INFO("Compute all IFs");
   std::map<wrench::WorkflowTask *, double> impact_factors;
-  for (unsigned long l = 0; l < this->getWorkflow()->getNumLevels(); l++) {
-    unsigned long level = this->getWorkflow()->getNumLevels() -1 - l;
-    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(level,level);
+  for (unsigned long l = 0; l < workflow->getNumLevels(); l++) {
+    unsigned long level = workflow->getNumLevels() -1 - l;
+    auto tasks_in_level = workflow->getTasksInTopLevelRange(level,level);
     for (auto t : tasks_in_level) {
       if (t->getNumberOfChildren() == 0) {
         impact_factors.insert(std::make_pair(t, 1.0));
       } else {
         double impact_factor = 0.0;
-        for (auto child : this->getWorkflow()->getTaskChildren(t)) {
+        for (auto child : workflow->getTaskChildren(t)) {
           impact_factor += impact_factors[child] / child->getNumberOfParents();
         }
         impact_factors.insert(std::make_pair(t, impact_factor));
@@ -467,9 +479,9 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(std::string vc, un
 //  }
 
   /** Go through each level and creates jobs **/
-  for (unsigned long l = 0; l < this->getWorkflow()->getNumLevels(); l++) {
+  for (unsigned long l = start_level; l <= end_level; l++) {
 
-    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
+    auto tasks_in_level = workflow->getTasksInTopLevelRange(l, l);
 
     // Create all the jobs
     unsigned long num_level_jobs = tasks_in_level.size() / num_tasks_per_cluster +
@@ -578,7 +590,7 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(std::string vc, un
   }
 
   if (vc == "vposterior") {
-    jobs = applyPosteriorVC(jobs);
+    jobs = applyPosteriorVC(workflow, jobs);
   }
 
   return jobs;
@@ -586,21 +598,22 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHIFBJobs(std::string vc, un
 
 
 
-std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(std::string vc, unsigned long num_tasks_per_cluster,
-                                                             unsigned long num_nodes_per_cluster) {
+std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(
+        std::string vc, unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster,
+        Workflow *workflow, unsigned long start_level, unsigned long end_level) {
   std::set<ClusteredJob *> jobs;
 
   if (vc == "vprior") {
-    mergeSingleParentSingleChildPairs();
+    mergeSingleParentSingleChildPairs(workflow);
   }
 
   /** Compute all task distances **/
   std::map<std::pair<wrench::WorkflowTask *, wrench::WorkflowTask *>, unsigned long> task_distances;
-  for (unsigned long l = 0; l <= this->getWorkflow()->getNumLevels(); l++) {
-    unsigned long level = this->getWorkflow()->getNumLevels() -1  - l;
-    std::vector<wrench::WorkflowTask *> tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(level,level);
+  for (unsigned long l = 0; l <= workflow->getNumLevels(); l++) {
+    unsigned long level = workflow->getNumLevels() -1  - l;
+    std::vector<wrench::WorkflowTask *> tasks_in_level = workflow->getTasksInTopLevelRange(level,level);
     // Last level
-    if (level == this->getWorkflow()->getNumLevels() -1) {
+    if (level == workflow->getNumLevels() -1) {
       for (auto u : tasks_in_level) {
         for (auto v : tasks_in_level) {
           if (u != v) {
@@ -612,8 +625,8 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(std::string vc, uns
       for (auto u : tasks_in_level) {
         for (auto v : tasks_in_level) {
           if (u != v) {
-            std::vector<wrench::WorkflowTask *> u_children = this->getWorkflow()->getTaskChildren(u);
-            std::vector<wrench::WorkflowTask *> v_children = this->getWorkflow()->getTaskChildren(v);
+            std::vector<wrench::WorkflowTask *> u_children = workflow->getTaskChildren(u);
+            std::vector<wrench::WorkflowTask *> v_children = workflow->getTaskChildren(v);
             double min_distance = -1.0;
             for (auto cu : u_children) {
               for (auto cv : v_children) {
@@ -647,9 +660,9 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(std::string vc, uns
 
 
   /** Go through each level and creates jobs **/
-  for (unsigned long l = 0; l < this->getWorkflow()->getNumLevels(); l++) {
+  for (unsigned long l = start_level; l <= end_level; l++) {
 
-    auto tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
+    auto tasks_in_level = workflow->getTasksInTopLevelRange(l, l);
 
     // Create all the jobs
     unsigned long num_level_jobs = tasks_in_level.size() / num_tasks_per_cluster +
@@ -769,24 +782,24 @@ std::set<ClusteredJob *>  StaticClusteringWMS::createHDBJobs(std::string vc, uns
   }
 
   if (vc == "vposterior") {
-    jobs = applyPosteriorVC(jobs);
+    jobs = applyPosteriorVC(workflow, jobs);
   }
 
   return jobs;
 }
 
 
-void StaticClusteringWMS::mergeSingleParentSingleChildPairs() {
+void StaticClusteringWMS::mergeSingleParentSingleChildPairs(Workflow *workflow) {
 // Modify the workflow to cluster tasks
   while (true) {
-    std::vector<wrench::WorkflowTask *> tasks = this->getWorkflow()->getTasks();
+    std::vector<wrench::WorkflowTask *> tasks = workflow->getTasks();
     wrench::WorkflowTask *parent_to_merge = nullptr;
     wrench::WorkflowTask *child_to_merge = nullptr;
     for (auto t : tasks) {
       if ((t->getNumberOfChildren() == 1) and
-          (this->getWorkflow()->getTaskChildren(t)[0]->getNumberOfParents() == 1)) {
+          (workflow->getTaskChildren(t)[0]->getNumberOfParents() == 1)) {
         parent_to_merge = t;
-        child_to_merge = this->getWorkflow()->getTaskChildren(t)[0];
+        child_to_merge = workflow->getTaskChildren(t)[0];
         break;
       }
     }
@@ -796,27 +809,27 @@ void StaticClusteringWMS::mergeSingleParentSingleChildPairs() {
     // do the merge
     // WRENCH_INFO("MERGING %s and %s", parent_to_merge->getID().c_str(), child_to_merge->getID().c_str());
 
-    wrench::WorkflowTask *merged_task = this->getWorkflow()->addTask(
+    wrench::WorkflowTask *merged_task = workflow->addTask(
             parent_to_merge->getID() + "_" + child_to_merge->getID(),
             parent_to_merge->getFlops() + child_to_merge->getFlops(),
             1, 1, 1.0, 0);
 
-    for (auto parent : this->getWorkflow()->getTaskParents(parent_to_merge)) {
-      this->getWorkflow()->addControlDependency(parent, merged_task);
+    for (auto parent : workflow->getTaskParents(parent_to_merge)) {
+      workflow->addControlDependency(parent, merged_task);
     }
-    for (auto child : this->getWorkflow()->getTaskChildren(child_to_merge)) {
-      this->getWorkflow()->addControlDependency(merged_task, child);
+    for (auto child : workflow->getTaskChildren(child_to_merge)) {
+      workflow->addControlDependency(merged_task, child);
     }
 
-    this->getWorkflow()->removeTask(parent_to_merge);
-    this->getWorkflow()->removeTask(child_to_merge);
+    workflow->removeTask(parent_to_merge);
+    workflow->removeTask(child_to_merge);
 
   }
 }
 
 std::set<ClusteredJob *> StaticClusteringWMS::createVCJobs() {
 
-  mergeSingleParentSingleChildPairs();
+  mergeSingleParentSingleChildPairs(this->getWorkflow());
 
   // Created one job per "task"
   std::set<ClusteredJob *> jobs;
@@ -831,7 +844,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createVCJobs() {
 }
 
 
-std::set<ClusteredJob *> StaticClusteringWMS::applyPosteriorVC(std::set<ClusteredJob *> input_jobs) {
+std::set<ClusteredJob *> StaticClusteringWMS::applyPosteriorVC(Workflow *workflow, std::set<ClusteredJob *> input_jobs) {
   std::set<ClusteredJob *> output_jobs;
 
   // Copy input to output
@@ -845,7 +858,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::applyPosteriorVC(std::set<Clustere
     for (auto j1 : output_jobs) {
       for (auto j2 : output_jobs) {
         if (j1 == j2) continue;
-        if (areJobsMergable(j1, j2)) {
+        if (areJobsMergable(workflow, j1, j2)) {
           to_merge_1 = j1;
           to_merge_2 = j2;
           break;
@@ -887,16 +900,17 @@ std::set<ClusteredJob *> StaticClusteringWMS::applyPosteriorVC(std::set<Clustere
   return output_jobs;
 }
 
-bool StaticClusteringWMS::areJobsMergable(ClusteredJob *j1, ClusteredJob *j2) {
+bool StaticClusteringWMS::areJobsMergable(Workflow *workflow, ClusteredJob *j1, ClusteredJob *j2) {
 
-  return isSingleParentSingleChildPair(j1, j2) or isSingleParentSingleChildPair(j2,j1);
+  return isSingleParentSingleChildPair(workflow, j1, j2) or
+          isSingleParentSingleChildPair(workflow, j2,j1);
 
 }
 
-bool StaticClusteringWMS::isSingleParentSingleChildPair(ClusteredJob *pj, ClusteredJob *cj) {
+bool StaticClusteringWMS::isSingleParentSingleChildPair(Workflow *workflow, ClusteredJob *pj, ClusteredJob *cj) {
 
   for (auto parent_task : pj->getTasks()) {
-    for (auto child_task : this->getWorkflow()->getTaskChildren(parent_task)) {
+    for (auto child_task : workflow->getTaskChildren(parent_task)) {
       std::vector<wrench::WorkflowTask*> cj_tasks = cj->getTasks();
       bool child_task_in_cj = std::find(cj_tasks.begin(), cj_tasks.end(), child_task) != cj_tasks.end();
       std::vector<wrench::WorkflowTask*> pj_tasks = pj->getTasks();

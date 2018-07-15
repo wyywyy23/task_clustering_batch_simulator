@@ -241,7 +241,7 @@ int main(int argc, char **argv) {
 
 
   std::cout << "WORKFLOW MAKESPAN: " << (workflow->getCompletionDate() - workflow_start_time) << "\n";
-  std::cerr << "CSV Log file create at " << csv_batch_log << "\n";
+  std::cerr << "CSV Log file created at " << csv_batch_log << "\n";
 
 }
 

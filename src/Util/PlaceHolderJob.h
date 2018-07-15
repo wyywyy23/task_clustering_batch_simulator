@@ -3,11 +3,12 @@
 #ifndef YOUR_PROJECT_NAME_PLACEHOLDERJOB_H
 #define YOUR_PROJECT_NAME_PLACEHOLDERJOB_H
 
-#include <workflow/job/PilotJob.h>
+#include <vector>
 
 namespace wrench {
 
     class WorkflowTask;
+    class PilotJob;
 
     class PlaceHolderJob {
 

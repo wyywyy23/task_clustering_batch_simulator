@@ -12,9 +12,10 @@
 
 
 #include <services/compute/batch/BatchService.h>
-#include <Util/PlaceHolderJob.h>
 
 namespace wrench {
+
+    class PlaceHolderJob;
 
     class LevelByLevelWMS : public WMS {
 
@@ -23,20 +24,26 @@ namespace wrench {
         LevelByLevelWMS(std::string hostname, bool overlap, std::string clustering_spec, BatchService *batch_service);
 
     private:
+
         int main() override;
+        void submitPilotJobsForNextLevel();
+        std::set<PlaceHolderJob *> createPlaceHolderJobsForLevel(unsigned long level);
 
 
-        bool overlap;
+
+          bool overlap;
         std::string clustering_spec;
         BatchService *batch_service;
 
         std::set<PlaceHolderJob *> running_placeholder_jobs;
-        PlaceHolderJob *pending_placeholder_job;
+        std::set<PlaceHolderJob *> pending_placeholder_jobs;
 
         double core_speed;
         unsigned long number_of_hosts;
 
         std::shared_ptr<JobManager> job_manager;
+
+        int next_level_to_submit = -1;
 
 
     };

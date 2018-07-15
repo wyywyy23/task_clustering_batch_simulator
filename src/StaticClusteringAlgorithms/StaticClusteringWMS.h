@@ -18,20 +18,25 @@ public:
     void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent>) override;
     void processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent>) override;
 
+    static std::set<ClusteredJob *> createHCJobs(std::string vc, unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster,
+                                          Workflow *workflow, unsigned long start_level, unsigned long end_level);
+    static std::set<ClusteredJob *> createDFJSJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster,
+                                            double core_speed, Workflow *workflow, unsigned long start_level, unsigned long end_level);
+    static std::set<ClusteredJob *> createHRBJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster,
+                                           double core_speed, Workflow *workflow, unsigned long start_level, unsigned long end_level);
+    static std::set<ClusteredJob *> createHIFBJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster,
+                                            Workflow *workflow, unsigned long start_level, unsigned long end_level);
+    static std::set<ClusteredJob *> createHDBJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster,
+                                           Workflow *workflow, unsigned long start_level, unsigned long end_level);
+
 private:
-
     std::set<ClusteredJob *> createClusteredJobs();
-    std::set<ClusteredJob *> createHCJobs(std::string vc, unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster);
-    std::set<ClusteredJob *> createDFJSJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
-    std::set<ClusteredJob *> createHRBJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
-    std::set<ClusteredJob *> createHIFBJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
-    std::set<ClusteredJob *> createHDBJobs(std::string vc, unsigned long num_seconds_per_cluster, unsigned long num_nodes_per_cluster);
     std::set<ClusteredJob *> createVCJobs();
-    std::set<ClusteredJob *> applyPosteriorVC(std::set<ClusteredJob *>);
-    bool areJobsMergable(ClusteredJob *j1, ClusteredJob *j2);
-    bool isSingleParentSingleChildPair(ClusteredJob *pj, ClusteredJob *cj);
 
-    void mergeSingleParentSingleChildPairs();
+    static std::set<ClusteredJob *> applyPosteriorVC(Workflow *workflow, std::set<ClusteredJob *>);
+    static void mergeSingleParentSingleChildPairs(Workflow *workflow);
+    static bool areJobsMergable(Workflow *workflow, ClusteredJob *j1, ClusteredJob *j2);
+    static bool isSingleParentSingleChildPair(Workflow *workflow, ClusteredJob *pj, ClusteredJob *cj);
 
     void submitClusteredJob(ClusteredJob *clustered_job);
     std::map<wrench::StandardJob *, ClusteredJob *> job_map;
