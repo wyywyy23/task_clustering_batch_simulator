@@ -9,9 +9,9 @@
 
 
 #include <wrench-dev.h>
-#include <WorkflowUtil/WorkflowUtil.h>
+#include <Util/WorkflowUtil.h>
 #include "ZhangClusteringWMS.h"
-#include "PlaceHolderJob.h"
+#include "Util/PlaceHolderJob.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(zhang_clustering_wms, "Log category for Zhang Clustering WMS");
 

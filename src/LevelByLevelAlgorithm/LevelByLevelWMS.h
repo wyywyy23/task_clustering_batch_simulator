@@ -7,32 +7,32 @@
  * (at your option) any later version.
  */
 
+#ifndef TASK_CLUSTERING_BATCH_SIMULATOR_LEVELBYLEVELWMS_H
+#define TASK_CLUSTERING_BATCH_SIMULATOR_LEVELBYLEVELWMS_H
 
-#ifndef YOUR_PROJECT_NAME_ONEJOBCLUSERINGWMS_H
-#define YOUR_PROJECT_NAME_ONEJOBCLUSERINGWMS_H
 
-
-#include <wms/WMS.h>
 #include <services/compute/batch/BatchService.h>
-
+#include <Util/PlaceHolderJob.h>
 
 namespace wrench {
 
-    class PlaceHolderJob;
-
-    class OneJobClusteringWMS : public WMS {
+    class LevelByLevelWMS : public WMS {
 
     public:
 
-        OneJobClusteringWMS(std::string hostname, BatchService *batch_service);
+        LevelByLevelWMS(std::string hostname, bool overlap, std::string clustering_spec, BatchService *batch_service);
 
     private:
+        int main() override;
 
+
+        bool overlap;
+        std::string clustering_spec;
         BatchService *batch_service;
 
-        int main() override;
-        void submitSingleJob();
-        void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) override;
+        std::set<PlaceHolderJob *> running_placeholder_jobs;
+        PlaceHolderJob *pending_placeholder_job;
+
         double core_speed;
         unsigned long number_of_hosts;
 
@@ -44,4 +44,4 @@ namespace wrench {
 };
 
 
-#endif //YOUR_PROJECT_NAME_ZHANGCLUSERINGWMS_H
+#endif //TASK_CLUSTERING_BATCH_SIMULATOR_LEVELBYLEVELWMS_H

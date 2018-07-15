@@ -7,7 +7,7 @@
  * (at your option) any later version.
  */
 
-#include <WorkflowUtil/WorkflowUtil.h>
+#include <Util/WorkflowUtil.h>
 #include "ClusteredJob.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(clustered_job, "Log category for Clustered Job");

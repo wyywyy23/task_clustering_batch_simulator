@@ -2,7 +2,7 @@
 #include <iostream>
 #include <wrench-dev.h>
 #include <services/compute/batch/BatchServiceProperty.h>
-#include <OneJobClusteringAlgorithm/OneJobClusteringWMS.h>
+#include <LevelByLevelAlgorithm/LevelByLevelWMS.h>
 #include "StaticClusteringAlgorithms/StaticClusteringWMS.h"
 #include "ZhangClusteringAlgorithm/ZhangClusteringWMS.h"
 
@@ -104,6 +104,33 @@ int main(int argc, char **argv) {
     std::cerr << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although" << "\n";
     std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts" << "\n";
     std::cerr << "        to pack that tasks into a job" << "\n";
+    std::cerr << "    * \e[1mlevelbylevel:[overlap|nooverlap]:levelclustering\e[0m" << "\n";
+    std::cerr << "        - A level-by-level-with overlap algorithm that clusters tasks in each level." << "\n";
+    std::cerr << "          Tasks in level n+1 are submitted to the batch queue as soon as all tasks in level n" << "\n";
+    std::cerr << "          have started. Timout behavior similar as that in the algorithm by Zhang et al." << "\n";
+    std::cerr << "        - levelclustering: the algorithm uses to cluster tasks in each level. Options are: " << "\n";
+    std::cerr << "          - one_job: the level is submitted as a single job" << "\n";
+    std::cerr << "          - one_job_per_task: one job per task" << "\n";
+    std::cerr << "          - hc-n-m:  HC static algorithm\e[0m" << "\n";
+    std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
+    std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+    std::cerr << "          - djfs-t-m: DJFS static algorithm\e[0m" << "\n";
+    std::cerr << "            - t: bound on runtime (in seconds)" << "\n";
+    std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+    std::cerr << "          - hrb-n-m: HRB algorithm\e[0m" << "\n";
+    std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
+    std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+    std::cerr << "          - hifb-n-m: HIFB algorithm\e[0m" << "\n";
+    std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
+    std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+    std::cerr << "          - hdb-n-m: HDC algorithm\e[0m" << "\n";
+    std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
+    std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
     std::cerr << "\n";
     std::cerr << "  \e[1;32m### batch algorithm options ###\e[0m" << "\n";
     std::cerr << "    * \e[1mconservative_bf\e[0m" << "\n";
@@ -450,7 +477,7 @@ WMS *createWMS(std::string hostname,
   if (tokens[0] == "static") {
 
     if (tokens.size() != 2) {
-      throw std::invalid_argument("createStandardJobScheduler(): Invalid static specification");
+      throw std::invalid_argument("createWMS(): Invalid static specification");
     }
 
     WMS *wms = new StaticClusteringWMS(hostname, batch_service, max_num_jobs, tokens[1]);
@@ -459,7 +486,7 @@ WMS *createWMS(std::string hostname,
   } else if (tokens[0] == "zhang") {
 
     if (tokens.size() != 3) {
-      throw std::invalid_argument("createStandardJobScheduler(): Invalid zhang specification");
+      throw std::invalid_argument("createWMS(): Invalid zhang specification");
     }
     bool overlap;
     if (tokens[1] == "overlap") {
@@ -467,7 +494,7 @@ WMS *createWMS(std::string hostname,
     } else if (tokens[1] == "nooverlap") {
       overlap = false;
     } else {
-      throw std::invalid_argument("createStandardJobScheduler(): Invalid zhang specification");
+      throw std::invalid_argument("createWMS(): Invalid zhang specification");
     }
     bool plimit;
     if (tokens[2] == "plimit") {
@@ -475,9 +502,23 @@ WMS *createWMS(std::string hostname,
     } else if (tokens[2] == "pnolimit") {
       plimit = false;
     } else {
-      throw std::invalid_argument("createStandardJobScheduler(): Invalid zhang specification");
+      throw std::invalid_argument("createWMS(): Invalid zhang specification");
     }
     return new ZhangClusteringWMS(hostname, overlap, plimit, batch_service);
+
+  } else if (tokens[0] == "levelbylevel") {
+    if (tokens.size() != 3) {
+      throw std::invalid_argument("createWMS(): Invalid levelbylevel specification");
+    }
+    bool overlap;
+    if (tokens[1] == "overlap") {
+      overlap = true;
+    } else if (tokens[1] == "nooverlap") {
+      overlap = false;
+    } else {
+      throw std::invalid_argument("createWMS(): Invalid levelbylevel specification");
+    }
+    return new LevelByLevelWMS(hostname, overlap, tokens[2], batch_service);
 
   } else {
     throw std::invalid_argument("createStandardJobScheduler(): Unknown workflow type " + tokens[0]);

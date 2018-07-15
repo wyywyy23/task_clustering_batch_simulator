@@ -10,11 +10,13 @@ include_directories(src/ /usr/local/include /usr/local/include/wrench)
 # source files
 set(SOURCE_FILES
         src/Simulator.cpp
-        src/WorkflowUtil/WorkflowUtil.cpp
-        src/WorkflowUtil/WorkflowUtil.h
+        src/Util/WorkflowUtil.cpp
+        src/Util/WorkflowUtil.h
+        src/LevelByLevelAlgorithm/LevelbyLevelWMS.cpp
+        src/LevelbyLevelAlgorithm/LevelbyLevelWMS.h
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.cpp
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.h
-        src/ZhangClusteringAlgorithm/PlaceHolderJob.h
+        src/Util/PlaceHolderJob.h
         src/StaticClusteringAlgorithms/ClusteredJob.cpp
         src/StaticClusteringAlgorithms/ClusteredJob.h
         src/StaticClusteringAlgorithms/StaticClusteringWMS.cpp

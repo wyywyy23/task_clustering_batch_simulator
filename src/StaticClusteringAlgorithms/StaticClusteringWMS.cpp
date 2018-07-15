@@ -1,6 +1,6 @@
 
 
-#include <WorkflowUtil/WorkflowUtil.h>
+#include <Util/WorkflowUtil.h>
 #include "StaticClusteringWMS.h"
 #include "ClusteredJob.h"
 
