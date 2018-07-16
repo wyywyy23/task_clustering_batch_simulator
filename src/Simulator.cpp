@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
   } catch (std::invalid_argument &e) {
 
     WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
-    WRENCH_INFO("Trying the non-BATSCHED option...");
+    WRENCH_INFO("Trying the non-BATSCHED version with FCFS...");
     try {
       batch_service = new BatchService(login_hostname, compute_nodes, 0,
                                        {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
@@ -521,7 +521,7 @@ WMS *createWMS(std::string hostname,
     return new LevelByLevelWMS(hostname, overlap, tokens[2], batch_service);
 
   } else {
-    throw std::invalid_argument("createStandardJobScheduler(): Unknown workflow type " + tokens[0]);
+    throw std::invalid_argument("createStandardJobScheduler(): Unknown algorithm type " + tokens[0]);
   }
 
 }

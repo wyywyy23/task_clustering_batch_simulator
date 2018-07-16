@@ -88,7 +88,7 @@ namespace wrench {
         std::map<std::string, std::string> service_specific_args;
         service_specific_args["-N"] = std::to_string(ph->pilot_job->getNumHosts());
         service_specific_args["-c"] = std::to_string(ph->pilot_job->getNumCoresPerHost());
-        service_specific_args["-t"] = std::to_string(1 + ((unsigned long) (ph->pilot_job->getDuration() * EXECUTION_TIME_FUDGE_FACTOR)) / 60);
+        service_specific_args["-t"] = std::to_string(1 + ((unsigned long) (ph->pilot_job->getDuration())) / 60);
         this->job_manager->submitJob(ph->pilot_job, this->batch_service,
                                      service_specific_args);
         WRENCH_INFO("Submitted a Pilot Job (%s hosts, %s min) for workflow level %d (%s)",
@@ -98,7 +98,7 @@ namespace wrench {
                     ph->pilot_job->getName().c_str());
         WRENCH_INFO("This pilot job has these tasks:");
         for (auto t : ph->tasks) {
-          WRENCH_INFO("     - %s", t->getID().c_str());
+          WRENCH_INFO("     - %s (flops: %lf)", t->getID().c_str(), t->getFlops());
         }
       }
     }
@@ -106,7 +106,7 @@ namespace wrench {
 
     std::set<PlaceHolderJob *> LevelByLevelWMS::createPlaceHolderJobsForLevel(unsigned long level) {
 
-      /** Idendified relevant tasks **/
+      /** Identify relevant tasks **/
       std::vector<WorkflowTask *> tasks;
 
       std::vector<WorkflowTask *> tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(level,level);
@@ -133,8 +133,8 @@ namespace wrench {
         }
         unsigned long num_tasks_per_cluster;
         unsigned long num_nodes_per_cluster;
-        if ((sscanf(tokens[2].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
-            (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+        if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
+            (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
           throw std::invalid_argument("Invalid static:hc specification");
         }
         clustered_jobs = StaticClusteringWMS::createHCJobs(
@@ -152,7 +152,7 @@ namespace wrench {
 
         double makespan = cj->estimateMakespan(this->core_speed);
         // Create the pilot job
-        PilotJob *pj = this->job_manager->createPilotJob(cj->getNumNodes(), 1, 0, makespan);
+        PilotJob *pj = this->job_manager->createPilotJob(cj->getNumNodes(), 1, 0, makespan * EXECUTION_TIME_FUDGE_FACTOR);
 
         // Create the placeholder job
         PlaceHolderJob *ph = new PlaceHolderJob(pj, cj->getTasks(), level, level);
@@ -308,7 +308,6 @@ namespace wrench {
         WRENCH_INFO("All tasks are completed in this placeholder job, so I am terminating it (%s)",
                     placeholder_job->pilot_job->getName().c_str());
         try {
-          WRENCH_INFO("TERMINATING A PILOT JOB");
           this->job_manager->terminateJob(placeholder_job->pilot_job);
         } catch (WorkflowExecutionException &e) {
           // ignore
@@ -331,6 +330,9 @@ namespace wrench {
           }
         }
       }
+
+      // Call this in case we need to proceed to the next level
+      this->submitPilotJobsForNextLevel();
 
     }
 
