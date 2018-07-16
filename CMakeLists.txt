@@ -14,8 +14,8 @@ set(SOURCE_FILES
         src/Util/WorkflowUtil.h
         src/LevelByLevelAlgorithm/OngoingLevel.cpp
         src/LevelByLevelAlgorithm/OngoingLevel.h
-        src/LevelByLevelAlgorithm/LevelbyLevelWMS.cpp
-        src/LevelbyLevelAlgorithm/LevelbyLevelWMS.h
+        src/LevelByLevelAlgorithm/LevelByLevelWMS.cpp
+        src/LevelbyLevelAlgorithm/LevelByLevelWMS.h
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.cpp
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.h
         src/Util/PlaceHolderJob.h
