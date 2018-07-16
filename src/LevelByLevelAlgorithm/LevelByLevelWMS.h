@@ -12,6 +12,7 @@
 
 
 #include <services/compute/batch/BatchService.h>
+#include "OngoingLevel.h"
 
 namespace wrench {
 
@@ -40,15 +41,13 @@ namespace wrench {
         std::string clustering_spec;
         BatchService *batch_service;
 
-        std::set<PlaceHolderJob *> running_placeholder_jobs;
-        std::set<PlaceHolderJob *> pending_placeholder_jobs;
 
         double core_speed;
         unsigned long number_of_hosts;
 
         std::shared_ptr<JobManager> job_manager;
 
-        int next_level_to_submit = -1;
+        std::map<int, OngoingLevel *> ongoing_levels;
 
 
     };

@@ -35,7 +35,7 @@ namespace wrench {
 
     int LevelByLevelWMS::main() {
 
-      TerminalOutput::setThisProcessLoggingColor(TerminalOutput::COLOR_WHITE);
+      TerminalOutput::setThisProcessLoggingColor(TerminalOutput::COLOR_CYAN);
 
       this->checkDeferredStart();
 
@@ -47,11 +47,12 @@ namespace wrench {
       // Create a job manager
       this->job_manager = this->createJobManager();
 
-      submitPilotJobsForNextLevel();
 
       while (not this->getWorkflow()->isDone()) {
 
+        submitPilotJobsForNextLevel();
 
+        WRENCH_INFO("WAITING FOR THE NEXT EVENT");
         this->waitForAndProcessNextEvent();
 
       }
@@ -62,28 +63,57 @@ namespace wrench {
 
     void LevelByLevelWMS::submitPilotJobsForNextLevel() {
 
-      // Don't schedule a pilot job if one is pending
-      if (not this->pending_placeholder_jobs.empty()) {
+      WRENCH_INFO("CALLING submitPilotJobsForNextLevel(). #pending levels: %ld", this->ongoing_levels.size());
+      for (auto l : this->ongoing_levels) {
+        WRENCH_INFO("   -> level: %lu", l.second->level_number);
+      }
+      // If more than 2 levels are going on, forget it
+      if (this->ongoing_levels.size() >= 2) {
+        WRENCH_INFO("Too many ongoing levels going on... will try later");
         return;
       }
 
-      // Don't schedule a pilot job if overlap = false and pilot job is running
-      if ((not this->overlap) and (not this->running_placeholder_jobs.empty())) {
+      // Don't schedule a pilot job if overlap = false and anything is going on
+      if ((not this->overlap) and (not ongoing_levels.empty())) {
         return;
       }
 
-      // At this point, we should submit pilot jobs for the next level
-      next_level_to_submit++;
+      // Compute which level should be submitted
+      unsigned long level_to_submit = ULONG_MAX;
+      for (auto l : this->ongoing_levels) {
+        unsigned long level_number = l.second->level_number;
+        if ((level_to_submit == ULONG_MAX) or (level_to_submit < level_number)) {
+          level_to_submit = level_number;
+        }
+      }
+      level_to_submit++;
 
-      WRENCH_INFO("Submitting pilot jobs for level %d", next_level_to_submit);
+      if (level_to_submit >= this->getWorkflow()->getNumLevels()) {
+        WRENCH_INFO("NO MORE LEVELS TO SUBMIT");
+        return;
+      }
+
+      // Make sure that all PH jobs in the previous level have started
+      if (level_to_submit > 0) {
+        if (not (this->ongoing_levels[level_to_submit - 1]->pending_placeholder_jobs.empty())) {
+          WRENCH_INFO("Cannot submit pilot jobs for level %ld since level %ld still has"
+                              "pilot jobs that haven't started yet", level_to_submit, level_to_submit-1);
+          return;
+        }
+      }
+      WRENCH_INFO("All pilot jobs from level %ld have started... of I go!", level_to_submit-1);
+
+      WRENCH_INFO("Creating a new ongoing level for level %lu", level_to_submit);
+      OngoingLevel *new_ongoing_level = new OngoingLevel();
+      new_ongoing_level->level_number = level_to_submit;
 
       // Create all pilot jobs for level
       std::set<PlaceHolderJob *> place_holder_jobs;
-      place_holder_jobs = createPlaceHolderJobsForLevel(next_level_to_submit);
+      place_holder_jobs = createPlaceHolderJobsForLevel(level_to_submit);
 
       // Submit placeholder jobs
       for (auto ph : place_holder_jobs) {
-        this->pending_placeholder_jobs.insert(ph);
+        new_ongoing_level->pending_placeholder_jobs.insert(ph);
         // submit the corresponding pilot job
         std::map<std::string, std::string> service_specific_args;
         service_specific_args["-N"] = std::to_string(ph->pilot_job->getNumHosts());
@@ -91,17 +121,20 @@ namespace wrench {
         service_specific_args["-t"] = std::to_string(1 + ((unsigned long) (ph->pilot_job->getDuration())) / 60);
         this->job_manager->submitJob(ph->pilot_job, this->batch_service,
                                      service_specific_args);
-        WRENCH_INFO("Submitted a Pilot Job (%s hosts, %s min) for workflow level %d (%s)",
+        WRENCH_INFO("Submitted a Pilot Job (%s hosts, %s min) for workflow level %lu (%s)",
                     service_specific_args["-N"].c_str(),
                     service_specific_args["-t"].c_str(),
-                    next_level_to_submit,
+                    level_to_submit,
                     ph->pilot_job->getName().c_str());
         WRENCH_INFO("This pilot job has these tasks:");
         for (auto t : ph->tasks) {
           WRENCH_INFO("     - %s (flops: %lf)", t->getID().c_str(), t->getFlops());
         }
       }
+
+      ongoing_levels.insert(std::make_pair(level_to_submit, new_ongoing_level));
     }
+
 
 
     std::set<PlaceHolderJob *> LevelByLevelWMS::createPlaceHolderJobsForLevel(unsigned long level) {
@@ -155,6 +188,7 @@ namespace wrench {
         PilotJob *pj = this->job_manager->createPilotJob(cj->getNumNodes(), 1, 0, makespan * EXECUTION_TIME_FUDGE_FACTOR);
 
         // Create the placeholder job
+        WRENCH_INFO("Creating a placeholder job for level %ld with %ld tasks", level, cj->getNumTasks());
         PlaceHolderJob *ph = new PlaceHolderJob(pj, cj->getTasks(), level, level);
 
         // Add it to the set
@@ -173,20 +207,29 @@ namespace wrench {
 
       // Find the placeholder job in the pending list
       PlaceHolderJob *placeholder_job = nullptr;
+      OngoingLevel *ongoing_level = nullptr;
 
-      for (auto ph : this->pending_placeholder_jobs) {
-        if (ph->pilot_job == e->pilot_job) {
-          placeholder_job = ph;
-          break;
+      for (auto ol : this->ongoing_levels) {
+        for (auto ph : ol.second->pending_placeholder_jobs) {
+          if (ph->pilot_job == e->pilot_job) {
+            placeholder_job = ph;
+            ongoing_level = ol.second;
+            break;
+          }
         }
       }
+
       if (placeholder_job == nullptr) {
-        throw std::runtime_error("Fatal Error: couldn't find a placeholder job for a pilob job that just started");
+        throw std::runtime_error("Fatal Error: couldn't find a placeholder job for a pilot job that just started");
       }
 
+      WRENCH_INFO("FOUND MATCHING PH JOB: %lu %lu (%s)", placeholder_job->start_level, placeholder_job->end_level,
+                  placeholder_job->pilot_job->getName().c_str());
+
+      WRENCH_INFO("This PH JOb has %ld tasks", placeholder_job->tasks.size());
       // Mote the placeholder job to running
-      this->pending_placeholder_jobs.erase(placeholder_job);
-      this->running_placeholder_jobs.insert(placeholder_job);
+      ongoing_level->pending_placeholder_jobs.erase(placeholder_job);
+      ongoing_level->running_placeholder_jobs.insert(placeholder_job);
 
       // Submit all ready tasks to it each in its standard job
       std::string output_string = "";
@@ -198,12 +241,9 @@ namespace wrench {
           WRENCH_INFO("Submitting task %s as part of placeholder job %ld-%ld",
                       task->getID().c_str(), placeholder_job->start_level, placeholder_job->end_level);
           this->job_manager->submitJob(standard_job, placeholder_job->pilot_job->getComputeService());
+        } else {
+          WRENCH_INFO("Task %s is not ready", task->getID().c_str());
         }
-      }
-
-      // Submit a new set of placeholder jobs
-      if (this->pending_placeholder_jobs.empty()) {
-        this->submitPilotJobsForNextLevel();
       }
 
     }
@@ -212,19 +252,27 @@ namespace wrench {
     void LevelByLevelWMS::processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) {
 
       // Find the placeholder job
+      // Find the placeholder job in the pending list
       PlaceHolderJob *placeholder_job = nullptr;
-      for (auto ph : this->running_placeholder_jobs) {
-        if (ph->pilot_job == e->pilot_job) {
-          placeholder_job = ph;
-          break;
+      OngoingLevel *ongoing_level = nullptr;
+
+      for (auto ol : this->ongoing_levels) {
+        for (auto ph : ol.second->running_placeholder_jobs) {
+          if (ph->pilot_job == e->pilot_job) {
+            placeholder_job = ph;
+            ongoing_level = ol.second;
+            break;
+          }
         }
       }
+
       if (placeholder_job == nullptr) {
         throw std::runtime_error("Got a pilot job expiration, but no matching placeholder job found");
       }
 
       WRENCH_INFO("Got a pilot job expiration for a placeholder job that deals with levels %ld-%ld (%s)",
                   placeholder_job->start_level, placeholder_job->end_level, placeholder_job->pilot_job->getName().c_str());
+
 
       // Check if there are unprocessed tasks
       bool unprocessed = (placeholder_job->tasks.size() != placeholder_job->num_completed_tasks);
@@ -234,48 +282,44 @@ namespace wrench {
         return;
       }
 
-      WRENCH_INFO("This placeholder job has unprocessed tasks");
+      ongoing_level->running_placeholder_jobs.erase(placeholder_job);
 
-      // Cancel pending pilot job if any
-      for (auto ph : this->pending_placeholder_jobs) {
-        WRENCH_INFO("Canceling pending placeholder job (placeholder=%ld,  pilot_job=%ld / %s",
-                    (unsigned long)ph,
-                    (unsigned long)ph->pilot_job,
-                    ph->pilot_job->getName().c_str());
-        this->job_manager->terminateJob(ph->pilot_job);
-      }
-      this->pending_placeholder_jobs.clear();
-
-      // Cancel running pilot jobs if none of their tasks has started
-
-      std::set<PlaceHolderJob *> to_remove;
-      for (auto ph : this->running_placeholder_jobs) {
-        bool started = false;
-        for (auto task : ph->tasks) {
-          if (task->getState() != WorkflowTask::NOT_READY) {
-            started = true;
-          }
-        }
-        if (not started) {
-          WRENCH_INFO("Canceling running placeholder job that handled levels %ld-%ld because none"
-                              "of its tasks has started (%s)", ph->start_level, ph->end_level,
-                      ph->pilot_job->getName().c_str());
-          try {
-            this->job_manager->terminateJob(ph->pilot_job);
-          } catch (WorkflowExecutionException &e) {
-            // ignore (likely already dead!)
-          }
-          to_remove.insert(ph);
+      WRENCH_INFO("This placeholder job has unprocessed tasks... resubmit it as a restart");
+      // Create a new Clustered Job
+      ClusteredJob *cj = new ClusteredJob();
+      for (auto t : placeholder_job->tasks) {
+        if (t->getState() != WorkflowTask::COMPLETED) {
+          cj->addTask(t);
         }
       }
+      cj->setNumNodes(std::min(placeholder_job->pilot_job->getNumHosts(), cj->getNumTasks()));
+      double makespan = cj->estimateMakespan(this->core_speed);
 
-      for (auto ph : to_remove) {
-        this->running_placeholder_jobs.erase(ph);
+      // Create the pilot job
+      PilotJob *pj = this->job_manager->createPilotJob(cj->getNumNodes(), 1, 0, makespan * EXECUTION_TIME_FUDGE_FACTOR);
+
+      PlaceHolderJob *replacement_placeholder_job =
+              new PlaceHolderJob(pj, cj->getTasks(),
+                                 ongoing_level->level_number, ongoing_level->level_number);
+
+      // Resubmit it!
+      ongoing_level->pending_placeholder_jobs.insert(replacement_placeholder_job);
+      // submit the corresponding pilot job
+      std::map<std::string, std::string> service_specific_args;
+      service_specific_args["-N"] = std::to_string(replacement_placeholder_job->pilot_job->getNumHosts());
+      service_specific_args["-c"] = std::to_string(replacement_placeholder_job->pilot_job->getNumCoresPerHost());
+      service_specific_args["-t"] = std::to_string(1 + ((unsigned long) (replacement_placeholder_job->pilot_job->getDuration())) / 60);
+      this->job_manager->submitJob(replacement_placeholder_job->pilot_job, this->batch_service,
+                                   service_specific_args);
+      WRENCH_INFO("Submitted a Pilot Job (%s hosts, %s min) for workflow level %lu (%s)",
+                  service_specific_args["-N"].c_str(),
+                  service_specific_args["-t"].c_str(),
+                  ongoing_level->level_number,
+                  replacement_placeholder_job->pilot_job->getName().c_str());
+      WRENCH_INFO("This pilot job has these tasks:");
+      for (auto t : replacement_placeholder_job->tasks) {
+        WRENCH_INFO("     - %s (flops: %lf)", t->getID().c_str(), t->getFlops());
       }
-
-      // Make decisions again
-      this->next_level_to_submit--;  // TODO: Does this work?
-      this->submitPilotJobsForNextLevel();
 
     }
 
@@ -288,11 +332,15 @@ namespace wrench {
 
       // Find the placeholder job this task belongs to
       PlaceHolderJob *placeholder_job = nullptr;
-      for (auto ph : this->running_placeholder_jobs) {
-        for (auto task : ph->tasks) {
-          if (task == completed_task) {
-            placeholder_job = ph;
-            break;
+      OngoingLevel *ongoing_level = nullptr;
+      for (auto ol : this->ongoing_levels) {
+        for (auto ph : ol.second->running_placeholder_jobs) {
+          for (auto task : ph->tasks) {
+            if (task == completed_task) {
+              ongoing_level = ol.second;
+              placeholder_job = ph;
+              break;
+            }
           }
         }
       }
@@ -312,27 +360,43 @@ namespace wrench {
         } catch (WorkflowExecutionException &e) {
           // ignore
         }
-        this->running_placeholder_jobs.erase(placeholder_job);
+        ongoing_level->running_placeholder_jobs.erase(placeholder_job);
+        ongoing_level->completed_placeholder_jobs.insert(placeholder_job);
       }
 
 
       // Start all newly ready tasks that depended on the completed task, IN ANY PLACEHOLDER
       // This shouldn't happen in individual mode, but can't hurt
+      WRENCH_INFO("Seeing if other tasks (which are now ready) can be submitted...");
       std::vector<WorkflowTask *>children = this->getWorkflow()->getTaskChildren(completed_task);
-      for (auto ph : this->running_placeholder_jobs) {
-        for (auto task : ph->tasks) {
-          if ((std::find(children.begin(), children.end(), task) != children.end()) and
-              (task->getState() == WorkflowTask::READY)) {
-            StandardJob *standard_job = this->job_manager->createStandardJob(task,{});
-            WRENCH_INFO("Submitting task %s  as part of placeholder job %ld-%ld",
-                        task->getID().c_str(), placeholder_job->start_level, placeholder_job->end_level);
-            this->job_manager->submitJob(standard_job, ph->pilot_job->getComputeService());
+      for (auto ol : this->ongoing_levels) {
+        for (auto ph : ol.second->running_placeholder_jobs) {
+
+          WRENCH_INFO("   LOOKING AT PH: %lu %lu", ph->start_level, ph->end_level);
+          for (auto task : ph->tasks) {
+            WRENCH_INFO("     LOOKING AT TASK %s", task->getID().c_str());
+            if ((std::find(children.begin(), children.end(), task) != children.end()) and
+                (task->getState() == WorkflowTask::READY)) {
+              StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
+              WRENCH_INFO("Submitting task %s  as part of placeholder job %ld-%ld",
+                          task->getID().c_str(), ph->start_level, ph->end_level);
+              this->job_manager->submitJob(standard_job, ph->pilot_job->getComputeService());
+            }
           }
         }
       }
 
-      // Call this in case we need to proceed to the next level
-      this->submitPilotJobsForNextLevel();
+      // Remove the ongoing level if it's finished
+      WRENCH_INFO("DETERMINING WHETHER LEVEL %ld IS FINISHED", ongoing_level->level_number);
+      WRENCH_INFO("  - #PENDING: %ld", ongoing_level->pending_placeholder_jobs.size());
+      WRENCH_INFO("  - #RUNNING: %ld", ongoing_level->running_placeholder_jobs.size());
+      WRENCH_INFO("  - #COMPLETED: %ld", ongoing_level->completed_placeholder_jobs.size());
+      if (ongoing_level->pending_placeholder_jobs.empty() and ongoing_level->running_placeholder_jobs.empty()) {
+        WRENCH_INFO("IT IS!!");
+        WRENCH_INFO("NUMBER OF ONGOING LEVELS = %ld", this->ongoing_levels.size());
+        this->ongoing_levels.erase(ongoing_level->level_number);
+        WRENCH_INFO("NUMBER OF ONGOING LEVELS NOW = %ld", this->ongoing_levels.size());
+      }
 
     }
 

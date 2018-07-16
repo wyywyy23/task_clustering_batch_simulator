@@ -12,6 +12,8 @@ set(SOURCE_FILES
         src/Simulator.cpp
         src/Util/WorkflowUtil.cpp
         src/Util/WorkflowUtil.h
+        src/LevelByLevelAlgorithm/OngoingLevel.cpp
+        src/LevelByLevelAlgorithm/OngoingLevel.h
         src/LevelByLevelAlgorithm/LevelbyLevelWMS.cpp
         src/LevelbyLevelAlgorithm/LevelbyLevelWMS.h
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.cpp
