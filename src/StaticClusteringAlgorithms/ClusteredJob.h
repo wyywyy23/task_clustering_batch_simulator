@@ -17,7 +17,7 @@ namespace wrench {
     class ClusteredJob {
 
     public:
-        void setNumNodes(unsigned long num_nodes);
+        void setNumNodes(unsigned long num_nodes, bool based_on_queue_wait_time_prediction = false);
         unsigned long getNumNodes();
         unsigned long getNumTasks();
         std::vector<wrench::WorkflowTask *>  getTasks();
@@ -25,10 +25,15 @@ namespace wrench {
         bool isReady();
         bool isTaskOK(wrench::WorkflowTask *task);
         double estimateMakespan(double core_speed);
+        double estimateMakespan(double core_speed, unsigned long num_nodes);
+
+
+        bool isNumNodesBasedOnQueueWaitTimePrediction();
 
     private:
         std::vector<wrench::WorkflowTask *> tasks;
         unsigned long num_nodes = 0;
+        bool num_nodes_based_on_queue_wait_time_predictions = false;
     };
 
 };

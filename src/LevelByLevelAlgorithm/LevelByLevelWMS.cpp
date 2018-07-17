@@ -119,6 +119,13 @@ namespace wrench {
       for (auto ph : place_holder_jobs) {
         new_ongoing_level->pending_placeholder_jobs.insert(ph);
 
+        // Compute the number of nodes
+        unsigned long num_nodes;
+        if (ph->clustered_job->getNumNodes() == 0) {
+          num_nodes = computeBestNumNodesBasedOnQueueWaitTimePredictions(ph->clustered_job);
+          ph->clustered_job->setNumNodes(num_nodes, true);
+        }
+
         // Create the pilot job
         double makespan = ph->clustered_job->estimateMakespan(this->core_speed);
         // Create the pilot job
@@ -181,7 +188,7 @@ namespace wrench {
         unsigned long num_tasks_per_cluster;
         unsigned long num_nodes_per_cluster;
         if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
-            (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+            (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
           throw std::invalid_argument("Invalid static:hc specification");
         }
         // Compute clusters (could be 0 nodes, in which case queue prediction will be triggered)
@@ -210,32 +217,6 @@ namespace wrench {
       return place_holder_jobs;
     }
 
-
-//
-//
-//      // Queue-based num nodes
-//      for (auto cj : clustered_jobs) {
-//        // Construct
-//        unsigned long max_num_nodes = std::min(cj->getNumTasks(), this->number_of_hosts);
-//        std::string job_id = "my_tentative_job";
-//        std::set<std::tuple<std::string,unsigned int,unsigned int, double>> set_of_jobs;
-//        for (unsigned int n = 1; n < max_num_nodes; n++) {
-//          double walltime_seconds = 1000;
-//          std::tuple<std::string, unsigned int, unsigned int, double> my_job =
-//                  std::make_tuple(job_id + "_" + std::to_string(sequence_number++),
-//                                  n, 1, walltime_seconds);
-//          set_of_jobs.insert(my_job);
-//        }
-//
-//          std::map<std::string,double> jobs_estimated_start_times;
-//          bool success = true;
-//          try {
-//            jobs_estimated_start_times = batch_service->getStartTimeEstimates(set_of_jobs);
-//          } catch (wrench::WorkflowExecutionException &e) {
-//          }
-//        }
-//
-//      }
 
 
 
@@ -327,7 +308,15 @@ namespace wrench {
           cj->addTask(t);
         }
       }
-      cj->setNumNodes(std::min(placeholder_job->pilot_job->getNumHosts(), cj->getNumTasks()));
+
+      if (not placeholder_job->clustered_job->isNumNodesBasedOnQueueWaitTimePrediction()) {
+        // Don't be stupid, don't ask for more nodes than tasks
+        cj->setNumNodes(std::min(placeholder_job->clustered_job->getNumNodes(), cj->getNumTasks()));
+      } else {
+        unsigned long num_nodes = computeBestNumNodesBasedOnQueueWaitTimePredictions(cj);
+        cj->setNumNodes(num_nodes, true);
+      }
+
       double makespan = cj->estimateMakespan(this->core_speed);
 
       // Create the pilot job
@@ -429,6 +418,67 @@ namespace wrench {
 
     void LevelByLevelWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
       WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS (the pilot job expiration event will handle these issues)", e->standard_job->tasks[0]->getID().c_str());
+    }
+
+
+    unsigned long LevelByLevelWMS::computeBestNumNodesBasedOnQueueWaitTimePredictions(ClusteredJob *cj) {
+
+      WRENCH_INFO("COMPUTING BEST NUMBER OF NODES FOR JOB BASED ON QUEUE WAIT TIMES");
+
+      // Build job configurations
+      unsigned long max_num_nodes = std::min(cj->getNumTasks(), this->number_of_hosts);
+      std::string job_id_prefix = "my_tentative_job";
+      std::set<std::tuple<std::string,unsigned int,unsigned int, double>> set_of_job_configurations;
+      for (unsigned int n = 1; n < max_num_nodes; n++) {
+        double walltime_seconds = cj->estimateMakespan(this->core_speed, n);
+        std::tuple<std::string, unsigned int, unsigned int, double> my_job =
+                std::make_tuple(job_id_prefix + "_" + std::to_string(sequence_number++),
+                                n, 1, walltime_seconds);
+        set_of_job_configurations.insert(my_job);
+      }
+
+
+      // Get estimates
+      WRENCH_INFO("GETTING ESTIMATES");
+      std::map<std::string,double> jobs_estimated_start_times;
+      try {
+        jobs_estimated_start_times = batch_service->getStartTimeEstimates(set_of_job_configurations);
+      } catch (wrench::WorkflowExecutionException &e) {
+        throw std::runtime_error(std::string("Couldn't acquire queue wait time predictions: ") + e.what());
+      }
+
+      WRENCH_INFO("GOTTEN ESTIMATES");
+      // Find out the best
+      unsigned long best_num_nodes = ULONG_MAX;
+      double best_finish_time = -1.0;
+      for (auto estimate : jobs_estimated_start_times) {
+        std::string job_id = estimate.first;
+        double start_time = estimate.second;
+        double makespan = -1.0;
+        unsigned long num_nodes;
+
+        // find the job configuration in the set (inefficient)
+        for (auto jc : set_of_job_configurations) {
+          if (std::get<0>(jc) == job_id) {
+            makespan = std::get<3>(jc);
+            num_nodes = std::get<1>(jc);
+          }
+        }
+        if (makespan < 0) {
+          throw std::runtime_error("Fatal error when looking at queue wait time predictions!");
+        }
+
+        double finish_time = start_time + makespan;
+        if ((finish_time < best_finish_time) or (best_finish_time < 0.0)) {
+          best_finish_time = finish_time;
+          best_num_nodes = num_nodes;
+        }
+      }
+
+      WRENCH_INFO("RETURNING %lu NODES!", best_num_nodes);
+
+
+      return best_num_nodes;
     }
 
 };

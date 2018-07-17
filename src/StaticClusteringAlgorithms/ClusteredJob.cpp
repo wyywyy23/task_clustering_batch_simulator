@@ -41,8 +41,9 @@ namespace wrench {
       return true;
     }
 
-    void ClusteredJob::setNumNodes(unsigned long num_nodes) {
+    void ClusteredJob::setNumNodes(unsigned long num_nodes, bool based_on_queue_wait_time_prediction) {
       this->num_nodes = num_nodes;
+      this->num_nodes_based_on_queue_wait_time_predictions = based_on_queue_wait_time_prediction;
     }
 
     unsigned long ClusteredJob::getNumTasks() {
@@ -63,5 +64,18 @@ namespace wrench {
       }
 
       return WorkflowUtil::estimateMakespan(this->tasks, this->num_nodes, core_speed);
+    }
+
+
+    double ClusteredJob::estimateMakespan(double core_speed, unsigned long n) {
+      if (n  == 0) {
+        throw std::runtime_error("estimateMakespan(): Cannot estimate makespan with 0 nodes!");
+      }
+
+      return WorkflowUtil::estimateMakespan(this->tasks, n, core_speed);
+    }
+
+    bool ClusteredJob::isNumNodesBasedOnQueueWaitTimePrediction() {
+      return this->num_nodes_based_on_queue_wait_time_predictions;
     }
 };

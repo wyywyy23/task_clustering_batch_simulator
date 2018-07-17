@@ -38,6 +38,9 @@ namespace wrench {
 
         std::set<PlaceHolderJob *> createPlaceHolderJobsForLevel(unsigned long level);
 
+        unsigned long computeBestNumNodesBasedOnQueueWaitTimePredictions(ClusteredJob *cj);
+
+
         bool overlap;
         std::string clustering_spec;
         BatchService *batch_service;
