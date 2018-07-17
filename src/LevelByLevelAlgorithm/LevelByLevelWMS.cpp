@@ -127,11 +127,11 @@ namespace wrench {
         }
 
         // Create the pilot job
-        double makespan = ph->clustered_job->estimateMakespan(this->core_speed);
+        double makespan = ph->clustered_job->estimateMakespan(this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
         // Create the pilot job
         ph->pilot_job = this->job_manager->createPilotJob(
                 ph->clustered_job->getNumNodes(),
-                1, 0, makespan * EXECUTION_TIME_FUDGE_FACTOR);
+                1, 0, makespan);
 
 
         // submit the corresponding pilot job
@@ -317,10 +317,10 @@ namespace wrench {
         cj->setNumNodes(num_nodes, true);
       }
 
-      double makespan = cj->estimateMakespan(this->core_speed);
+      double makespan = cj->estimateMakespan(this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
 
       // Create the pilot job
-      PilotJob *pj = this->job_manager->createPilotJob(cj->getNumNodes(), 1, 0, makespan * EXECUTION_TIME_FUDGE_FACTOR);
+      PilotJob *pj = this->job_manager->createPilotJob(cj->getNumNodes(), 1, 0, makespan);
 
       PlaceHolderJob *replacement_placeholder_job =
               new PlaceHolderJob(pj, cj,
@@ -423,14 +423,14 @@ namespace wrench {
 
     unsigned long LevelByLevelWMS::computeBestNumNodesBasedOnQueueWaitTimePredictions(ClusteredJob *cj) {
 
-      WRENCH_INFO("COMPUTING BEST NUMBER OF NODES FOR JOB BASED ON QUEUE WAIT TIMES");
 
       // Build job configurations
       unsigned long max_num_nodes = std::min(cj->getNumTasks(), this->number_of_hosts);
       std::string job_id_prefix = "my_tentative_job";
       std::set<std::tuple<std::string,unsigned int,unsigned int, double>> set_of_job_configurations;
-      for (unsigned int n = 1; n < max_num_nodes; n++) {
+      for (unsigned int n = 1; n <= max_num_nodes; n++) {
         double walltime_seconds = cj->estimateMakespan(this->core_speed, n);
+        walltime_seconds *= EXECUTION_TIME_FUDGE_FACTOR;
         std::tuple<std::string, unsigned int, unsigned int, double> my_job =
                 std::make_tuple(job_id_prefix + "_" + std::to_string(sequence_number++),
                                 n, 1, walltime_seconds);
@@ -439,7 +439,7 @@ namespace wrench {
 
 
       // Get estimates
-      WRENCH_INFO("GETTING ESTIMATES");
+      WRENCH_INFO("Getting Queue Wait Time estimates for %ld job configurations...", set_of_job_configurations.size());
       std::map<std::string,double> jobs_estimated_start_times;
       try {
         jobs_estimated_start_times = batch_service->getStartTimeEstimates(set_of_job_configurations);
@@ -447,7 +447,10 @@ namespace wrench {
         throw std::runtime_error(std::string("Couldn't acquire queue wait time predictions: ") + e.what());
       }
 
-      WRENCH_INFO("GOTTEN ESTIMATES");
+      if (jobs_estimated_start_times.size() != max_num_nodes) {
+        throw std::runtime_error("Was expecting " + std::to_string(max_num_nodes) + " wait time estimates but got " +
+              std::to_string(jobs_estimated_start_times.size()) + "instead!");
+      }
       // Find out the best
       unsigned long best_num_nodes = ULONG_MAX;
       double best_finish_time = -1.0;
@@ -469,13 +472,16 @@ namespace wrench {
         }
 
         double finish_time = start_time + makespan;
+
+        WRENCH_INFO("  - QWTE with %lu node: start time=%lf + makespan=%lf  =  finishtime=%lf", num_nodes, start_time, makespan, finish_time);
+
         if ((finish_time < best_finish_time) or (best_finish_time < 0.0)) {
           best_finish_time = finish_time;
           best_num_nodes = num_nodes;
         }
       }
 
-      WRENCH_INFO("RETURNING %lu NODES!", best_num_nodes);
+      WRENCH_INFO("Opted to use %lu compute nodes!", best_num_nodes);
 
 
       return best_num_nodes;
