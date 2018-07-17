@@ -52,7 +52,6 @@ namespace wrench {
 
         submitPilotJobsForNextLevel();
 
-        WRENCH_INFO("WAITING FOR THE NEXT EVENT");
         this->waitForAndProcessNextEvent();
 
       }
@@ -63,10 +62,8 @@ namespace wrench {
 
     void LevelByLevelWMS::submitPilotJobsForNextLevel() {
 
-      WRENCH_INFO("CALLING submitPilotJobsForNextLevel(). #pending levels: %ld", this->ongoing_levels.size());
-      for (auto l : this->ongoing_levels) {
-        WRENCH_INFO("   -> level: %lu", l.second->level_number);
-      }
+      WRENCH_INFO("Seeing if I can submit jobs for the 'next' level...");
+
       // If more than 2 levels are going on, forget it
       if (this->ongoing_levels.size() >= 2) {
         WRENCH_INFO("Too many ongoing levels going on... will try later");
@@ -89,7 +86,7 @@ namespace wrench {
       level_to_submit++;
 
       if (level_to_submit >= this->getWorkflow()->getNumLevels()) {
-        WRENCH_INFO("NO MORE LEVELS TO SUBMIT");
+        WRENCH_INFO("All workflow levels have been submitted!");
         return;
       }
 
@@ -101,7 +98,7 @@ namespace wrench {
           return;
         }
       }
-      WRENCH_INFO("All pilot jobs from level %ld have started... of I go!", level_to_submit-1);
+      WRENCH_INFO("All pilot jobs from level %ld have started... off I go!", level_to_submit-1);
 
       WRENCH_INFO("Creating a new ongoing level for level %lu", level_to_submit);
       OngoingLevel *new_ongoing_level = new OngoingLevel();
@@ -223,10 +220,7 @@ namespace wrench {
         throw std::runtime_error("Fatal Error: couldn't find a placeholder job for a pilot job that just started");
       }
 
-      WRENCH_INFO("FOUND MATCHING PH JOB: %lu %lu (%s)", placeholder_job->start_level, placeholder_job->end_level,
-                  placeholder_job->pilot_job->getName().c_str());
-
-      WRENCH_INFO("This PH JOb has %ld tasks", placeholder_job->tasks.size());
+      WRENCH_INFO("The corresponding placeholder job has %ld tasks", placeholder_job->tasks.size());
       // Mote the placeholder job to running
       ongoing_level->pending_placeholder_jobs.erase(placeholder_job);
       ongoing_level->running_placeholder_jobs.insert(placeholder_job);
@@ -372,9 +366,7 @@ namespace wrench {
       for (auto ol : this->ongoing_levels) {
         for (auto ph : ol.second->running_placeholder_jobs) {
 
-          WRENCH_INFO("   LOOKING AT PH: %lu %lu", ph->start_level, ph->end_level);
           for (auto task : ph->tasks) {
-            WRENCH_INFO("     LOOKING AT TASK %s", task->getID().c_str());
             if ((std::find(children.begin(), children.end(), task) != children.end()) and
                 (task->getState() == WorkflowTask::READY)) {
               StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
@@ -387,21 +379,15 @@ namespace wrench {
       }
 
       // Remove the ongoing level if it's finished
-      WRENCH_INFO("DETERMINING WHETHER LEVEL %ld IS FINISHED", ongoing_level->level_number);
-      WRENCH_INFO("  - #PENDING: %ld", ongoing_level->pending_placeholder_jobs.size());
-      WRENCH_INFO("  - #RUNNING: %ld", ongoing_level->running_placeholder_jobs.size());
-      WRENCH_INFO("  - #COMPLETED: %ld", ongoing_level->completed_placeholder_jobs.size());
       if (ongoing_level->pending_placeholder_jobs.empty() and ongoing_level->running_placeholder_jobs.empty()) {
-        WRENCH_INFO("IT IS!!");
-        WRENCH_INFO("NUMBER OF ONGOING LEVELS = %ld", this->ongoing_levels.size());
+        WRENCH_INFO("Level %ld is finished!", ongoing_level->level_number);
         this->ongoing_levels.erase(ongoing_level->level_number);
-        WRENCH_INFO("NUMBER OF ONGOING LEVELS NOW = %ld", this->ongoing_levels.size());
       }
 
     }
 
     void LevelByLevelWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
-      WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS", e->standard_job->tasks[0]->getID().c_str());
+      WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS (the pilot job expiration event will handle these issues)", e->standard_job->tasks[0]->getID().c_str());
     }
 
 
