@@ -442,8 +442,8 @@ namespace wrench {
 //      WRENCH_INFO("THERE ARE %ld tasks in level range %ld-%ld",
 //              this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level).size(), start_level, end_level);
 
-      unsigned long picked_parallelism = -1;
-      double best_makespan = 0.0;
+      unsigned long picked_parallelism = ULONG_MAX;
+      double best_makespan = -1.0;
 
       if (this->plimit) { //Ensure strict application of Zhang's
         picked_parallelism = parallelism;
@@ -457,7 +457,7 @@ namespace wrench {
 
           double makespan = WorkflowUtil::estimateMakespan(this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
                                                            i, this->core_speed);
-          if ((picked_parallelism == -1) or (makespan < best_makespan)) {
+          if ((best_makespan < 0) or (makespan < best_makespan)) {
             picked_parallelism = i;
             best_makespan = makespan;
           }
