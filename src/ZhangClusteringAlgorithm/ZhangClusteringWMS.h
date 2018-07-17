@@ -18,7 +18,7 @@
 
 namespace wrench {
 
-    class PlaceHolderJob;
+    class ZhangPlaceHolderJob;
 
     class ZhangClusteringWMS : public WMS {
 
@@ -46,8 +46,8 @@ namespace wrench {
         bool overlap;
         bool plimit;
 
-        std::set<PlaceHolderJob *> running_placeholder_jobs;
-        PlaceHolderJob *pending_placeholder_job;
+        std::set<ZhangPlaceHolderJob *> running_placeholder_jobs;
+        ZhangPlaceHolderJob *pending_placeholder_job;
 
         double core_speed;
         unsigned long number_of_hosts;

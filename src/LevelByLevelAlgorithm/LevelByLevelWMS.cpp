@@ -11,11 +11,12 @@
 #include <wms/WMS.h>
 #include <workflow/job/PilotJob.h>
 #include <logging/TerminalOutput.h>
-#include <Util/PlaceHolderJob.h>
 #include <managers/JobManager.h>
 #include <StaticClusteringAlgorithms/ClusteredJob.h>
 #include <StaticClusteringAlgorithms/StaticClusteringWMS.h>
 #include "LevelByLevelWMS.h"
+#include "OngoingLevel.h"
+#include "PlaceHolderJob.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(level_by_level_clustering_wms, "Log category for Level-by-Level Clustering WMS");
 
@@ -93,24 +94,39 @@ namespace wrench {
       // Make sure that all PH jobs in the previous level have started
       if (level_to_submit > 0) {
         if (not (this->ongoing_levels[level_to_submit - 1]->pending_placeholder_jobs.empty())) {
-          WRENCH_INFO("Cannot submit pilot jobs for level %ld since level %ld still has"
+          WRENCH_INFO("Cannot submit pilot jobs for level %ld since level %ld still has "
                               "pilot jobs that haven't started yet", level_to_submit, level_to_submit-1);
           return;
         }
       }
-      WRENCH_INFO("All pilot jobs from level %ld have started... off I go!", level_to_submit-1);
+
+      if (level_to_submit > 0) {
+        WRENCH_INFO("All pilot jobs from level %ld have started... off I go with level %ld!",
+                    level_to_submit - 1, level_to_submit);
+      } else {
+        WRENCH_INFO("Starting the first level!");
+      }
 
       WRENCH_INFO("Creating a new ongoing level for level %lu", level_to_submit);
       OngoingLevel *new_ongoing_level = new OngoingLevel();
       new_ongoing_level->level_number = level_to_submit;
 
-      // Create all pilot jobs for level
+      // Create all place holder jobs for level
       std::set<PlaceHolderJob *> place_holder_jobs;
       place_holder_jobs = createPlaceHolderJobsForLevel(level_to_submit);
 
       // Submit placeholder jobs
       for (auto ph : place_holder_jobs) {
         new_ongoing_level->pending_placeholder_jobs.insert(ph);
+
+        // Create the pilot job
+        double makespan = ph->clustered_job->estimateMakespan(this->core_speed);
+        // Create the pilot job
+        ph->pilot_job = this->job_manager->createPilotJob(
+                ph->clustered_job->getNumNodes(),
+                1, 0, makespan * EXECUTION_TIME_FUDGE_FACTOR);
+
+
         // submit the corresponding pilot job
         std::map<std::string, std::string> service_specific_args;
         service_specific_args["-N"] = std::to_string(ph->pilot_job->getNumHosts());
@@ -124,7 +140,7 @@ namespace wrench {
                     level_to_submit,
                     ph->pilot_job->getName().c_str());
         WRENCH_INFO("This pilot job has these tasks:");
-        for (auto t : ph->tasks) {
+        for (auto t : ph->clustered_job->getTasks()) {
           WRENCH_INFO("     - %s (flops: %lf)", t->getID().c_str(), t->getFlops());
         }
       }
@@ -156,6 +172,7 @@ namespace wrench {
         tokens.push_back(token);
       }
 
+      /** Invoke task clustering heuristics **/
       std::set<ClusteredJob *>clustered_jobs;
       if (tokens[0] == "hc") {
         if (tokens.size() != 3) {
@@ -167,6 +184,7 @@ namespace wrench {
             (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
           throw std::invalid_argument("Invalid static:hc specification");
         }
+        // Compute clusters (could be 0 nodes, in which case queue prediction will be triggered)
         clustered_jobs = StaticClusteringWMS::createHCJobs(
                 "none", num_tasks_per_cluster, num_nodes_per_cluster,
                 this->getWorkflow(), level, level);
@@ -180,13 +198,10 @@ namespace wrench {
       std::set<PlaceHolderJob *> place_holder_jobs;
       for (auto cj : clustered_jobs) {
 
-        double makespan = cj->estimateMakespan(this->core_speed);
-        // Create the pilot job
-        PilotJob *pj = this->job_manager->createPilotJob(cj->getNumNodes(), 1, 0, makespan * EXECUTION_TIME_FUDGE_FACTOR);
-
-        // Create the placeholder job
-        WRENCH_INFO("Creating a placeholder job for level %ld with %ld tasks", level, cj->getNumTasks());
-        PlaceHolderJob *ph = new PlaceHolderJob(pj, cj->getTasks(), level, level);
+        // Create the placeholder job (with a for-now nullptr PilotJob)
+        WRENCH_INFO("Creating a placeholder job for level %ld based on a clustered job with %ld tasks",
+                    level, cj->getNumTasks());
+        PlaceHolderJob *ph = new PlaceHolderJob(nullptr, cj, level, level);
 
         // Add it to the set
         place_holder_jobs.insert(ph);
@@ -195,6 +210,32 @@ namespace wrench {
       return place_holder_jobs;
     }
 
+
+//
+//
+//      // Queue-based num nodes
+//      for (auto cj : clustered_jobs) {
+//        // Construct
+//        unsigned long max_num_nodes = std::min(cj->getNumTasks(), this->number_of_hosts);
+//        std::string job_id = "my_tentative_job";
+//        std::set<std::tuple<std::string,unsigned int,unsigned int, double>> set_of_jobs;
+//        for (unsigned int n = 1; n < max_num_nodes; n++) {
+//          double walltime_seconds = 1000;
+//          std::tuple<std::string, unsigned int, unsigned int, double> my_job =
+//                  std::make_tuple(job_id + "_" + std::to_string(sequence_number++),
+//                                  n, 1, walltime_seconds);
+//          set_of_jobs.insert(my_job);
+//        }
+//
+//          std::map<std::string,double> jobs_estimated_start_times;
+//          bool success = true;
+//          try {
+//            jobs_estimated_start_times = batch_service->getStartTimeEstimates(set_of_jobs);
+//          } catch (wrench::WorkflowExecutionException &e) {
+//          }
+//        }
+//
+//      }
 
 
 
@@ -220,14 +261,14 @@ namespace wrench {
         throw std::runtime_error("Fatal Error: couldn't find a placeholder job for a pilot job that just started");
       }
 
-      WRENCH_INFO("The corresponding placeholder job has %ld tasks", placeholder_job->tasks.size());
+      WRENCH_INFO("The corresponding placeholder job has %ld tasks", placeholder_job->clustered_job->getTasks().size());
       // Mote the placeholder job to running
       ongoing_level->pending_placeholder_jobs.erase(placeholder_job);
       ongoing_level->running_placeholder_jobs.insert(placeholder_job);
 
       // Submit all ready tasks to it each in its standard job
       std::string output_string = "";
-      for (auto task : placeholder_job->tasks) {
+      for (auto task : placeholder_job->clustered_job->getTasks()) {
         if (task->getState() == WorkflowTask::READY) {
           StandardJob *standard_job = this->job_manager->createStandardJob(task,{});
           output_string += " " + task->getID();
@@ -269,7 +310,7 @@ namespace wrench {
 
 
       // Check if there are unprocessed tasks
-      bool unprocessed = (placeholder_job->tasks.size() != placeholder_job->num_completed_tasks);
+      bool unprocessed = (placeholder_job->clustered_job->getTasks().size() != placeholder_job->num_completed_tasks);
 
       if (not unprocessed) { // Nothing to do
         WRENCH_INFO("This placeholder job has no unprocessed tasks. great.");
@@ -281,7 +322,7 @@ namespace wrench {
       WRENCH_INFO("This placeholder job has unprocessed tasks... resubmit it as a restart");
       // Create a new Clustered Job
       ClusteredJob *cj = new ClusteredJob();
-      for (auto t : placeholder_job->tasks) {
+      for (auto t : placeholder_job->clustered_job->getTasks()) {
         if (t->getState() != WorkflowTask::COMPLETED) {
           cj->addTask(t);
         }
@@ -293,7 +334,7 @@ namespace wrench {
       PilotJob *pj = this->job_manager->createPilotJob(cj->getNumNodes(), 1, 0, makespan * EXECUTION_TIME_FUDGE_FACTOR);
 
       PlaceHolderJob *replacement_placeholder_job =
-              new PlaceHolderJob(pj, cj->getTasks(),
+              new PlaceHolderJob(pj, cj,
                                  ongoing_level->level_number, ongoing_level->level_number);
 
       // Resubmit it!
@@ -311,7 +352,7 @@ namespace wrench {
                   ongoing_level->level_number,
                   replacement_placeholder_job->pilot_job->getName().c_str());
       WRENCH_INFO("This pilot job has these tasks:");
-      for (auto t : replacement_placeholder_job->tasks) {
+      for (auto t : replacement_placeholder_job->clustered_job->getTasks()) {
         WRENCH_INFO("     - %s (flops: %lf)", t->getID().c_str(), t->getFlops());
       }
 
@@ -329,7 +370,7 @@ namespace wrench {
       OngoingLevel *ongoing_level = nullptr;
       for (auto ol : this->ongoing_levels) {
         for (auto ph : ol.second->running_placeholder_jobs) {
-          for (auto task : ph->tasks) {
+          for (auto task : ph->clustered_job->getTasks()) {
             if (task == completed_task) {
               ongoing_level = ol.second;
               placeholder_job = ph;
@@ -346,7 +387,7 @@ namespace wrench {
 
       placeholder_job->num_completed_tasks++;
       // Terminate the pilot job in case all its tasks are done
-      if (placeholder_job->num_completed_tasks == placeholder_job->tasks.size()) {
+      if (placeholder_job->num_completed_tasks == placeholder_job->clustered_job->getTasks().size()) {
         WRENCH_INFO("All tasks are completed in this placeholder job, so I am terminating it (%s)",
                     placeholder_job->pilot_job->getName().c_str());
         try {
@@ -366,7 +407,7 @@ namespace wrench {
       for (auto ol : this->ongoing_levels) {
         for (auto ph : ol.second->running_placeholder_jobs) {
 
-          for (auto task : ph->tasks) {
+          for (auto task : ph->clustered_job->getTasks()) {
             if ((std::find(children.begin(), children.end(), task) != children.end()) and
                 (task->getState() == WorkflowTask::READY)) {
               StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
@@ -389,7 +430,5 @@ namespace wrench {
     void LevelByLevelWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
       WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS (the pilot job expiration event will handle these issues)", e->standard_job->tasks[0]->getID().c_str());
     }
-
-
 
 };

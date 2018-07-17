@@ -12,11 +12,12 @@
 
 
 #include <services/compute/batch/BatchService.h>
-#include "OngoingLevel.h"
 
 namespace wrench {
 
     class PlaceHolderJob;
+    class ClusteredJob;
+    class OngoingLevel;
 
     class LevelByLevelWMS : public WMS {
 
@@ -48,6 +49,8 @@ namespace wrench {
         std::shared_ptr<JobManager> job_manager;
 
         std::map<int, OngoingLevel *> ongoing_levels;
+
+        unsigned long sequence_number = 0;
 
 
     };

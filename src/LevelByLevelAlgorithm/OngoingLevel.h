@@ -12,10 +12,11 @@
 #define TASK_CLUSTERING_BATCH_SIMULATOR_ONGOINGLEVEL_H
 
 
-#include <Util/PlaceHolderJob.h>
 #include <set>
 
 namespace wrench {
+
+    class PlaceHolderJob;
 
     class OngoingLevel {
 

@@ -11,7 +11,7 @@
 #include <wrench-dev.h>
 #include <Util/WorkflowUtil.h>
 #include "ZhangClusteringWMS.h"
-#include "Util/PlaceHolderJob.h"
+#include "ZhangPlaceHolderJob.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(zhang_clustering_wms, "Log category for Zhang Clustering WMS");
 
@@ -199,7 +199,7 @@ namespace wrench {
 
 
       // Keep track of the placeholder job
-      this->pending_placeholder_job = new PlaceHolderJob(
+      this->pending_placeholder_job = new ZhangPlaceHolderJob(
               this->job_manager->createPilotJob(requested_parallelism, 1, 0.0, requested_execution_time),
               tasks,
               start_level,
@@ -236,7 +236,7 @@ namespace wrench {
         return;
       }
 
-      PlaceHolderJob *placeholder_job = this->pending_placeholder_job;
+      ZhangPlaceHolderJob *placeholder_job = this->pending_placeholder_job;
 
       // Move it to running
       this->running_placeholder_jobs.insert(placeholder_job);
@@ -263,7 +263,7 @@ namespace wrench {
     void ZhangClusteringWMS::processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) {
 
       // Find the placeholder job
-      PlaceHolderJob *placeholder_job = nullptr;
+      ZhangPlaceHolderJob *placeholder_job = nullptr;
       for (auto ph : this->running_placeholder_jobs) {
         if (ph->pilot_job == e->pilot_job) {
           placeholder_job = ph;
@@ -298,7 +298,7 @@ namespace wrench {
 
       // Cancel running pilot jobs if none of their tasks has started
 
-      std::set<PlaceHolderJob *> to_remove;
+      std::set<ZhangPlaceHolderJob *> to_remove;
       for (auto ph : this->running_placeholder_jobs) {
         bool started = false;
         for (auto task : ph->tasks) {
@@ -335,7 +335,7 @@ namespace wrench {
       WRENCH_INFO("Got a standard job completion for task %s", completed_task->getID().c_str());
 
       // Find the placeholder job this task belongs to
-      PlaceHolderJob *placeholder_job = nullptr;
+      ZhangPlaceHolderJob *placeholder_job = nullptr;
       for (auto ph : this->running_placeholder_jobs) {
         for (auto task : ph->tasks) {
           if (task == completed_task) {

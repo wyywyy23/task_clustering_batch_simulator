@@ -16,9 +16,10 @@ set(SOURCE_FILES
         src/LevelByLevelAlgorithm/OngoingLevel.h
         src/LevelByLevelAlgorithm/LevelbyLevelWMS.cpp
         src/LevelbyLevelAlgorithm/LevelbyLevelWMS.h
+        src/LevelbyLevelAlgorithm/PlaceHolderJob.h
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.cpp
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.h
-        src/Util/PlaceHolderJob.h
+        src/ZhangClusteringAlgorithm/ZhangPlaceHolderJob.h
         src/StaticClusteringAlgorithms/ClusteredJob.cpp
         src/StaticClusteringAlgorithms/ClusteredJob.h
         src/StaticClusteringAlgorithms/StaticClusteringWMS.cpp
