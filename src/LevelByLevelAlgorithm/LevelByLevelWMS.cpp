@@ -262,6 +262,12 @@ namespace wrench {
                 "none", num_tasks_per_cluster, num_nodes_per_cluster,
                 this->getWorkflow(), level, level);
 
+      } else if (tokens[0] == "clever") {
+        if (tokens.size() != 1) {
+          throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
+        }
+        // TODO: IMPLEMENT SOMETHING!
+        throw std::runtime_error("'clever' clustering heuristic not implemented yet!");
 
       } else {
         throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);

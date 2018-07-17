@@ -19,14 +19,15 @@
 - Implement execution efficiency as an output to the simulator [HENRI]
 
 - UNLIMITED JOBS: 
-    - Implement Solution #1 below
-            [HENRI] "just code" 
-    
+    [DONE] Implement Solution #1 below
+
     - Implement Solution #2 below
             [HENRI] "just code"
             [HENRI + PF] define heuristics
 
 - LIMITED JOBS:
+    [HENRI] Code a way in which Solution #1 and #2 do actually limit number of jobs
+            - Right now, the code assumes one can just blindly submit everything
     [HENRI + PF] Come up with Heuristics for Solutions #1 and #2
 
 - Run experiments

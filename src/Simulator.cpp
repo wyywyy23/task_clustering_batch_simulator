@@ -132,6 +132,9 @@ int main(int argc, char **argv) {
     std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
     std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
     std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+    std::cerr << "          - clever: A clever heuristic\e[0m" << "\n";
+    std::cerr << "            - A heuristic that cleverly splits a level into jobs based on task executiong times " << "\n";
+    std::cerr << "              and queue wait times" << "\n";
     std::cerr << "\n";
     std::cerr << "  \e[1;32m### batch algorithm options ###\e[0m" << "\n";
     std::cerr << "    * \e[1mconservative_bf\e[0m" << "\n";
