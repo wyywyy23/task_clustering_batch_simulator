@@ -115,10 +115,11 @@ int main(int argc, char **argv) {
     std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
     std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
     std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "          - djfs-t-m: DJFS static algorithm\e[0m" << "\n";
+    std::cerr << "          - djfs-t-m1-m2: DJFS static algorithm\e[0m" << "\n";
     std::cerr << "            - t: bound on runtime (in seconds)" << "\n";
-    std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
-    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+    std::cerr << "            - m1: number of hosts used to compute the cluster" << "\n";
+    std::cerr << "            - m2: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "              - if m2 = 0, then pick best number nodes based on queue wait time prediction" << "\n";
     std::cerr << "          - hrb-n-m: HRB algorithm\e[0m" << "\n";
     std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
     std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";

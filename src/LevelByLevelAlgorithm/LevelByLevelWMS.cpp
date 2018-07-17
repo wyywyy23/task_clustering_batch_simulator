@@ -189,12 +189,33 @@ namespace wrench {
         unsigned long num_nodes_per_cluster;
         if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
             (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
-          throw std::invalid_argument("Invalid static:hc specification");
+          throw std::invalid_argument("Invalid hc specification");
         }
         // Compute clusters (could be 0 nodes, in which case queue prediction will be triggered)
         clustered_jobs = StaticClusteringWMS::createHCJobs(
                 "none", num_tasks_per_cluster, num_nodes_per_cluster,
                 this->getWorkflow(), level, level);
+
+      } else if (tokens[0] == "djfs") {
+        if (tokens.size() != 4) {
+          throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
+        }
+        unsigned long num_seconds_per_cluster;
+        unsigned long num_nodes_to_compute_clustering;
+        unsigned long num_nodes_per_cluster;
+        if ((sscanf(tokens[1].c_str(), "%lu", &num_seconds_per_cluster) != 1) or (num_seconds_per_cluster < 1) or
+            (sscanf(tokens[2].c_str(), "%lu", &num_nodes_to_compute_clustering) != 1) or
+            (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
+          throw std::invalid_argument("Invalid djfs specification");
+        }
+        // Compute clusters (could be 0 nodes, in which case queue prediction will be triggered)
+        clustered_jobs = StaticClusteringWMS::createDFJSJobs(
+                "none", num_seconds_per_cluster, num_nodes_to_compute_clustering, this->core_speed,
+                this->getWorkflow(), level, level);
+        // Now set the num nodes to the effective one to use
+        for (auto cj : clustered_jobs) {
+          cj->setNumNodes(num_nodes_per_cluster);
+        }
 
       } else {
         throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
@@ -449,7 +470,7 @@ namespace wrench {
 
       if (jobs_estimated_start_times.size() != max_num_nodes) {
         throw std::runtime_error("Was expecting " + std::to_string(max_num_nodes) + " wait time estimates but got " +
-              std::to_string(jobs_estimated_start_times.size()) + "instead!");
+                                 std::to_string(jobs_estimated_start_times.size()) + "instead!");
       }
       // Find out the best
       unsigned long best_num_nodes = ULONG_MAX;
