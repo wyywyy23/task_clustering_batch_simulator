@@ -208,14 +208,60 @@ namespace wrench {
             (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
           throw std::invalid_argument("Invalid djfs specification");
         }
-        // Compute clusters (could be 0 nodes, in which case queue prediction will be triggered)
+        // Compute clusters
         clustered_jobs = StaticClusteringWMS::createDFJSJobs(
                 "none", num_seconds_per_cluster, num_nodes_to_compute_clustering, this->core_speed,
                 this->getWorkflow(), level, level);
-        // Now set the num nodes to the effective one to use
+        // Now set the num nodes to the effective one to use (if 0, queue wait time predictions will be triggered)
         for (auto cj : clustered_jobs) {
           cj->setNumNodes(num_nodes_per_cluster);
         }
+
+      } else if (tokens[0] == "hrb") {
+        if (tokens.size() != 3) {
+          throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
+        }
+        unsigned long num_tasks_per_cluster;
+        unsigned long num_nodes_per_cluster;
+        if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
+            (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
+          throw std::invalid_argument("Invalid hrb specification");
+        }
+        // Compute clusters (could be 0 nodes, in which case queue prediction will be triggered)
+        clustered_jobs = StaticClusteringWMS::createHRBJobs(
+                "none", num_tasks_per_cluster, num_nodes_per_cluster, this->core_speed,
+                this->getWorkflow(), level, level);
+
+      } else if (tokens[0] == "hifb") {
+        if (tokens.size() != 3) {
+          throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
+        }
+        unsigned long num_tasks_per_cluster;
+        unsigned long num_nodes_per_cluster;
+        if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
+            (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
+          throw std::invalid_argument("Invalid hifb specification");
+        }
+        // Compute clusters (could be 0 nodes, in which case queue prediction will be triggered)
+        clustered_jobs = StaticClusteringWMS::createHIFBJobs(
+                "none", num_tasks_per_cluster, num_nodes_per_cluster,
+                this->getWorkflow(), level, level);
+
+      } else if (tokens[0] == "hdb") {
+        if (tokens.size() != 3) {
+          throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
+        }
+        unsigned long num_tasks_per_cluster;
+        unsigned long num_nodes_per_cluster;
+        if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
+            (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
+          throw std::invalid_argument("Invalid hdb specification");
+        }
+        // Compute clusters (could be 0 nodes, in which case queue prediction will be triggered)
+        clustered_jobs = StaticClusteringWMS::createHDBJobs(
+                "none", num_tasks_per_cluster, num_nodes_per_cluster,
+                this->getWorkflow(), level, level);
+
 
       } else {
         throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
