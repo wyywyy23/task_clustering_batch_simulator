@@ -180,13 +180,12 @@ int main(int argc, char **argv) {
     csv_batch_log = std::string(argv[8]);
   }
 
-  std::cout << "SIZE = " << sizeof(BatchService) << "\n";
-
   try {
     batch_service = new BatchService(login_hostname, compute_nodes, 0,
                                      {{BatchServiceProperty::OUTPUT_CSV_JOB_LOG, csv_batch_log},
                                       {BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, std::string(argv[7])},
-                                      {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])}
+                                      {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])},
+                                      {BatchServiceProperty::SIMULATE_ONLY_ONE_COMPUTE_THREAD_PER_JOB, "true"},
                                      }, {});
   } catch (std::invalid_argument &e) {
 
@@ -244,8 +243,8 @@ int main(int argc, char **argv) {
   WRENCH_INFO("Simulation done!");
 
 
-  std::cout << "WORKFLOW MAKESPAN: " << (workflow->getCompletionDate() - workflow_start_time) << "\n";
-  std::cerr << "CSV Log file created at " << csv_batch_log << "\n";
+  std::cout << "MAKESPAN=" << (workflow->getCompletionDate() - workflow_start_time) << "\n";
+  std::cout << "CSV LOG FILE=" << csv_batch_log << "\n";
 
 }
 

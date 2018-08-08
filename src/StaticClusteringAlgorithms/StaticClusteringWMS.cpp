@@ -23,6 +23,14 @@ StaticClusteringWMS::StaticClusteringWMS(std::string hostname, BatchService *bat
 void StaticClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
   StandardJob *job = e->standard_job;
   WRENCH_INFO("Job %s has completed", job->getName().c_str());
+  std::cerr << "SUBMIT TIME=" << job->getSubmitDate() << "\n";
+  double first_task_start_time = DBL_MAX;
+  for (auto const &t : job->getTasks()) {
+    if (t->getStartDate() < first_task_start_time) {
+      first_task_start_time = t->getStartDate();
+    }
+  }
+  std::cerr << "JOB START TIME=" << first_task_start_time << "\n";
   this->num_jobs_in_systems--;
 }
 
