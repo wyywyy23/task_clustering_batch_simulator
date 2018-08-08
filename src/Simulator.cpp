@@ -185,7 +185,7 @@ int main(int argc, char **argv) {
                                      {{BatchServiceProperty::OUTPUT_CSV_JOB_LOG, csv_batch_log},
                                       {BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, std::string(argv[7])},
                                       {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])},
-                                      {BatchServiceProperty::SIMULATE_ONLY_ONE_COMPUTE_THREAD_PER_JOB, "true"},
+                                      {BatchServiceProperty::SIMULATE_COMPUTATION_AS_SLEEP, "true"},
                                      }, {});
   } catch (std::invalid_argument &e) {
 
