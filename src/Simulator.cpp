@@ -254,20 +254,16 @@ void setupSimulationPlatform(Simulation *simulation, unsigned long num_compute_n
   std::string xml = "<?xml version='1.0'?>\n"
           "<!DOCTYPE platform SYSTEM \"http://simgrid.gforge.inria.fr/simgrid/simgrid.dtd\">\n"
           "<platform version=\"4.1\">\n"
-          "   <zone id=\"AS0\" routing=\"Full\"> "
-          "       <host id=\"Login\" speed=\"1f\" core=\"1\"/>\n";
-  for (unsigned long i=0; i < num_compute_nodes; i++) {
-    xml += "       <host id=\"ComputeNode_"+std::to_string(i)+"\" speed=\"1f\" core=\"1\"/>\n";
-  }
-  xml +=        "        <link id=\"1\" bandwidth=\"5000GBps\" latency=\"0us\"/>\n";
-  for (unsigned long i=0; i < num_compute_nodes; i++) {
-    xml += "       <route src=\"Login\" dst=\"ComputeNode_"+std::to_string(i)+"\"> <link_ctn id=\"1\"/> </route>\n";
-  }
-  for (unsigned long i=0; i < num_compute_nodes; i++) {
-    for (unsigned long j = i+1; j < num_compute_nodes; j++) {
-      xml += "       <route src=\"ComputeNode_" + std::to_string(i) + "\" dst=\"ComputeNode_" + std::to_string(j) + "\"> <link_ctn id=\"1\"/> </route>\n";
-    }
-  }
+          "   <zone id=\"AS0\" routing=\"Full\">\n"
+          "     <cluster id=\"cluster\" prefix=\"ComputeNode_\" suffix=\"\" radical=\"0-";              
+  xml += std::to_string(num_compute_nodes-1) + "\" speed=\"1f\" bw=\"125GBps\" lat=\"0us\" router_id=\"router\"/>\n";
+  xml += "      <zone id=\"AS1\" routing=\"Full\">\n";
+  xml += "          <host id=\"Login\" speed=\"1f\"/>\n";
+  xml += "      </zone>\n";
+  xml += "      <link id=\"link\" bandwidth=\"125GBps\" latency=\"0ms\"/>\n";
+  xml += "      <zoneRoute src=\"cluster\" dst=\"AS1\" gw_src=\"router\" gw_dst=\"Login\">\n";
+  xml += "        <link_ctn id=\"link\"/>\n";
+  xml += "       </zoneRoute>\n";
   xml += "   </zone>\n";
   xml += "</platform>\n";
 
