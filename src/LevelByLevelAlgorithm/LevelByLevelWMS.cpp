@@ -181,7 +181,33 @@ namespace wrench {
 
       /** Invoke task clustering heuristics **/
       std::set<ClusteredJob *>clustered_jobs;
-      if (tokens[0] == "hc") {
+      if (tokens[0] == "one_job") {
+        if (tokens.size() != 2) {
+          throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
+        }
+        unsigned long num_nodes_per_cluster;
+        if ((sscanf(tokens[1].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+          throw std::invalid_argument("Invalid one_job specification");
+        }
+        auto job = new ClusteredJob();
+        for (auto t : this->getWorkflow()->getTasks()) {
+          job->addTask(t);
+        }
+        job->setNumNodes(num_nodes_per_cluster);
+        clustered_jobs.insert(job);
+
+      } else if (tokens[0] == "one_job_per_task") {
+        if (tokens.size() != 1) {
+          throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
+        }
+        for (auto t : this->getWorkflow()->getTasks()) {
+          auto job = new ClusteredJob();
+          job->addTask(t);
+          job->setNumNodes(1);
+          clustered_jobs.insert(job);
+        }
+
+      } else if (tokens[0] == "hc") {
         if (tokens.size() != 3) {
           throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
         }
@@ -270,7 +296,7 @@ namespace wrench {
         throw std::runtime_error("'clever' clustering heuristic not implemented yet!");
 
       } else {
-        throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
+        throw std::runtime_error("createPlaceHolderJobsForLevel(): Unknown clustering spec " + this->clustering_spec);
       }
 
 
