@@ -416,6 +416,7 @@ namespace wrench {
         cj->setNumNodes(num_nodes, true);
       }
 
+      WRENCH_INFO("JUST SET THE NUMBER OF NODES TO %ld", cj->getNumNodes());
       double makespan = cj->estimateMakespan(this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
 
       // Create the pilot job
