@@ -18,13 +18,11 @@ namespace wrench {
                        unsigned long start_level,
                        unsigned long end_level) : pilot_job(pilot_job),
                                                   tasks(tasks),
-                                                  num_completed_tasks(0),
                                                   start_level(start_level),
                                                   end_level(end_level) { }
 
         PilotJob *pilot_job;
         std::vector<WorkflowTask *> tasks;
-        unsigned long num_completed_tasks;
         unsigned long start_level;
         unsigned long end_level;
     };

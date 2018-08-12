@@ -417,7 +417,6 @@ namespace wrench {
       if (not placeholder_job->clustered_job->isNumNodesBasedOnQueueWaitTimePrediction()) {
         // Don't be stupid, don't ask for more nodes than tasks
         cj->setNumNodes(std::min(placeholder_job->clustered_job->getNumNodes(), cj->getNumTasks()));
-        WRENCH_INFO("A) JUST SET THE NUMBER OF NODES TO %ld", cj->getNumNodes());
       } else {
         unsigned long num_nodes = computeBestNumNodesBasedOnQueueWaitTimePredictions(cj);
         cj->setNumNodes(num_nodes, true);

@@ -277,7 +277,13 @@ namespace wrench {
       WRENCH_INFO("Got a pilot job expiration for a placeholder job that deals with levels %ld-%ld (%s)",
                   placeholder_job->start_level, placeholder_job->end_level, placeholder_job->pilot_job->getName().c_str());
       // Check if there are unprocessed tasks
-      bool unprocessed = (placeholder_job->tasks.size() != placeholder_job->num_completed_tasks);
+      bool unprocessed = false;
+      for (auto t : placeholder_job->tasks) {
+        if (t->getState() != WorkflowTask::COMPLETED) {
+          unprocessed = true;
+          break;
+        }
+      }
 
       if (not unprocessed) { // Nothing to do
         WRENCH_INFO("This placeholder job has no unprocessed tasks. great.");
@@ -352,9 +358,15 @@ namespace wrench {
 
       if (placeholder_job != nullptr) {
 
-        placeholder_job->num_completed_tasks++;
         // Terminate the pilot job in case all its tasks are done
-        if (placeholder_job->num_completed_tasks == placeholder_job->tasks.size()) {
+        bool all_tasks_done = true;
+        for (auto t : placeholder_job->tasks) {
+          if (t->getState() != WorkflowTask::COMPLETED) {
+            all_tasks_done = false;
+            break;
+          }
+        }
+        if (all_tasks_done) {
           WRENCH_INFO("All tasks are completed in this placeholder job, so I am terminating it (%s)",
                       placeholder_job->pilot_job->getName().c_str());
           try {
@@ -365,6 +377,7 @@ namespace wrench {
           }
           this->running_placeholder_jobs.erase(placeholder_job);
         }
+
 
       }
 
