@@ -390,7 +390,13 @@ namespace wrench {
 
 
       // Check if there are unprocessed tasks
-      bool unprocessed = (placeholder_job->clustered_job->getTasks().size() != placeholder_job->num_completed_tasks);
+      bool unprocessed = false;
+      for (auto t : placeholder_job->clustered_job->getTasks()) {
+        if (t->getState() != WorkflowTask::COMPLETED) {
+          unprocessed = true;
+          break;
+        }
+      }
 
       if (not unprocessed) { // Nothing to do
         WRENCH_INFO("This placeholder job has no unprocessed tasks. great.");
@@ -411,12 +417,12 @@ namespace wrench {
       if (not placeholder_job->clustered_job->isNumNodesBasedOnQueueWaitTimePrediction()) {
         // Don't be stupid, don't ask for more nodes than tasks
         cj->setNumNodes(std::min(placeholder_job->clustered_job->getNumNodes(), cj->getNumTasks()));
+        WRENCH_INFO("A) JUST SET THE NUMBER OF NODES TO %ld", cj->getNumNodes());
       } else {
         unsigned long num_nodes = computeBestNumNodesBasedOnQueueWaitTimePredictions(cj);
         cj->setNumNodes(num_nodes, true);
       }
 
-      WRENCH_INFO("JUST SET THE NUMBER OF NODES TO %ld", cj->getNumNodes());
       double makespan = cj->estimateMakespan(this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
 
       // Create the pilot job
@@ -474,9 +480,15 @@ namespace wrench {
                                          "and we're not in individual mode");
       }
 
-      placeholder_job->num_completed_tasks++;
       // Terminate the pilot job in case all its tasks are done
-      if (placeholder_job->num_completed_tasks == placeholder_job->clustered_job->getTasks().size()) {
+      bool all_tasks_done = true;
+      for (auto task : placeholder_job->clustered_job->getTasks()) {
+        if (task->getState() != WorkflowTask::COMPLETED) {
+          all_tasks_done = false;
+          break;
+        }
+      }
+      if (all_tasks_done) {
         WRENCH_INFO("All tasks are completed in this placeholder job, so I am terminating it (%s)",
                     placeholder_job->pilot_job->getName().c_str());
         try {
