@@ -11,7 +11,9 @@ namespace wrench {
 
     public:
         unsigned long num_pilot_job_expirations_with_remaining_tasks_to_do = 0;
-
+        double used_node_seconds = 0;
+        double wasted_node_seconds = 0;
+        double total_queue_wait_time = 0;
 
         int main(int argc, char **argv);
 

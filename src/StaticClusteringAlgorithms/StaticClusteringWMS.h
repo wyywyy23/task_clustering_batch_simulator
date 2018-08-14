@@ -10,7 +10,6 @@ using namespace wrench;
 
 class StaticClusteringWMS : public WMS {
 
-
 public:
 
     StaticClusteringWMS(Simulator *simulator, std::string hostname, BatchService *batch_service, unsigned long max_num_jobs, std::string algorithm_spec);

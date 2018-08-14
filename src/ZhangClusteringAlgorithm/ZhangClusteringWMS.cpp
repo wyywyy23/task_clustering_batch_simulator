@@ -224,6 +224,10 @@ namespace wrench {
 
 
     void ZhangClusteringWMS::processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) {
+
+      // Update queue waiting time
+      this->simulator->total_queue_wait_time += this->simulation->getCurrentSimulatedDate() - e->pilot_job->getSubmitDate();
+
       // Just for kicks, check it was the pending one
       WRENCH_INFO("Got a Pilot Job Start event: %s", e->pilot_job->getName().c_str());
       if (this->pending_placeholder_job == nullptr) {
@@ -289,6 +293,14 @@ namespace wrench {
         }
       }
 
+      double wasted_node_seconds = e->pilot_job->getNumHosts() * e->pilot_job->getDuration();
+      for (auto t : placeholder_job->tasks) {
+        if (t->getState() == WorkflowTask::COMPLETED) {
+          wasted_node_seconds -= t->getFlops() / this->core_speed;
+        }
+      }
+      this->simulator->wasted_node_seconds += wasted_node_seconds;
+
       if (not unprocessed) { // Nothing to do
         WRENCH_INFO("This placeholder job has no unprocessed tasks. great.");
         return;
@@ -345,6 +357,8 @@ namespace wrench {
       WorkflowTask *completed_task = e->standard_job->tasks[0]; // only one task per job
 
       WRENCH_INFO("Got a standard job completion for task %s", completed_task->getID().c_str());
+
+      this->simulator->used_node_seconds += completed_task->getFlops() / this->core_speed;
 
       // Find the placeholder job this task belongs to
       ZhangPlaceHolderJob *placeholder_job = nullptr;

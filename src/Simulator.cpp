@@ -238,6 +238,9 @@ int Simulator::main(int argc, char **argv) {
 
   std::cout << "MAKESPAN=" << (workflow->getCompletionDate() - workflow_start_time) << "\n";
   std::cout << "NUM PILOT JOB EXPIRATIONS=" << this->num_pilot_job_expirations_with_remaining_tasks_to_do << "\n";
+  std::cout << "TOTAL QUEUE WAIT SECONDS=" << this->total_queue_wait_time << "\n";
+  std::cout << "USED NODE SECONDS=" << this->used_node_seconds << "\n";
+  std::cout << "WASTED NODE SECONDS=" << this->wasted_node_seconds << "\n";
   std::cout << "CSV LOG FILE=" << csv_batch_log << "\n";
 
   return 0;

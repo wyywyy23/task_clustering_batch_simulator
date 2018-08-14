@@ -325,6 +325,9 @@ namespace wrench {
       // Just for kicks, check it was the pending one
       WRENCH_INFO("Got a Pilot Job Start event: %s", e->pilot_job->getName().c_str());
 
+      // Update queue waiting time
+      this->simulator->total_queue_wait_time += this->simulation->getCurrentSimulatedDate() - e->pilot_job->getSubmitDate();
+
       // Find the placeholder job in the pending list
       PlaceHolderJob *placeholder_job = nullptr;
       OngoingLevel *ongoing_level = nullptr;
@@ -400,6 +403,14 @@ namespace wrench {
         }
       }
 
+      double wasted_node_seconds = e->pilot_job->getNumHosts() * e->pilot_job->getDuration();
+      for (auto t : placeholder_job->clustered_job->getTasks()) {
+        if (t->getState() == WorkflowTask::COMPLETED) {
+          wasted_node_seconds -= t->getFlops() / this->core_speed;
+        }
+      }
+      this->simulator->wasted_node_seconds += wasted_node_seconds;
+
       if (not unprocessed) { // Nothing to do
         WRENCH_INFO("This placeholder job has no unprocessed tasks. great.");
         return;
@@ -463,6 +474,8 @@ namespace wrench {
 
       WRENCH_INFO("Got a standard job completion for task %s", completed_task->getID().c_str());
 
+      this->simulator->used_node_seconds += completed_task->getFlops() / this->core_speed;
+
       // Find the placeholder job this task belongs to
       PlaceHolderJob *placeholder_job = nullptr;
       OngoingLevel *ongoing_level = nullptr;
@@ -492,6 +505,17 @@ namespace wrench {
         }
       }
       if (all_tasks_done) {
+
+        // Update the wasted no seconds metric
+        double wasted_node_seconds = placeholder_job->pilot_job->getNumHosts() * placeholder_job->pilot_job->getDuration();
+        for (auto t : placeholder_job->clustered_job->getTasks()) {
+          if (t->getState() == WorkflowTask::COMPLETED) {
+            wasted_node_seconds -= t->getFlops() / this->core_speed;
+          }
+        }
+        this->simulator->wasted_node_seconds += wasted_node_seconds;
+
+
         WRENCH_INFO("All tasks are completed in this placeholder job, so I am terminating it (%s)",
                     placeholder_job->pilot_job->getName().c_str());
         try {
@@ -534,7 +558,6 @@ namespace wrench {
     void LevelByLevelWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
       WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS (the pilot job expiration event will handle these issues)", e->standard_job->tasks[0]->getID().c_str());
     }
-
 
 
     unsigned long LevelByLevelWMS::computeBestNumNodesBasedOnQueueWaitTimePredictions(ClusteredJob *cj) {

@@ -1,5 +1,7 @@
 
 
+#include <stdio.h>
+
 #include <Util/WorkflowUtil.h>
 #include "StaticClusteringWMS.h"
 #include "ClusteredJob.h"
@@ -24,14 +26,27 @@ StaticClusteringWMS::StaticClusteringWMS(Simulator *simulator, std::string hostn
 void StaticClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
   StandardJob *job = e->standard_job;
   WRENCH_INFO("Job %s has completed", job->getName().c_str());
-  std::cerr << "SUBMIT TIME=" << job->getSubmitDate() << "\n";
+
+
+
   double first_task_start_time = DBL_MAX;
   for (auto const &t : job->getTasks()) {
     if (t->getStartDate() < first_task_start_time) {
       first_task_start_time = t->getStartDate();
     }
   }
-  std::cerr << "JOB START TIME=" << first_task_start_time << "\n";
+  int num_requested_nodes = stoi(job->getServiceSpecificArguments()["-N"]);
+  double job_duration = this->simulation->getCurrentSimulatedDate() - first_task_start_time;
+  double wasted_node_seconds = num_requested_nodes * job_duration;
+  for (auto const &t : job->getTasks()) {
+    this->simulator->used_node_seconds += t->getFlops() / this->core_speed;
+    wasted_node_seconds -= t->getFlops() / this->core_speed;
+  }
+
+  this->simulator->wasted_node_seconds = wasted_node_seconds;
+
+  this->simulator->total_queue_wait_time += (first_task_start_time - job->getSubmitDate());
+
   this->num_jobs_in_systems--;
 }
 
