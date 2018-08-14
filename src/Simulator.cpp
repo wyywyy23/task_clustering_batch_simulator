@@ -3,23 +3,15 @@
 #include <wrench-dev.h>
 #include <services/compute/batch/BatchServiceProperty.h>
 #include <LevelByLevelAlgorithm/LevelByLevelWMS.h>
+#include "Simulator.h"
 #include "StaticClusteringAlgorithms/StaticClusteringWMS.h"
 #include "ZhangClusteringAlgorithm/ZhangClusteringWMS.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(task_clustering_simulator, "Log category for Task Clustering Simulator");
 
-
 using namespace wrench;
 
-void setupSimulationPlatform(Simulation *simulation, unsigned long num_compute_nodes);
-Workflow *createWorkflow(std::string workflow_spec);
-Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens);
-Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens);
-Workflow *createDAXWorkflow(std::vector<std::string> spec_tokens);
-WMS *createWMS(std::string scheduler_spec, BatchService *batch_service, unsigned long max_num_jobs, std::string algorithm_name);
-
-
-int main(int argc, char **argv) {
+int Simulator::main(int argc, char **argv) {
 
   // Create and initialize a simulation
   auto simulation = new wrench::Simulation();
@@ -245,11 +237,13 @@ int main(int argc, char **argv) {
 
 
   std::cout << "MAKESPAN=" << (workflow->getCompletionDate() - workflow_start_time) << "\n";
+  std::cout << "NUM PILOT JOB EXPIRATIONS=" << this->num_pilot_job_expirations_with_remaining_tasks_to_do << "\n";
   std::cout << "CSV LOG FILE=" << csv_batch_log << "\n";
 
+  return 0;
 }
 
-void setupSimulationPlatform(Simulation *simulation, unsigned long num_compute_nodes) {
+void Simulator::setupSimulationPlatform(Simulation *simulation, unsigned long num_compute_nodes) {
 
   // Create a the platform file
   std::string xml = "<?xml version='1.0'?>\n"
@@ -279,7 +273,7 @@ void setupSimulationPlatform(Simulation *simulation, unsigned long num_compute_n
   }
 }
 
-Workflow *createWorkflow(std::string workflow_spec) {
+Workflow *Simulator::createWorkflow(std::string workflow_spec) {
 
   std::istringstream ss(workflow_spec);
   std::string token;
@@ -324,7 +318,7 @@ Workflow *createWorkflow(std::string workflow_spec) {
   }
 }
 
-Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens) {
+Workflow *Simulator::createIndepWorkflow(std::vector<std::string> spec_tokens) {
   unsigned int seed;
   if (sscanf(spec_tokens[1].c_str(), "%u", &seed) != 1) {
     throw std::invalid_argument("createIndepWorkflow(): invalid RNG ssed in workflow specification");
@@ -358,7 +352,7 @@ Workflow *createIndepWorkflow(std::vector<std::string> spec_tokens) {
 }
 
 
-Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
+Workflow *Simulator::createLevelsWorkflow(std::vector<std::string> spec_tokens) {
 
   unsigned int seed;
   if (sscanf(spec_tokens[1].c_str(), "%u", &seed) != 1) {
@@ -420,7 +414,7 @@ Workflow *createLevelsWorkflow(std::vector<std::string> spec_tokens) {
 
 }
 
-Workflow *createDAXWorkflow(std::vector<std::string> spec_tokens) {
+Workflow *Simulator::createDAXWorkflow(std::vector<std::string> spec_tokens) {
   std::string filename = spec_tokens[1];
 
   auto original_workflow = new Workflow();
@@ -461,7 +455,7 @@ Workflow *createDAXWorkflow(std::vector<std::string> spec_tokens) {
 }
 
 
-WMS *createWMS(std::string hostname,
+WMS *Simulator::createWMS(std::string hostname,
                BatchService *batch_service,
                unsigned long max_num_jobs,
                std::string scheduler_spec) {
@@ -480,7 +474,7 @@ WMS *createWMS(std::string hostname,
       throw std::invalid_argument("createWMS(): Invalid static specification");
     }
 
-    WMS *wms = new StaticClusteringWMS(hostname, batch_service, max_num_jobs, tokens[1]);
+    WMS *wms = new StaticClusteringWMS(this, hostname, batch_service, max_num_jobs, tokens[1]);
     return wms;
 
   } else if (tokens[0] == "zhang") {
@@ -504,7 +498,7 @@ WMS *createWMS(std::string hostname,
     } else {
       throw std::invalid_argument("createWMS(): Invalid zhang specification");
     }
-    return new ZhangClusteringWMS(hostname, overlap, plimit, batch_service);
+    return new ZhangClusteringWMS(this, hostname, overlap, plimit, batch_service);
 
   } else if (tokens[0] == "levelbylevel") {
     if (tokens.size() != 3) {
@@ -518,7 +512,7 @@ WMS *createWMS(std::string hostname,
     } else {
       throw std::invalid_argument("createWMS(): Invalid levelbylevel specification");
     }
-    return new LevelByLevelWMS(hostname, overlap, tokens[2], batch_service);
+    return new LevelByLevelWMS(this, hostname, overlap, tokens[2], batch_service);
 
   } else {
     throw std::invalid_argument("createStandardJobScheduler(): Unknown algorithm type " + tokens[0]);

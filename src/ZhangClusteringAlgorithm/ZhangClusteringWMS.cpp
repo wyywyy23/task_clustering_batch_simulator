@@ -10,6 +10,7 @@
 
 #include <wrench-dev.h>
 #include <Util/WorkflowUtil.h>
+#include <Simulator.h>
 #include "ZhangClusteringWMS.h"
 #include "ZhangPlaceHolderJob.h"
 
@@ -19,8 +20,11 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(zhang_clustering_wms, "Log category for Zhang Clust
 
 namespace wrench {
 
-    ZhangClusteringWMS::ZhangClusteringWMS(std::string hostname, bool overlap, bool plimit, BatchService *batch_service) :
+    class Simulator;
+
+    ZhangClusteringWMS::ZhangClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit, BatchService *batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
+      this->simulator = simulator;
       this->overlap = overlap;
       this->plimit = plimit;
       this->batch_service = batch_service;
@@ -289,6 +293,8 @@ namespace wrench {
         WRENCH_INFO("This placeholder job has no unprocessed tasks. great.");
         return;
       }
+
+      this->simulator->num_pilot_job_expirations_with_remaining_tasks_to_do++;
 
       WRENCH_INFO("This placeholder job has unprocessed tasks");
 

@@ -15,6 +15,7 @@
 
 namespace wrench {
 
+    class Simulator;
     class PlaceHolderJob;
     class ClusteredJob;
     class OngoingLevel;
@@ -23,7 +24,7 @@ namespace wrench {
 
     public:
 
-        LevelByLevelWMS(std::string hostname, bool overlap, std::string clustering_spec, BatchService *batch_service);
+        LevelByLevelWMS(Simulator *simulator, std::string hostname, bool overlap, std::string clustering_spec, BatchService *batch_service);
 
 
     private:
@@ -40,6 +41,7 @@ namespace wrench {
 
         unsigned long computeBestNumNodesBasedOnQueueWaitTimePredictions(ClusteredJob *cj);
 
+        Simulator *simulator;
 
         bool overlap;
         std::string clustering_spec;

@@ -11,9 +11,10 @@ using namespace wrench;
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(static_clustering_wms, "Log category for Static Clustering WMS");
 
-StaticClusteringWMS::StaticClusteringWMS(std::string hostname, BatchService *batch_service,
+StaticClusteringWMS::StaticClusteringWMS(Simulator *simulator, std::string hostname, BatchService *batch_service,
                                          unsigned long max_num_jobs, std::string algorithm_spec) :
         WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "static_clustering_wms") {
+  this->simulator = simulator;
   this->batch_service = batch_service;
   this->max_num_jobs = max_num_jobs;
   this->algorithm_spec = algorithm_spec;

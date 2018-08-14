@@ -3,16 +3,17 @@
 #define TASK_CLUSTERING_FOR_BATCH_CLUSTERINGWMS_H
 
 #include <wrench-dev.h>
+#include "Simulator.h"
 #include "ClusteredJob.h"
 
 using namespace wrench;
 
-
 class StaticClusteringWMS : public WMS {
+
 
 public:
 
-    StaticClusteringWMS(std::string hostname, BatchService *batch_service, unsigned long max_num_jobs, std::string algorithm_spec);
+    StaticClusteringWMS(Simulator *simulator, std::string hostname, BatchService *batch_service, unsigned long max_num_jobs, std::string algorithm_spec);
     int main() override;
 
     void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent>) override;
@@ -40,6 +41,8 @@ private:
 
     void submitClusteredJob(ClusteredJob *clustered_job);
     std::map<wrench::StandardJob *, ClusteredJob *> job_map;
+
+    Simulator *simulator;
 
     BatchService *batch_service;
     unsigned long max_num_jobs;

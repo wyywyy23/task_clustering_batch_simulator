@@ -18,13 +18,14 @@
 
 namespace wrench {
 
+    class Simulator;
     class ZhangPlaceHolderJob;
 
     class ZhangClusteringWMS : public WMS {
 
     public:
 
-        ZhangClusteringWMS(std::string hostname, bool overlap, bool plimit, BatchService *batch_service);
+        ZhangClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit, BatchService *batch_service);
 
     private:
 
@@ -42,6 +43,7 @@ namespace wrench {
         void processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) override;
         std::tuple<double, double, unsigned long> computeLevelGroupingRatio(unsigned long start_level, unsigned long end_level);
 
+        Simulator *simulator;
         bool individual_mode;
         bool overlap;
         bool plimit;

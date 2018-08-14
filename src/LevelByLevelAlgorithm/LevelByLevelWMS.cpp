@@ -14,6 +14,7 @@
 #include <managers/JobManager.h>
 #include <StaticClusteringAlgorithms/ClusteredJob.h>
 #include <StaticClusteringAlgorithms/StaticClusteringWMS.h>
+#include "Simulator.h"
 #include "LevelByLevelWMS.h"
 #include "OngoingLevel.h"
 #include "PlaceHolderJob.h"
@@ -25,9 +26,10 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(level_by_level_clustering_wms, "Log category for Le
 
 namespace wrench {
 
-    LevelByLevelWMS::LevelByLevelWMS(std::string hostname, bool overlap, std::string clustering_spec,
+    LevelByLevelWMS::LevelByLevelWMS(Simulator *simulator, std::string hostname, bool overlap, std::string clustering_spec,
                                      BatchService *batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
+      this->simulator = simulator;
       this->overlap = overlap;
       this->batch_service = batch_service;
       this->clustering_spec = clustering_spec;
@@ -403,6 +405,8 @@ namespace wrench {
         return;
       }
 
+      this->simulator->num_pilot_job_expirations_with_remaining_tasks_to_do++;
+
       ongoing_level->running_placeholder_jobs.erase(placeholder_job);
 
       WRENCH_INFO("This placeholder job has unprocessed tasks... resubmit it as a restart");
@@ -532,8 +536,8 @@ namespace wrench {
     }
 
 
-    unsigned long LevelByLevelWMS::computeBestNumNodesBasedOnQueueWaitTimePredictions(ClusteredJob *cj) {
 
+    unsigned long LevelByLevelWMS::computeBestNumNodesBasedOnQueueWaitTimePredictions(ClusteredJob *cj) {
 
       // Build job configurations
       unsigned long max_num_nodes = std::min(cj->getNumTasks(), this->number_of_hosts);

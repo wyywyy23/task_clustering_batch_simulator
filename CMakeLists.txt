@@ -9,7 +9,9 @@ set(CMAKE_CXX_STANDARD 11)
 include_directories(src/ /usr/local/include /usr/local/include/wrench)
 # source files
 set(SOURCE_FILES
+        src/main.cpp
         src/Simulator.cpp
+        src/Simulator.h
         src/Util/WorkflowUtil.cpp
         src/Util/WorkflowUtil.h
         src/LevelByLevelAlgorithm/OngoingLevel.cpp
