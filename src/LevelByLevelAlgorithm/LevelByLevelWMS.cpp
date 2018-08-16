@@ -186,7 +186,7 @@ namespace wrench {
           throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
         }
         unsigned long num_nodes_per_cluster;
-        if ((sscanf(tokens[1].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+        if ((sscanf(tokens[1].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
           throw std::invalid_argument("Invalid one_job specification");
         }
         auto job = new ClusteredJob();

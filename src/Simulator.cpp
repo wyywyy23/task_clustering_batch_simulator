@@ -111,6 +111,7 @@ int Simulator::main(int argc, char **argv) {
     std::cerr << "        - levelclustering: the algorithm uses to cluster tasks in each level. Options are: " << "\n";
     std::cerr << "          - one_job-m: the level is submitted as a single job" << "\n";
     std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
     std::cerr << "          - one_job_per_task: one job per task" << "\n";
     std::cerr << "          - hc-n-m:  HC static algorithm" << "\n";
     std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
