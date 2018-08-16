@@ -8,8 +8,6 @@
 
 using namespace wrench;
 
-#define EXECUTION_TIME_FUDGE_FACTOR 1.05
-
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(static_clustering_wms, "Log category for Static Clustering WMS");
 
@@ -75,7 +73,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     }
 
     unsigned long num_nodes;
-    if ((sscanf(tokens[1].c_str(), "%lu", &num_nodes) != 1) or (num_nodes < 1)) {
+    if ((sscanf(tokens[1].c_str(), "%lu", &num_nodes) != 1)) {
       throw std::invalid_argument("Invalid static:one_job-m specification");
     }
     ClusteredJob *job = new ClusteredJob();
@@ -278,11 +276,13 @@ int StaticClusteringWMS::main() {
 
 void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
 
-  // Compute the number of nodes for the job
+  // Compute the maximum (reasonable) number of nodes for the job
   unsigned long num_nodes = std::min<unsigned long>(clustered_job->getNumTasks(), clustered_job->getNumNodes());
 
+  if (num_nodes == 0) {
+    num_nodes = clustered_job->computeBestNumNodesBasedOnQueueWaitTimePredictions(num_nodes, this->core_speed, this->batch_service);
+  }
 
-  // Compute the time for the job (a bit conservative for now)
   double makespan = WorkflowUtil::estimateMakespan(clustered_job->getTasks(), num_nodes, this->core_speed);
 
   std::map<std::string, std::string> batch_job_args;
@@ -927,7 +927,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::applyPosteriorVC(Workflow *workflo
 bool StaticClusteringWMS::areJobsMergable(Workflow *workflow, ClusteredJob *j1, ClusteredJob *j2) {
 
   return isSingleParentSingleChildPair(workflow, j1, j2) or
-          isSingleParentSingleChildPair(workflow, j2,j1);
+         isSingleParentSingleChildPair(workflow, j2,j1);
 
 }
 

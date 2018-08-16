@@ -11,6 +11,8 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(task_clustering_simulator, "Log category for Task C
 
 using namespace wrench;
 
+unsigned long Simulator::sequence_number = 0;
+
 int Simulator::main(int argc, char **argv) {
 
   // Create and initialize a simulation

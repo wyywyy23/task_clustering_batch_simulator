@@ -78,4 +78,70 @@ namespace wrench {
     bool ClusteredJob::isNumNodesBasedOnQueueWaitTimePrediction() {
       return this->num_nodes_based_on_queue_wait_time_predictions;
     }
+
+
+    unsigned long ClusteredJob::computeBestNumNodesBasedOnQueueWaitTimePredictions(unsigned long max_num_nodes, double core_speed, BatchService *batch_service) {
+
+      // Build job configurations
+      unsigned long real_max_num_nodes = std::min(this->getNumTasks(), max_num_nodes);
+      std::string job_id_prefix = "my_tentative_job";
+      std::set<std::tuple<std::string,unsigned int,unsigned int, double>> set_of_job_configurations;
+      for (unsigned int n = 1; n <= real_max_num_nodes; n++) {
+        double walltime_seconds = this->estimateMakespan(core_speed, n);
+        walltime_seconds *= EXECUTION_TIME_FUDGE_FACTOR;
+        std::tuple<std::string, unsigned int, unsigned int, double> my_job =
+                std::make_tuple(job_id_prefix + "_" + std::to_string(Simulator::sequence_number++),
+                                n, 1, walltime_seconds);
+        set_of_job_configurations.insert(my_job);
+      }
+
+
+      // Get estimates
+      WRENCH_INFO("Getting Queue Wait Time estimates for %ld job configurations...", set_of_job_configurations.size());
+      std::map<std::string,double> jobs_estimated_start_times;
+      try {
+        jobs_estimated_start_times = batch_service->getStartTimeEstimates(set_of_job_configurations);
+      } catch (wrench::WorkflowExecutionException &e) {
+        throw std::runtime_error(std::string("Couldn't acquire queue wait time predictions: ") + e.what());
+      }
+
+      if (jobs_estimated_start_times.size() != real_max_num_nodes) {
+        throw std::runtime_error("Was expecting " + std::to_string(real_max_num_nodes) + " wait time estimates but got " +
+                                 std::to_string(jobs_estimated_start_times.size()) + "instead!");
+      }
+      // Find out the best
+      unsigned long best_num_nodes = ULONG_MAX;
+      double best_finish_time = -1.0;
+      for (auto estimate : jobs_estimated_start_times) {
+        std::string job_id = estimate.first;
+        double start_time = estimate.second;
+        double makespan = -1.0;
+        unsigned long num_nodes;
+
+        // find the job configuration in the set (inefficient)
+        for (auto jc : set_of_job_configurations) {
+          if (std::get<0>(jc) == job_id) {
+            makespan = std::get<3>(jc);
+            num_nodes = std::get<1>(jc);
+          }
+        }
+        if (makespan < 0) {
+          throw std::runtime_error("Fatal error when looking at queue wait time predictions!");
+        }
+
+        double finish_time = start_time + makespan;
+
+        WRENCH_INFO("  - QWTE with %lu node: start time=%lf + makespan=%lf  =  finishtime=%lf", num_nodes, start_time, makespan, finish_time);
+
+        if ((finish_time < best_finish_time) or (best_finish_time < 0.0)) {
+          best_finish_time = finish_time;
+          best_num_nodes = num_nodes;
+        }
+      }
+
+      WRENCH_INFO("Opted to use %lu compute nodes!", best_num_nodes);
+
+
+      return best_num_nodes;
+    }
 };

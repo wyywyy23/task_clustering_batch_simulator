@@ -39,7 +39,7 @@ namespace wrench {
 
         std::set<PlaceHolderJob *> createPlaceHolderJobsForLevel(unsigned long level);
 
-        unsigned long computeBestNumNodesBasedOnQueueWaitTimePredictions(ClusteredJob *cj);
+//        unsigned long computeBestNumNodesBasedOnQueueWaitTimePredictions(ClusteredJob *cj);
 
         Simulator *simulator;
 
@@ -54,9 +54,6 @@ namespace wrench {
         std::shared_ptr<JobManager> job_manager;
 
         std::map<int, OngoingLevel *> ongoing_levels;
-
-        unsigned long sequence_number = 0;
-
 
     };
 

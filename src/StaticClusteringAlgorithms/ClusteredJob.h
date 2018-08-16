@@ -11,6 +11,7 @@
 #define TASK_CLUSTERING_BATCH_SIMULATOR_CLUSTEREDJOB_H
 
 #include <wrench-dev.h>
+#include "Simulator.h"
 
 namespace wrench {
 
@@ -27,6 +28,7 @@ namespace wrench {
         double estimateMakespan(double core_speed);
         double estimateMakespan(double core_speed, unsigned long num_nodes);
 
+        unsigned long computeBestNumNodesBasedOnQueueWaitTimePredictions(unsigned long max_num_nodes, double core_speed, BatchService *batch_service);
 
         bool isNumNodesBasedOnQueueWaitTimePrediction();
 
