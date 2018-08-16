@@ -100,9 +100,9 @@ namespace wrench {
       }
 
 
-      for (auto c : set_of_job_configurations) {
-        std::cerr << "---> " << std::get<0>(c) << " " << std::get<1>(c) << " " << std::get<2>(c) << " " << std::get<3>(c) << "\n";
-      }
+//      for (auto c : set_of_job_configurations) {
+//        std::cerr << "---> " << std::get<0>(c) << " " << std::get<1>(c) << " " << std::get<2>(c) << " " << std::get<3>(c) << "\n";
+//      }
 
       // Get estimates
       WRENCH_INFO("Getting Queue Wait Time estimates for %ld job configurations...", set_of_job_configurations.size());
