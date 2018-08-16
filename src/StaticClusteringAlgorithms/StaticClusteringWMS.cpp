@@ -108,7 +108,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     unsigned long num_tasks_per_cluster;
     unsigned long num_nodes_per_cluster;
     if ((sscanf(tokens[2].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
-        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
       throw std::invalid_argument("Invalid static:hc specification");
     }
     WRENCH_INFO("TOKENS[1] = %s", tokens[1].c_str());
@@ -128,7 +128,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     unsigned long num_seconds_per_cluster;
     unsigned long num_nodes_per_cluster;
     if ((sscanf(tokens[2].c_str(), "%lu", &num_seconds_per_cluster) != 1) or (num_seconds_per_cluster < 1) or
-        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
       throw std::invalid_argument("Invalid static:hc specification");
     }
     if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {
@@ -146,7 +146,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     unsigned long num_tasks_per_cluster;
     unsigned long num_nodes_per_cluster;
     if ((sscanf(tokens[2].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
-        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
       throw std::invalid_argument("Invalid static:hrb specification");
     }
     if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {
@@ -164,7 +164,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     unsigned long num_tasks_per_cluster;
     unsigned long num_nodes_per_cluster;
     if ((sscanf(tokens[2].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
-        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
       throw std::invalid_argument("Invalid static:hifb specification");
     }
     if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {
@@ -182,7 +182,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     unsigned long num_tasks_per_cluster;
     unsigned long num_nodes_per_cluster;
     if ((sscanf(tokens[2].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
-        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1) or (num_nodes_per_cluster < 1)) {
+        (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
       throw std::invalid_argument("Invalid static:hdb specification");
     }
     if ((tokens[1] != "vprior") and (tokens[1] != "vposterior") and (tokens[1] != "vnone")) {

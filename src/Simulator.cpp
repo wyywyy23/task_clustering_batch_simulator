@@ -55,6 +55,7 @@ int Simulator::main(int argc, char **argv) {
     std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
     std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
     std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
     std::cerr << "    * \e[1mstatic:dfjs-[vprior|vposterior|vnone]-t-m\e[0m" << "\n";
     std::cerr << "      - DFJS algorithm (ref [5] in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al.)" << "\n";
     std::cerr << "      - Simply greedily clusters tasks in each level in whatever order so that " << "\n";
@@ -62,6 +63,7 @@ int Simulator::main(int argc, char **argv) {
     std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
     std::cerr << "      - t: bound on runtime (in seconds)" << "\n";
     std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
     std::cerr << "    * \e[1mstatic:hrb-[vprior|vposterior|vnone]-n-m\e[0m" << "\n";
     std::cerr << "      - The HRB algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
     std::cerr << "      - Modified to specify 'number of tasks per cluster' rather than 'number of clusters per level'" << "\n";
@@ -70,6 +72,7 @@ int Simulator::main(int argc, char **argv) {
     std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
     std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
     std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
     std::cerr << "    * \e[1mstatic:hifb-[vprior|vposterior|vnone-]n-m\e[0m" << "\n";
     std::cerr << "      - The HIFB algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
     std::cerr << "      - Modified to specify 'number of tasks per cluster' rather than 'number of clusters per level'" << "\n";
@@ -78,6 +81,7 @@ int Simulator::main(int argc, char **argv) {
     std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
     std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
     std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
     std::cerr << "    * \e[1mstatic:hdb-[vprior|vposterior|vnone]-n-m\e[0m" << "\n";
     std::cerr << "      - The HDB algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
     std::cerr << "      - Modified to specify 'number of tasks per cluster' rather than 'number of clusters per level'" << "\n";
@@ -86,6 +90,7 @@ int Simulator::main(int argc, char **argv) {
     std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
     std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
     std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
+    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
     std::cerr << "    * \e[1mstatic:vc\e[0m" << "\n";
     std::cerr << "      - The VC algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
     std::cerr << "      - Cluster tasks with single-parent-single-child depepdencies" << "\n";
