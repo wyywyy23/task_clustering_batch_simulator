@@ -44,6 +44,8 @@ private:
     Simulator *simulator;
 
     BatchService *batch_service;
+    unsigned long number_of_nodes;
+
     unsigned long max_num_jobs;
     unsigned long num_jobs_in_systems;
     std::string algorithm_spec;

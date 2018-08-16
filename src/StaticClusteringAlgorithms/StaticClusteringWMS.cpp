@@ -208,8 +208,10 @@ int StaticClusteringWMS::main() {
 
   // Acquire core speed the first time
   if (this->core_speed <= 0.0) {
-    this->core_speed = batch_service->getCoreFlopRate()[0];
+    this->core_speed = this->batch_service->getCoreFlopRate()[0];
   }
+
+  this->number_of_nodes = this->batch_service->getNumHosts();
 
   this->checkDeferredStart();
 
@@ -280,7 +282,7 @@ void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
   unsigned long num_nodes = std::min<unsigned long>(clustered_job->getNumTasks(), clustered_job->getNumNodes());
 
   if (num_nodes == 0) {
-    num_nodes = clustered_job->computeBestNumNodesBasedOnQueueWaitTimePredictions(num_nodes, this->core_speed, this->batch_service);
+    num_nodes = clustered_job->computeBestNumNodesBasedOnQueueWaitTimePredictions(this->number_of_nodes, this->core_speed, this->batch_service);
   }
 
   double makespan = WorkflowUtil::estimateMakespan(clustered_job->getTasks(), num_nodes, this->core_speed);

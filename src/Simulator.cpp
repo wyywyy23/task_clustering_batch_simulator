@@ -44,6 +44,7 @@ int Simulator::main(int argc, char **argv) {
     std::cerr << "      - pick the job size (num of hosts) based on a estimation of the queue waiting time" << "\n";
     std::cerr << "        and the makespan (estimated assuming some arbitrary list-scheduling heuristic)" << "\n";
     std::cerr << "      - m: number of hosts used to execute the job" << "\n";
+    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
     std::cerr << "    * \e[1mstatic:one_job_per_task\e[0m" << "\n";
     std::cerr << "      - run each task as a single one-host job" << "\n";
     std::cerr << "      - Submit a job only once a task is ready, no queue wait time estimation" << "\n";

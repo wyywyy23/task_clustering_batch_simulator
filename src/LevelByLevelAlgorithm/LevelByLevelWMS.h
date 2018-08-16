@@ -49,7 +49,7 @@ namespace wrench {
 
 
         double core_speed;
-        unsigned long number_of_hosts;
+        unsigned long number_of_nodes;
 
         std::shared_ptr<JobManager> job_manager;
 

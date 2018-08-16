@@ -82,8 +82,12 @@ namespace wrench {
 
     unsigned long ClusteredJob::computeBestNumNodesBasedOnQueueWaitTimePredictions(unsigned long max_num_nodes, double core_speed, BatchService *batch_service) {
 
+      std::cerr << "HERE: max_num_nodes = " << max_num_nodes << "\n";
       // Build job configurations
       unsigned long real_max_num_nodes = std::min(this->getNumTasks(), max_num_nodes);
+      std::cerr << "real_max_num_nodes" << real_max_num_nodes << "\n";
+
+
       std::string job_id_prefix = "my_tentative_job";
       std::set<std::tuple<std::string,unsigned int,unsigned int, double>> set_of_job_configurations;
       for (unsigned int n = 1; n <= real_max_num_nodes; n++) {
@@ -95,6 +99,10 @@ namespace wrench {
         set_of_job_configurations.insert(my_job);
       }
 
+
+      for (auto c : set_of_job_configurations) {
+        std::cerr << "---> " << std::get<0>(c) << " " << std::get<1>(c) << " " << std::get<2>(c) << " " << std::get<3>(c) << "\n";
+      }
 
       // Get estimates
       WRENCH_INFO("Getting Queue Wait Time estimates for %ld job configurations...", set_of_job_configurations.size());

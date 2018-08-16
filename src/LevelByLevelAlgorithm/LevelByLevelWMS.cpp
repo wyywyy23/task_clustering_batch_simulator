@@ -43,7 +43,7 @@ namespace wrench {
       // Find out core speed on the batch service
       this->core_speed = *(this->batch_service->getCoreFlopRate().begin());
       // Find out #hosts on the batch service
-      this->number_of_hosts = this->batch_service->getNumHosts();
+      this->number_of_nodes = this->batch_service->getNumHosts();
 
       // Create a job manager
       this->job_manager = this->createJobManager();
@@ -122,7 +122,7 @@ namespace wrench {
         // Compute the number of nodes
         unsigned long num_nodes;
         if (ph->clustered_job->getNumNodes() == 0) {
-          num_nodes = ph->clustered_job->computeBestNumNodesBasedOnQueueWaitTimePredictions(this->number_of_hosts, this->core_speed, this->batch_service);
+          num_nodes = ph->clustered_job->computeBestNumNodesBasedOnQueueWaitTimePredictions(this->number_of_nodes, this->core_speed, this->batch_service);
           ph->clustered_job->setNumNodes(num_nodes, true);
         }
 
@@ -431,7 +431,7 @@ namespace wrench {
         // Don't be stupid, don't ask for more nodes than tasks
         cj->setNumNodes(std::min(placeholder_job->clustered_job->getNumNodes(), cj->getNumTasks()));
       } else {
-        unsigned long num_nodes = cj->computeBestNumNodesBasedOnQueueWaitTimePredictions(this->number_of_hosts, this->core_speed, this->batch_service);
+        unsigned long num_nodes = cj->computeBestNumNodesBasedOnQueueWaitTimePredictions(this->number_of_nodes, this->core_speed, this->batch_service);
         cj->setNumNodes(num_nodes, true);
       }
 
