@@ -114,6 +114,8 @@ namespace wrench {
         throw std::runtime_error("Was expecting " + std::to_string(real_max_num_nodes) + " wait time estimates but got " +
                                  std::to_string(jobs_estimated_start_times.size()) + "instead!");
       }
+
+
       // Find out the best
       unsigned long best_num_nodes = ULONG_MAX;
       double best_finish_time = -1.0;
@@ -133,6 +135,8 @@ namespace wrench {
         if (makespan < 0) {
           throw std::runtime_error("Fatal error when looking at queue wait time predictions!");
         }
+
+        std::cerr << "===> " << num_nodes << " : " << start_time  << "\n";
 
         double finish_time = start_time + makespan;
 

@@ -21,7 +21,7 @@ int Simulator::main(int argc, char **argv) {
 
   // Parse command-line arguments
   if ((argc != 8) and (argc != 9)) {
-    std::cerr << "\e[1;31mUsage: " << argv[0] << " <num_compute_nodes> <SWF job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm> <batch algorithm> [csv batch log file]\e[0m" << "\n";
+    std::cerr << "\e[1;31mUsage: " << argv[0] << " <num_compute_nodes> <job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm> <batch algorithm> [csv batch log file]\e[0m" << "\n";
     std::cerr << "  \e[1;32m### workflow specification options ###\e[0m" << "\n";
     std::cerr << "    *  \e[1mindep:s:n:t1:t2\e[0m " << "\n";
     std::cerr << "      - Just a set of independent tasks" << "\n";
@@ -34,7 +34,7 @@ int Simulator::main(int argc, char **argv) {
     std::cerr << "      - each task in level x depends on ALL tasks in level x-1" << "\n";
     std::cerr << "      - tx/Tx: min/max task durations in level x, in integral second (times uniformly sampled)" << "\n";
     std::cerr << "      - s: rng seed" << "\n";
-    std::cerr << "    * \e[1mldax:filename\e[0m" << "\n";
+    std::cerr << "    * \e[1mdax:filename\e[0m" << "\n";
     std::cerr << "      - A workflow imported from a DAX file" << "\n";
     std::cerr << "      - Files and Data dependencies are ignored. Only control dependencies are preserved" << "\n";
     std::cerr << "\n";
@@ -199,8 +199,7 @@ int Simulator::main(int argc, char **argv) {
                                         {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])}
                                        }, {});
     } catch (std::invalid_argument &e) {
-      WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
-      std::cerr << "Giving up as I cannot instantiate the Batch Service\n";
+      std::cerr << "Giving up as I cannot instantiate the Batch Service: " << e.what() << "\n";
       exit(1);
     }
   }
