@@ -66,6 +66,31 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     tokens.push_back(token);
   }
 
+  /** A level by level split **/
+  if (tokens[0] == "levelbylevel") {
+    if (tokens.size() != 2) {
+      throw std::invalid_argument("Invalid static:levelbylevel specification");
+    }
+
+    unsigned long num_nodes;
+    if ((sscanf(tokens[1].c_str(), "%lu", &num_nodes) != 1)) {
+      throw std::invalid_argument("Invalid static:levelbylevel-m specification");
+    }
+
+    unsigned long numLevels = this->getWorkflow()->getNumLevels();
+    unsigned long currLevel;
+    for (currLevel = 0; currLevel < numLevels; currLevel++) {
+        ClusteredJob *job = new ClusteredJob();
+        for (auto t : this->getWorkflow()->getTasksInTopLevelRange(currLevel, currLevel + 1)) {
+          job->addTask(t);
+        }
+        job->setNumNodes(num_nodes);
+        jobs.insert(job);
+    }
+
+    return jobs;
+  }
+
   /** A single Job **/
   if (tokens[0] == "one_job") {
     if (tokens.size() != 2) {
