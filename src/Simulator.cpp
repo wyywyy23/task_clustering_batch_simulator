@@ -186,6 +186,7 @@ int Simulator::main(int argc, char **argv) {
                                       {BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, std::string(argv[7])},
                                       {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])},
                                       {BatchServiceProperty::SIMULATE_COMPUTATION_AS_SLEEP, "true"},
+                                      {BatchServiceProperty::BATSCHED_LOGGING_MUTED, "true"},
                                      }, {});
   } catch (std::invalid_argument &e) {
 
