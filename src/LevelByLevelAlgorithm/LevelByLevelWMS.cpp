@@ -160,13 +160,14 @@ namespace wrench {
     std::set<PlaceHolderJob *> LevelByLevelWMS::createPlaceHolderJobsForLevel(unsigned long level) {
 
       /** Identify relevant tasks **/
-      std::vector<WorkflowTask *> tasks;
+      WRENCH_INFO("IN CREATE PLACE HOLDER JOBS FOR LEVEL %lu", level);
+      std::vector<WorkflowTask *> tasks_to_submit;
 
       std::vector<WorkflowTask *> tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(level,level);
 
       for (auto t : tasks_in_level) {
         if (t->getState() != WorkflowTask::COMPLETED) {
-          tasks.push_back(t);
+          tasks_to_submit.push_back(t);
         }
       }
 
@@ -190,7 +191,7 @@ namespace wrench {
           throw std::invalid_argument("Invalid one_job specification");
         }
         auto job = new ClusteredJob();
-        for (auto t : this->getWorkflow()->getTasks()) {
+        for (auto t : tasks_to_submit) {
           job->addTask(t);
         }
         job->setNumNodes(num_nodes_per_cluster);
@@ -200,7 +201,7 @@ namespace wrench {
         if (tokens.size() != 1) {
           throw std::runtime_error("createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
         }
-        for (auto t : this->getWorkflow()->getTasks()) {
+        for (auto t : tasks_to_submit) {
           auto job = new ClusteredJob();
           job->addTask(t);
           job->setNumNodes(1);
