@@ -121,7 +121,7 @@ if __name__ == '__main__':
 
     for workflow_start_time in xrange(0*24*3600, 4*24*3600, 5*3600):
         for algorithm in algorithm_list:
-        	command_line = "../../task_clustering_batch_simulator/simulator " + str(num_compute_nodes) + " " + workload_trace_file + " " + str(max_num_jobs) + " " + workflow_config + " " +  str(workflow_start_time) + " " + algorithm + " conservative_bf --wrench-no-log"
+        	command_line = "../../simulator " + str(num_compute_nodes) + " " + workload_trace_file + " " + str(max_num_jobs) + " " + workflow_config + " " +  str(workflow_start_time) + " " + algorithm + " conservative_bf --wrench-no-log"
                 f = open(output_file_name,"a")
         	print >> f, command_line
         	print >> sys.stderr, command_line
