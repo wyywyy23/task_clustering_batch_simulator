@@ -140,10 +140,12 @@ namespace wrench {
         }
       }
 
-      std::cerr << start_level << " - " << end_level << " ---> " << this->individual_mode << "\n";
-
-      // TODO: REMOVE THIS
-      this->individual_mode = false;
+      if (this->individual_mode) {
+        WRENCH_INFO("GROUPING: INDIVIDUAL");
+      } else {
+        WRENCH_INFO("GROUPING: %ld-%ld",
+                            start_level, end_level);
+      }
 
       if (not individual_mode) {
         createAndSubmitPlaceholderJob(
