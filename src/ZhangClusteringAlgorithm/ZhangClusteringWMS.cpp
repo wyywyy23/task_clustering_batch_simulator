@@ -140,6 +140,8 @@ namespace wrench {
         }
       }
 
+      std::cerr << start_level << " - " << end_level << " ---> " << this->individual_mode << "\n";
+
       // TODO: REMOVE THIS
       this->individual_mode = false;
 

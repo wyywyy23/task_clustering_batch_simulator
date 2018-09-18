@@ -136,7 +136,7 @@ namespace wrench {
           throw std::runtime_error("Fatal error when looking at queue wait time predictions!");
         }
 
-        std::cerr << "===> " << num_nodes << " : " << start_time  << "\n";
+//        std::cerr << "===> " << num_nodes << " : " << start_time  << "\n";
 
         double finish_time = start_time + makespan;
 
