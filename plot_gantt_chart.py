@@ -4,6 +4,7 @@
 # a schedule. Workflow tasks in red, and background tasks in green.
 ########################################################################
 
+import random
 import matplotlib.patches as patches
 import matplotlib.pyplot as pp
 import sys
@@ -33,11 +34,23 @@ if __name__ == '__main__':
     min_y = -1
     max_y = -1
 
+    min_red = 0.15
+    max_red = 1.00
+    current_red = min_red
+
     for line in lines: 
         tokens = line.split(",")
         start_time = float(tokens[8])
         finish_time = float(tokens[3])
         desired_color = tokens[5].split(":")[1].split('"')[0]
+
+        if (desired_color == "red"):
+            rgb = (current_red, 0.2, 0.2)
+            current_red += .17
+            if (current_red > max_red):
+                current_red = min_red
+        else:
+            rgb = (0.0, 0.7, 0.0)
 
         processors = tokens[0]
         proc_meta_tokens = processors.split(' ')
@@ -50,7 +63,7 @@ if __name__ == '__main__':
                 max_proc = int(proc_tokens[0])
     
             #print "Drawing : (", min_proc, ",", start_time, "), width=", (finish_time - start_time), " height=", (max_proc - min_proc), "color=", desired_color
-            rect = patches.Rectangle([start_time, min_proc], (finish_time - start_time), (max_proc - min_proc + 1), facecolor=desired_color, edgecolor="black", linewidth=0.2)
+            rect = patches.Rectangle([start_time, min_proc], (finish_time - start_time), (max_proc - min_proc + 1), facecolor=rgb, edgecolor="black", linewidth=0.2)
             ax.add_patch(rect)
 
             if (min_x == -1) or (min_x > start_time):
