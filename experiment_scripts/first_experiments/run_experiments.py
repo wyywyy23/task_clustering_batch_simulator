@@ -83,20 +83,20 @@ if __name__ == '__main__':
     output_file_name = sys.argv[1]
 
 
-    num_compute_nodes = 256
+    num_compute_nodes = 100
     max_num_jobs = 1000
-    task_duration_min = 10*3600
+    task_duration_min = 4*3600
     task_duration_max = 10*3600
-    num_levels = 12;
+    num_levels = 10;
     num_tasks_per_level = 50
     workflow_config="levels:666"
     for l in xrange(0, num_levels, 2):
         workflow_config += ":"+str(num_tasks_per_level)+":"+str(task_duration_min)+":"+str(task_duration_max)
-    #workload_trace_file = "../../../batch_logs/swf_traces_json/kth_sp2.json"
+    workload_trace_file = "../../../batch_logs/swf_traces_json/kth_sp2.json"
     #workload_trace_file = "../../../batch_logs/swf_traces_json/gaia.json"
     #workload_trace_file = "../../../batch_logs/swf_traces_json/metacentrum.json"
     #workload_trace_file = "../../../batch_logs/swf_traces_json/ricc.json"
-    workload_trace_file = "../../../batch_logs/swf_traces_json/sdsc_sp2.json"
+    #workload_trace_file = "../../../batch_logs/swf_traces_json/sdsc_sp2.json"
 
 
     f = open(output_file_name,"w+")
@@ -109,17 +109,17 @@ if __name__ == '__main__':
     #for i in xrange(1, num_tasks_per_level+1):
     #    algorithm_list.append("static:one_job-"+str(i))
 
-    #algorithm_list.append("static:one_job-30")
-    algorithm_list.append("levelbylevel:overlap:one_job-0")
+    algorithm_list.append("static:one_job-0")
+    #algorithm_list.append("levelbylevel:overlap:hc-5-0")
     #algorithm_list.append("levelbylevel:overlap:hc-10-0")
     #algorithm_list.append("levelbylevel:overlap:hc-50-0")
-    algorithm_list.append("static:one_job_per_task")
-    #algorithm_list.append("zhang:overlap:plimit")
+    #algorithm_list.append("static:one_job_per_task")
+    algorithm_list.append("zhang:overlap:pnolimit")
     #algorithm_list.append("zhang:nooverlap:pnolimit")
 
 
 
-    for workflow_start_time in xrange(1*24*3600, 4*24*3600, 5*3600):
+    for workflow_start_time in xrange(1*24*3600, 4*24*3600, 1*600):
         for algorithm in algorithm_list:
         	command_line = "../../simulator " + str(num_compute_nodes) + " " + workload_trace_file + " " + str(max_num_jobs) + " " + workflow_config + " " +  str(workflow_start_time) + " " + algorithm + " conservative_bf --wrench-no-log"
                 f = open(output_file_name,"a")
