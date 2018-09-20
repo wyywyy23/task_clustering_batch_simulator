@@ -80,7 +80,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     unsigned long numLevels = this->getWorkflow()->getNumLevels();
     for (unsigned long currLevel = 0; currLevel < numLevels; currLevel++) {
         ClusteredJob *job = new ClusteredJob();
-        for (auto t : this->getWorkflow()->getTasksInTopLevelRange(currLevel, currLevel + 1)) {
+        for (auto t : this->getWorkflow()->getTasksInTopLevelRange(currLevel, currLevel)) {
           job->addTask(t);
         }
         job->setNumNodes(num_nodes);
