@@ -153,4 +153,30 @@ namespace wrench {
 
       return best_num_nodes;
     }
+
+    unsigned long ClusteredJob::getMaxParallelism() {
+      auto real_workflow = this->getTasks().at(0)->getWorkflow();
+      auto tmp_workflow = new Workflow();
+      for (auto real_task : this->getTasks()) {
+        tmp_workflow->addTask(real_task->getID(), 1.0, 1, 1, 1.0, 0);
+      }
+
+      for (auto tmp_parent : this->getTasks()) {
+        auto real_task = real_workflow->getTaskByID(tmp_parent->getID());
+        for (auto real_child : real_workflow->getTaskChildren(real_task)) {
+          auto tmp_child = tmp_workflow->getTaskByID(real_child->getID());
+          tmp_workflow->addControlDependency(tmp_parent, tmp_child);
+        }
+      }
+
+      unsigned long max_parallelism = 0;
+      for (unsigned int level=0; level < tmp_workflow->getNumLevels(); level++) {
+        unsigned long num_tasks_in_level = tmp_workflow->getTasksInTopLevelRange(level, level).size();
+        if (max_parallelism < num_tasks_in_level) {
+          max_parallelism = num_tasks_in_level;
+        }
+      }
+
+      return max_parallelism;
+    }
 };

@@ -279,10 +279,10 @@ int StaticClusteringWMS::main() {
 void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
 
   // Compute the maximum (reasonable) number of nodes for the job
-  unsigned long num_nodes = std::min<unsigned long>(clustered_job->getNumTasks(), clustered_job->getNumNodes());
+  unsigned long num_nodes = std::min<unsigned long>(clustered_job->getMaxParallelism(), clustered_job->getNumNodes());
 
   if (num_nodes == 0) {
-    num_nodes = clustered_job->computeBestNumNodesBasedOnQueueWaitTimePredictions(clustered_job->getNumTasks(), this->core_speed, this->batch_service);
+    num_nodes = clustered_job->computeBestNumNodesBasedOnQueueWaitTimePredictions(clustered_job->getMaxParallelism(), this->core_speed, this->batch_service);
   }
 
   double makespan = WorkflowUtil::estimateMakespan(clustered_job->getTasks(), num_nodes, this->core_speed);

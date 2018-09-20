@@ -27,6 +27,7 @@ namespace wrench {
         bool isTaskOK(wrench::WorkflowTask *task);
         double estimateMakespan(double core_speed);
         double estimateMakespan(double core_speed, unsigned long num_nodes);
+        unsigned long getMaxParallelism();
 
         unsigned long computeBestNumNodesBasedOnQueueWaitTimePredictions(unsigned long max_num_nodes, double core_speed, BatchService *batch_service);
 
