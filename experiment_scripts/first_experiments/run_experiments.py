@@ -85,9 +85,9 @@ if __name__ == '__main__':
 
     num_compute_nodes = 100
     max_num_jobs = 1000
-    task_duration_min = 4*3600
-    task_duration_max = 10*3600
-    num_levels = 10;
+    task_duration_min = 600
+    task_duration_max = 600
+    num_levels = 5;
     num_tasks_per_level = 50
     workflow_config="levels:666"
     for l in xrange(0, num_levels, 2):

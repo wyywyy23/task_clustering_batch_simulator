@@ -122,7 +122,7 @@ namespace wrench {
         // Compute the number of nodes
         unsigned long num_nodes;
         if (ph->clustered_job->getNumNodes() == 0) {
-          num_nodes = ph->clustered_job->computeBestNumNodesBasedOnQueueWaitTimePredictions(this->number_of_nodes, this->core_speed, this->batch_service);
+          num_nodes = ph->clustered_job->computeBestNumNodesBasedOnQueueWaitTimePredictions(ph->clustered_job->getNumTasks(), this->core_speed, this->batch_service);
           ph->clustered_job->setNumNodes(num_nodes, true);
         }
 
@@ -432,7 +432,7 @@ namespace wrench {
         // Don't be stupid, don't ask for more nodes than tasks
         cj->setNumNodes(std::min(placeholder_job->clustered_job->getNumNodes(), cj->getNumTasks()));
       } else {
-        unsigned long num_nodes = cj->computeBestNumNodesBasedOnQueueWaitTimePredictions(this->number_of_nodes, this->core_speed, this->batch_service);
+        unsigned long num_nodes = cj->computeBestNumNodesBasedOnQueueWaitTimePredictions(cj->getNumTasks(), this->core_speed, this->batch_service);
         cj->setNumNodes(num_nodes, true);
       }
 
