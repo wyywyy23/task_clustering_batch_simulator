@@ -39,6 +39,10 @@ int Simulator::main(int argc, char **argv) {
     std::cerr << "      - Files and Data dependencies are ignored. Only control dependencies are preserved" << "\n";
     std::cerr << "\n";
     std::cerr << "  \e[1;32m### algorithm options ###\e[0m" << "\n";
+    std::cerr << "    * \e[1mstatic:levelbylevel-m\e[0m" << "\n";
+    std::cerr << "      - run each workflow level as a job" << "\n";
+    std::cerr << "      - m: number of hosts used to execute each job" << "\n";
+    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
     std::cerr << "    * \e[1mstatic:one_job-m\e[0m" << "\n";
     std::cerr << "      - run the workflow as a single job" << "\n";
     std::cerr << "      - m: number of hosts used to execute the job" << "\n";
@@ -261,7 +265,7 @@ void Simulator::setupSimulationPlatform(Simulation *simulation, unsigned long nu
           "<!DOCTYPE platform SYSTEM \"http://simgrid.gforge.inria.fr/simgrid/simgrid.dtd\">\n"
           "<platform version=\"4.1\">\n"
           "   <zone id=\"AS0\" routing=\"Full\">\n"
-          "     <cluster id=\"cluster\" prefix=\"ComputeNode_\" suffix=\"\" radical=\"0-";              
+          "     <cluster id=\"cluster\" prefix=\"ComputeNode_\" suffix=\"\" radical=\"0-";
   xml += std::to_string(num_compute_nodes-1) + "\" speed=\"1f\" bw=\"125GBps\" lat=\"0us\" router_id=\"router\"/>\n";
   xml += "      <zone id=\"AS1\" routing=\"Full\">\n";
   xml += "          <host id=\"Login\" speed=\"1f\"/>\n";
