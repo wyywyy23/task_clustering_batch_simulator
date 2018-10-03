@@ -409,8 +409,9 @@ Workflow *Simulator::createLevelsWorkflow(std::vector<std::string> spec_tokens) 
   for (unsigned long l=0; l < num_levels; l++) {
     for (unsigned long t=0; t < num_tasks[l]; t++) {
       unsigned long flops = (*m_udists[l])(rng);
-      tasks[l].push_back(workflow->addTask("Task_l" + std::to_string(l) + "_" +
-                                                   std::to_string(t), (double) flops, 1, 1, 1.0, 0.0));
+      wrench::WorkflowTask *task = workflow->addTask("Task_l" + std::to_string(l) + "_" +
+                                                     std::to_string(t), (double) flops, 1, 1, 1.0, 0.0);
+      tasks[l].push_back(task);
     }
   }
 

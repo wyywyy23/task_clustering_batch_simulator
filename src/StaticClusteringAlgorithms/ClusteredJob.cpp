@@ -164,7 +164,14 @@ namespace wrench {
       for (auto tmp_parent : this->getTasks()) {
         auto real_task = real_workflow->getTaskByID(tmp_parent->getID());
         for (auto real_child : real_workflow->getTaskChildren(real_task)) {
-          auto tmp_child = tmp_workflow->getTaskByID(real_child->getID());
+          wrench::WorkflowTask *tmp_child;
+          try {
+            tmp_child = tmp_workflow->getTaskByID(real_child->getID());
+          } catch (std::invalid_argument &e) {
+            // Not in clustered job
+            continue;
+          }
+          // In clustered Job
           tmp_workflow->addControlDependency(tmp_parent, tmp_child);
         }
       }
