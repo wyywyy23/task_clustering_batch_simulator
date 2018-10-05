@@ -501,6 +501,10 @@ namespace wrench {
         }
       }
 
+      // Here we have decided the number of hosts and the makespan
+      // We now ask: what's the wait time?
+      //  (so that we can inform the caller)
+
       // Figure out the estimated wait time
       std::set<std::tuple<std::string,unsigned int,unsigned int, double>> job_config;
       std::string config_key = "config_XXXX_" + std::to_string(sequence++); // need to make it unique for BATSCHED
