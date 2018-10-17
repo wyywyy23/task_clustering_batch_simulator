@@ -22,6 +22,9 @@ set(SOURCE_FILES
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.cpp
         src/ZhangClusteringAlgorithm/ZhangClusteringWMS.h
         src/ZhangClusteringAlgorithm/ZhangPlaceHolderJob.h
+        src/EvanClusteringAlgorithm/EvanClusteringWMS.cpp
+        src/EvanClusteringAlgorithm/EvanClusteringWMS.h
+        src/EvanClusteringAlgorithm/EvanPlaceHolderJob.h
         src/StaticClusteringAlgorithms/ClusteredJob.cpp
         src/StaticClusteringAlgorithms/ClusteredJob.h
         src/StaticClusteringAlgorithms/StaticClusteringWMS.cpp
@@ -48,4 +51,3 @@ target_link_libraries(simulator
 
 
 install(TARGETS simulator DESTINATION bin)
-
