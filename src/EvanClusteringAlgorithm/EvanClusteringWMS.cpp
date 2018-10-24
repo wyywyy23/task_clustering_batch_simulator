@@ -135,9 +135,12 @@ namespace wrench {
         }
 
         if ((start_level == 0) and (end_level == this->getWorkflow()->getNumLevels() -1)) {
+            std::cout << "*** NO SPLIT *** " << start_level << " " << end_level << std::endl;
             if (requested_execution_time * 2.0 >= estimated_wait_time) {
                 this->individual_mode = true;
             }
+        } else {
+                std::cout << "*** SPLITTING *** " << start_level << " " << end_level << std::endl;
         }
 
         if (this->individual_mode) {
