@@ -47,10 +47,14 @@ def random_workflow(min_level=2, max_level=5, min_tasks=1, max_tasks=10):
     return ":".join(workflow)
 
 def run_simulator(command):
-    start = time.time()
-    res = subprocess.check_output(command)
-    end = time.time()
-    print_process_output(res, end - start)
+    try:
+        start = time.time()
+        # Timeout throws exception, this is okay i guess
+        res = subprocess.check_output(command, timeout=6000)
+        end = time.time()
+        print_process_output(res, end - start)
+    except Exception as e:
+        print('Exception in simulation: {}\n\n'.format(e)) 
 
 def main():
     # command = "./build/simulator 128 ../batch_logs/swf_traces_json/kth_sp2.json 1000 levels:666:50:3600:36000:50:3600:3600:50:3600:36000:50:3600:36000 100000 zhang:overlap:pnolimit conservative_bf --wrench-no-log"
@@ -61,10 +65,17 @@ def main():
     # run_simulator(command)
 
     # print(random_workflow())
-    command[4] = random_workflow(max_level=2)
-    vary_start_time(command, 5)
-
-
+    
+    '''
+    Runs a random workflow of height 2 - 7
+    Each for 10 different time intervals
+    Run 3 times to get various workflows
+    '''
+    for i in range(3):
+        for i in range (2, 8):
+            command[5] = 100000
+            command[4] = random_workflow(min_level=i, max_level=i)
+            vary_start_time(command, 10)
 
 
 
