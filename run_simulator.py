@@ -68,14 +68,14 @@ def set_algorithm(algorithm, command):
 def random_workflow(min_level=2, max_level=5, min_tasks=1, max_tasks=10):
     workflow = ["levels", 666]
     num_levels = random.randint(min_level, max_level + 1)
-    max_tasks = -1
+    most_tasks = -1
     for _ in range(num_levels):
         num_tasks = str(random.randint(min_tasks, max_tasks))
         start = random.randint(0, 3600)
         end = start + random.randint(0, 36000)
         workflow.extend([num_tasks, str(start), str(end)])
-        max_tasks = max(max_tasks, int(num_tasks))
-    return ":".join(workflow), max_tasks
+        most_tasks = max(most_tasks, int(num_tasks))
+    return ":".join(workflow), most_tasks
 
 def run_simulator(command):
     obj = simulation_dict(command)
@@ -132,22 +132,28 @@ def main():
         mydb = myclient["simulations"]
         mycol = mydb["workflows"]
         mycol.insert_one({"workflow":command[4]})
+        print("\nWORKFLOW: " + command[4] + "\n\n")
+        print("\nRUNNING: evan:overlap:pnolimit\n\n")
         # Run evan
         set_algorithm("evan:overlap:pnolimit", command)
         command[5] = 100000
         vary_start_time(command, 10)
+        print("\nRUNNING: zhang:overlap:pnolimit\n\n")
         # Run zhang
         set_algorithm("zhang:overlap:pnolimit", command)
         command[5] = 100000
         vary_start_time(command, 10)
+        print("\nRUNNING: static:one_job_per_task\n\n")
         # Run static:one_job_per_task
         set_algorithm("static:one_job_per_task", command)
         command[5] = 100000
         vary_start_time(command, 10)
+        print("\nRUNNING: static:one_job-0\n\n")
         # Run one_job but pick best # of nodes
         set_algorithm("static:one_job-0", command)
         command[5] = 100000
         vary_start_time(command, 10)
+        print("\nRUNNING: static:one_job-max\n\n")
         # Run one_job but pick #nodes=largest # of tasks in any level
         set_algorithm(("static:one_job-" + str(max_tasks)), command)
         command[5] = 100000
