@@ -446,7 +446,7 @@ namespace wrench {
                         WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS", e->standard_job->tasks[0]->getID().c_str());
                     }
 
-                    double EvanClusteringWMS::estimateWaitTime(int parallelism, int makespan, int * sequence) {
+                    double EvanClusteringWMS::estimateWaitTime(long parallelism, double makespan, int * sequence) {
                         std::set<std::tuple<std::string, unsigned int, unsigned int, double>> job_config;
                         std::string config_key = "config_XXXX_" + std::to_string((* sequence)++); // need to make it unique for BATSCHED
                         job_config.insert(std::make_tuple(config_key, (unsigned int) parallelism, 1, makespan));
@@ -512,7 +512,7 @@ namespace wrench {
                                 double makespan = WorkflowUtil::estimateMakespan(this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
                                 i, this->core_speed);
                                 // TODO change this to local variable. wait time estimate is returned below, so must return wait time for best total time.
-                                bool wait_estimate = EvanClusteringWMS::estimateWaitTime(i, makespan, &sequence);
+                                double wait_estimate = EvanClusteringWMS::estimateWaitTime(i, makespan, &sequence);
                                 double this_level_time = makespan + wait_estimate;
                                 if ((best_level_time < 0) or (this_level_time < best_level_time)) {
                                     picked_parallelism = i;

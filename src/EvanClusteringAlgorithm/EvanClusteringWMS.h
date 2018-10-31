@@ -42,7 +42,7 @@ namespace wrench {
         void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) override;
         void processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) override;
         double
-        estimateWaitTime(int parallelism, int makespan, int * sequence);
+        estimateWaitTime(long parallelism, double makespan, int * sequence);
         std::tuple<double, double, unsigned long> computeLevelGroupingRatio(unsigned long start_level, unsigned long end_level);
 
         Simulator *simulator;
