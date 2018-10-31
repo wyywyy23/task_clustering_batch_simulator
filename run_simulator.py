@@ -22,8 +22,9 @@ def simulation_dict(command):
     dict['makespan'] = -1
     dict['num_p_job_exp'] = -1
     dict['total_queue_wait'] = -1
+    dict['used_node_sec'] = -1
     dict['wasted_node_time'] = -1
-    obj['error'] = ''
+    dict['error'] = ''
     # for zhang/evan
     dict['split'] = False
     return dict
@@ -31,10 +32,14 @@ def simulation_dict(command):
 
 
 def print_process_output(res, time):
+    res_arr = []
     for line in res.splitlines():
-        print(line.decode("utf-8"))
+        line = line.decode("utf-8")
+        print(line)
+        res_arr.append(line)
     print("Simulation took %d seconds" % time)
     print("\n")
+    return res_arr
 
 def print_command(command):
     print(" ".join(command))
@@ -48,7 +53,7 @@ def simulator_command():
     start_time = "100000"
     algorithm = "evan:overlap:pnolimit"
     batch_algorithm = "conservative_bf"
-    log = "--wrench-no-log --wrench-no-color"
+    log = "--wrench-no-log"
     return [executable, num_compute_nodes, job_trace_file, max_sys_jobs, workflow_specification, start_time, algorithm, batch_algorithm, log]
 
 # Increase start time by 25% per run
@@ -66,7 +71,7 @@ def set_algorithm(algorithm, command):
 # min_level and max_level inclusive
 # returns max # of tasks in all levels
 def random_workflow(min_level=2, max_level=5, min_tasks=1, max_tasks=10):
-    workflow = ["levels", 666]
+    workflow = ["levels", "666"]
     num_levels = random.randint(min_level, max_level + 1)
     most_tasks = -1
     for _ in range(num_levels):
@@ -85,11 +90,12 @@ def run_simulator(command):
         # Timeout throws exception, this is okay i guess
         res = subprocess.check_output(command, timeout=9000)
         end = time.time()
-        print_process_output(res, end - start)
+        res = print_process_output(res, end - start)
         obj['success'] = True
-        obj['makespan'] = float((res[len(res) - 5]).split("=")[1])
-        obj['num_p_job_exp'] = float((res[len(res) - 4]).split("=")[1])
-        obj['total_queue_wait'] = float((res[len(res) - 3]).split("=")[1])
+        obj['makespan'] = float((res[len(res) - 6]).split("=")[1])
+        obj['num_p_job_exp'] = float((res[len(res) - 5]).split("=")[1])
+        obj['total_queue_wait'] = float((res[len(res) - 4]).split("=")[1])
+        obj['used_node_sec'] = float((res[len(res) - 3]).split("=")[1])
         obj['wasted_node_time'] = float((res[len(res) - 2]).split("=")[1])
         # for zhang/evan
         if len(res) > 5:
