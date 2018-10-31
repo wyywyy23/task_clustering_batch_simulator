@@ -114,6 +114,7 @@ def run_simulator(command):
         mycol.insert_one(obj)
     except Exception as e:
         print("Mongo failure")
+        print(obj)
         print('Exception in simulation: {}\n\n'.format(e))
 
 def main():
