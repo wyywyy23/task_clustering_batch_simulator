@@ -72,7 +72,7 @@ def set_algorithm(algorithm, command):
 # returns max # of tasks in all levels
 def random_workflow(min_level=2, max_level=5, min_tasks=1, max_tasks=10):
     workflow = ["levels", "666"]
-    num_levels = random.randint(min_level, max_level + 1)
+    num_levels = random.randint(min_level, max_level)
     most_tasks = -1
     for _ in range(num_levels):
         num_tasks = str(random.randint(min_tasks, max_tasks))
@@ -81,6 +81,12 @@ def random_workflow(min_level=2, max_level=5, min_tasks=1, max_tasks=10):
         workflow.extend([num_tasks, str(start), str(end)])
         most_tasks = max(most_tasks, int(num_tasks))
     return ":".join(workflow), most_tasks
+
+def deterministic_workflow(num_levels):
+    workflow = ["levels", "666"]
+    for _ in range(num_levels):
+        workflow.extend(["50", "18000", "18000"])
+    return ":".join(workflow), 50
 
 def run_simulator(command):
     obj = simulation_dict(command)
@@ -110,7 +116,7 @@ def run_simulator(command):
     try:
         myclient = pymongo.MongoClient()
         mydb = myclient["simulations"]
-        mycol = mydb["mycol"]
+        mycol = mydb["mycol2"]
         mycol.insert_one(obj)
     except Exception as e:
         print("Mongo failure")
@@ -133,11 +139,13 @@ def main():
     Runs each algorithm per workflow/time
     '''
     # for i in range(3):
-    for i in range (2, 8):
-        command[4], max_tasks = random_workflow(min_level=i, max_level=i, min_tasks=1, max_tasks=50)
+    levels = [2, 5, 10, 15, 20]
+    for i in range (0, len(levels)):
+        # command[4], max_tasks = random_workflow(min_level=i, max_level=i, min_tasks=1, max_tasks=50)
+        command[4], max_tasks - deterministic_workflow(levels[i])
         myclient = pymongo.MongoClient()
         mydb = myclient["simulations"]
-        mycol = mydb["workflows"]
+        mycol = mydb["workflows2"]
         mycol.insert_one({"workflow":command[4]})
         print("\nWORKFLOW: " + command[4] + "\n\n")
         print("\nRUNNING: evan:overlap:pnolimit\n\n")
@@ -173,3 +181,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+'''
+50 tasks
+5 hours long
+num_levels = {2, 5, 10, 15, 20}
+Same start time variations
+'''
