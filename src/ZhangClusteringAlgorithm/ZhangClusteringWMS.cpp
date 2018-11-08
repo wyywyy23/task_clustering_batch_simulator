@@ -41,7 +41,7 @@ namespace wrench {
       this->checkDeferredStart();
 
       // Find out core speed on the batch service
-      this->core_speed = *(this->batch_service->getCoreFlopRate().begin());
+      this->core_speed = (*(this->batch_service->getCoreFlopRate().begin())).second;
       // Find out #hosts on the batch service
       this->number_of_hosts = this->batch_service->getNumHosts();
 
@@ -208,7 +208,7 @@ namespace wrench {
 
       // Keep track of the placeholder job
       this->pending_placeholder_job = new ZhangPlaceHolderJob(
-              this->job_manager->createPilotJob(requested_parallelism, 1, 0.0, requested_execution_time),
+              this->job_manager->createPilotJob(),
               tasks,
               start_level,
               end_level);
@@ -297,7 +297,12 @@ namespace wrench {
         }
       }
 
-      double wasted_node_seconds = e->pilot_job->getNumHosts() * e->pilot_job->getDuration();
+//      double wasted_node_seconds = e->pilot_job->getNumHosts() * e->pilot_job->getDuration();
+      unsigned long num_used_nodes;
+      sscanf(e->pilot_job->getServiceSpecificArguments()["-N"].c_str(),"%lu", &num_used_nodes);
+      unsigned long num_used_minutes;
+      sscanf(e->pilot_job->getServiceSpecificArguments()["-t"].c_str(),"%lu", &num_used_minutes);
+      double wasted_node_seconds = 60.0 * num_used_minutes * num_used_nodes;
       for (auto t : placeholder_job->tasks) {
         if (t->getState() == WorkflowTask::COMPLETED) {
           wasted_node_seconds -= t->getFlops() / this->core_speed;
