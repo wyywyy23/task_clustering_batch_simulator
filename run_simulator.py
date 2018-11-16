@@ -2,6 +2,7 @@ import subprocess
 import time
 import random
 import pymongo
+import urllib.parse
 
 # TODO - swap out hardcoded valued for command[]
 # TODO - maybe don't vary the random seed
@@ -94,7 +95,7 @@ def run_simulator(command):
     end = start
     try:
         # Timeout throws exception, this is okay i guess
-        res = subprocess.check_output(command, timeout=9000)
+        res = subprocess.check_output(command, timeout=18000)
         end = time.time()
         res = print_process_output(res, end - start)
         obj['success'] = True
@@ -114,9 +115,11 @@ def run_simulator(command):
     obj['runtime'] = end - start
 
     try:
-        myclient = pymongo.MongoClient()
+        username = urllib.parse.quote_plus('evan')
+        password = urllib.parse.quote_plus('password')
+        myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
         mydb = myclient["simulations"]
-        mycol = mydb["mycol2"]
+        mycol = mydb["mycol3"]
         mycol.insert_one(obj)
     except Exception as e:
         print("Mongo failure")
@@ -142,11 +145,19 @@ def main():
     levels = [2, 5, 10, 15, 20]
     for i in range (0, len(levels)):
         # command[4], max_tasks = random_workflow(min_level=i, max_level=i, min_tasks=1, max_tasks=50)
-        command[4], max_tasks - deterministic_workflow(levels[i])
-        myclient = pymongo.MongoClient()
+        command[4], max_tasks =  deterministic_workflow(levels[i])
+        username = urllib.parse.quote_plus('evan')
+        password = urllib.parse.quote_plus('password')
+        myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
         mydb = myclient["simulations"]
-        mycol = mydb["workflows2"]
+        mycol = mydb["workflows3"]
         mycol.insert_one({"workflow":command[4]})
+
+        set_algorithm(("static:one_job-" + str(max_tasks)), command)
+        command[5] = 100000
+        vary_start_time(command, 10)
+
+        '''
         print("\nWORKFLOW: " + command[4] + "\n\n")
         print("\nRUNNING: evan:overlap:pnolimit\n\n")
         # Run evan
@@ -173,7 +184,7 @@ def main():
         set_algorithm(("static:one_job-" + str(max_tasks)), command)
         command[5] = 100000
         vary_start_time(command, 10)
-
+        '''
 
 
 
@@ -182,9 +193,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-'''
-50 tasks
-5 hours long
-num_levels = {2, 5, 10, 15, 20}
-Same start time variations
-'''
