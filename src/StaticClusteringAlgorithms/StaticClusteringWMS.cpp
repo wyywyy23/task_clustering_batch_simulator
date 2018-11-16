@@ -230,13 +230,18 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
 
 int StaticClusteringWMS::main() {
 
+  WRENCH_INFO("StaticClusteringWMS starting");
+
   // Acquire core speed the first time
   if (this->core_speed <= 0.0) {
-    this->core_speed = this->batch_service->getCoreFlopRate()[0];
+    WRENCH_INFO("Asking the Batch Service for its core rate");
+    this->core_speed =(*(this->batch_service->getCoreFlopRate().begin())).second;
   }
 
+    WRENCH_INFO("Asking the Batch Service for its number of hosts");
   this->number_of_nodes = this->batch_service->getNumHosts();
 
+  WRENCH_INFO("Got it!");
   this->checkDeferredStart();
 
   TerminalOutput::setThisProcessLoggingColor(TerminalOutput::COLOR_YELLOW);

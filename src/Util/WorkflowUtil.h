@@ -23,6 +23,7 @@ namespace wrench {
     public:
 
         static double estimateMakespan(std::vector<WorkflowTask*> tasks, unsigned long num_hosts, double core_speed);
+        static void printRAM();
 
     };
 

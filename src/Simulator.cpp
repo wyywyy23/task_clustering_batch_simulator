@@ -4,6 +4,7 @@
 #include <services/compute/batch/BatchServiceProperty.h>
 #include <LevelByLevelAlgorithm/LevelByLevelWMS.h>
 #include "Simulator.h"
+#include "Util/WorkflowUtil.h"
 #include "StaticClusteringAlgorithms/StaticClusteringWMS.h"
 #include "ZhangClusteringAlgorithm/ZhangClusteringWMS.h"
 #include "EvanClusteringAlgorithm/EvanClusteringWMS.h"
@@ -202,7 +203,7 @@ int Simulator::main(int argc, char **argv) {
                                       {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])},
                                       {BatchServiceProperty::SIMULATE_COMPUTATION_AS_SLEEP, "true"},
                                       {BatchServiceProperty::BATSCHED_CONTIGUOUS_ALLOCATION, "true"},
-                                      {BatchServiceProperty::BATSCHED_LOGGING_MUTED, "true"}
+                                      {BatchServiceProperty::BATSCHED_LOGGING_MUTED, "true"},
                                      }, {});
   } catch (std::invalid_argument &e) {
 
@@ -258,6 +259,7 @@ int Simulator::main(int argc, char **argv) {
   }
   WRENCH_INFO("Simulation done!");
 
+  WorkflowUtil::printRAM();
 
   std::cout << "MAKESPAN=" << (workflow->getCompletionDate() - workflow_start_time) << "\n";
   std::cout << "NUM PILOT JOB EXPIRATIONS=" << this->num_pilot_job_expirations_with_remaining_tasks_to_do << "\n";

@@ -57,7 +57,7 @@ if __name__ == '__main__':
         print algorithm, start_time, makespan
         offset_base = time_span / 250
         if algorithm == "static:one_job-0":
-            marker = "r+"
+            marker = "b+"
             offset = 0 * offset_base
             plot = True
         elif ((algorithm == "static:one_job-1") or (algorithm == "static:one_job-2") or (algorithm == "static:one_job-3") or (algorithm == "static:one_job-4") or (algorithm == "static:one_job-5") or (algorithm == "static:one_job-6") or (algorithm == "static:one_job-7") or (algorithm == "static:one_job-8") or (algorithm == "static:one_job-9") or (algorithm == "static:one_job-10") or (algorithm == "static:one_job-11") or (algorithm == "static:one_job-12") or (algorithm == "static:one_job-13") or (algorithm == "static:one_job-14") or (algorithm == "static:one_job-15") or (algorithm == "static:one_job-16") or (algorithm == "static:one_job-17") or (algorithm == "static:one_job-18") or (algorithm == "static:one_job-19") or (algorithm == "static:one_job-20") or (algorithm == "static:one_job-21") or (algorithm == "static:one_job-22") or (algorithm == "static:one_job-23") or (algorithm == "static:one_job-24") or (algorithm == "static:one_job-25") or (algorithm == "static:one_job-26") or (algorithm == "static:one_job-27") or (algorithm == "static:one_job-28") or (algorithm == "static:one_job-29") or (algorithm == "static:one_job-30")):
