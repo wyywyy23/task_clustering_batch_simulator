@@ -102,6 +102,7 @@ namespace wrench {
 
 
         for (auto ph : this->running_placeholder_jobs) {
+            WRENCH_INFO("RUNNING PLACEHOLDER JOB: %lu-%lu", ph->start_level, ph->end_level);
             start_level = 1 + std::max<unsigned long>(start_level, ph->end_level);
         }
 
@@ -307,6 +308,9 @@ namespace wrench {
         WRENCH_INFO("Got a pilot job expiration for a placeholder job that deals with levels %ld-%ld (%s)",
                     placeholder_job->start_level, placeholder_job->end_level,
                     placeholder_job->pilot_job->getName().c_str());
+
+        this->running_placeholder_jobs.erase(placeholder_job);
+
         // Check if there are unprocessed tasks
         bool unprocessed = false;
         for (auto t : placeholder_job->tasks) {
@@ -440,7 +444,7 @@ namespace wrench {
                     (task->getState() == WorkflowTask::READY)) {
                     StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
                     WRENCH_INFO("Submitting task %s  as part of placeholder job %ld-%ld",
-                                task->getID().c_str(), placeholder_job->start_level, placeholder_job->end_level);
+                                task->getID().c_str(), ph->start_level, ph->end_level);
                     this->job_manager->submitJob(standard_job, ph->pilot_job->getComputeService());
                 }
             }
