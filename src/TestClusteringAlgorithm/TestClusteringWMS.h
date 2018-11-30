@@ -44,6 +44,10 @@ namespace wrench {
         double
         estimateWaitTime(long parallelism, double makespan, int * sequence);
         std::tuple<double, double, unsigned long> computeLevelGroupingRatio(unsigned long start_level, unsigned long end_level);
+        std::tuple<double, double, unsigned long> computeBestNumHosts(unsigned long start_level, unsigned long end_level);
+        std::tuple<double, double> estimateTotalTime(
+                unsigned long start_level, unsigned long end_level, unsigned long num_hosts);
+        unsigned long findMaxTasks(unsigned long start_level, unsigned long end_level);
 
         Simulator *simulator;
         bool individual_mode;
