@@ -25,6 +25,9 @@ set(SOURCE_FILES
         src/EvanClusteringAlgorithm/EvanClusteringWMS.cpp
         src/EvanClusteringAlgorithm/EvanClusteringWMS.h
         src/EvanClusteringAlgorithm/EvanPlaceHolderJob.h
+        src/TestClusteringAlgorithm/TestClusteringWMS.cpp
+        src/TestClusteringAlgorithm/TestClusteringWMS.h
+        src/TestClusteringAlgorithm/TestPlaceHolderJob.h
         src/StaticClusteringAlgorithms/ClusteredJob.cpp
         src/StaticClusteringAlgorithms/ClusteredJob.h
         src/StaticClusteringAlgorithms/StaticClusteringWMS.cpp
