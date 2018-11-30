@@ -286,6 +286,9 @@ namespace wrench {
         throw std::runtime_error("Got a pilot job expiration, but no matching placeholder job found");
       }
 
+      // Remove it from the list of running pilot jobs
+      this->running_placeholder_jobs.erase(placeholder_job);
+
       WRENCH_INFO("Got a pilot job expiration for a placeholder job that deals with levels %ld-%ld (%s)",
                   placeholder_job->start_level, placeholder_job->end_level, placeholder_job->pilot_job->getName().c_str());
       // Check if there are unprocessed tasks
