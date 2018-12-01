@@ -8,6 +8,7 @@
 #include "StaticClusteringAlgorithms/StaticClusteringWMS.h"
 #include "ZhangClusteringAlgorithm/ZhangClusteringWMS.h"
 #include "EvanClusteringAlgorithm/EvanClusteringWMS.h"
+#include "TestClusteringAlgorithm/TestClusteringWMS.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(task_clustering_simulator, "Log category for Task Clustering Simulator");
 
@@ -110,6 +111,16 @@ int Simulator::main(int argc, char **argv) {
     std::cerr << "        to pack that tasks into a job" << "\n";
     std::cerr << "    * \e[1mevan:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
     std::cerr << "      - Updates to Zhang et al. algorithm" << "\n";
+    std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
+    std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
+    std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
+    std::cerr << "      - [plimit|pnolimit]: plimit is the original algorithm that will complain if the workflow" << "\n";
+    std::cerr << "        parallelism is larger than the number of hosts. pnolimit is an extension that will not" << "\n";
+    std::cerr << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although" << "\n";
+    std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts" << "\n";
+    std::cerr << "        to pack that tasks into a job" << "\n";
+    std::cerr << "    * \e[1mtest:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
+    std::cerr << "      - Testing a new algorithm" << "\n";
     std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
     std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
     std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
@@ -551,6 +562,29 @@ WMS *Simulator::createWMS(std::string hostname,
         throw std::invalid_argument("createWMS(): Invalid evan specification");
     }
     return new EvanClusteringWMS(this, hostname, overlap, plimit, batch_service);
+
+} else if (tokens[0] == "test") {
+
+    if (tokens.size() != 3) {
+        throw std::invalid_argument("createWMS(): Invalid test specification");
+    }
+    bool overlap;
+    if (tokens[1] == "overlap") {
+        overlap = true;
+    } else if (tokens[1] == "nooverlap") {
+        overlap = false;
+    } else {
+        throw std::invalid_argument("createWMS(): Invalid test specification");
+    }
+    bool plimit;
+    if (tokens[2] == "plimit") {
+        plimit = true;
+    } else if (tokens[2] == "pnolimit") {
+        plimit = false;
+    } else {
+        throw std::invalid_argument("createWMS(): Invalid test specification");
+    }
+    return new TestClusteringWMS(this, hostname, overlap, plimit, batch_service);
 
 } else if (tokens[0] == "levelbylevel") {
     if (tokens.size() != 3) {
