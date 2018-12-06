@@ -121,22 +121,41 @@ namespace wrench {
         double estimated_wait_time;
         double requested_execution_time;
 
+        unsigned long num_levels = this->getWorkflow()->getNumLevels();
+        // start filling from start level as index
+        std::tuple<double, double, unsigned long> time_estimates[num_levels];
+        for (unsigned long i = start_level; i < num_levels; i++) {
+            std::tuple<double, double, unsigned long> wait_run_par = computeBestNumHosts(start_level, i);
+            time_estimates[i] = wait_run_par;
+        }
+
+        // Default everything to start level as single job
+        std::tuple<double, double, unsigned long> start_level_estimates = time_estimates[start_level];
+        best_total_time = std::get<0>(start_level_estimates) + std::get<1>(start_level_estimates);
+        end_level = start_level;
+        requested_parallelism = std::get<2>(start_level_estimates);
+        estimated_wait_time = std::get<0>(start_level_estimates);
+        requested_execution_time = std::get<1>(start_level_estimates);
+        std::cout << "START LEVEL TIME " << best_total_time << std::endl;
+
         // Apply the DAG GROUPING heuristic (Fig. 5 in the paper)
-        for (unsigned long candidate_end_level = start_level;
+        for (unsigned long candidate_end_level = start_level + 1;
              candidate_end_level < this->getWorkflow()->getNumLevels(); candidate_end_level++) {
 //            std::tuple<double, double, unsigned long> wait_run_par = computeLevelGroupingRatio(start_level,
 //                                                                                               candidate_end_level);
-            std::tuple<double, double, unsigned long> wait_run_par = TestClusteringWMS::computeBestNumHosts(start_level,
-                                                                                                            candidate_end_level);
+            std::tuple<double, double, unsigned long> wait_run_par = time_estimates[candidate_end_level];
             double wait_time = std::get<0>(wait_run_par);
             double run_time = std::get<1>(wait_run_par);
             unsigned long parallelism = std::get<2>(wait_run_par);
 //            double ratio = wait_time / run_time;
-            double total_time = wait_time + run_time;
-            std::cout << candidate_end_level << " " << start_level << std::endl;
-            std::cout << "total: " << total_time << std::endl;
-            if (total_time < best_total_time) {
+            double total_time = estimated_wait_time + std::max<double>(requested_execution_time, wait_time) + run_time;
+//            std::cout << candidate_end_level << " " << start_level << std::endl;
+//            std::cout << "total: " << total_time << std::endl;
+//            double ratio = wait_time / run_time;
+            std::cout << candidate_end_level << " LEVEL TIME " << total_time << std::endl;
+            if (total_time <= best_total_time) {
                 end_level = candidate_end_level;
+//                best_ratio = ratio;
                 best_total_time = total_time;
                 requested_execution_time = run_time;
                 requested_parallelism = parallelism;
@@ -162,9 +181,9 @@ namespace wrench {
                         start_level, end_level);
         }
 
-        std::cout << this->individual_mode << std::endl;
+//        std::cout << this->individual_mode << std::endl;
         if (not individual_mode) {
-            std::cout << "here " << start_level << " " << end_level << std::endl;
+//            std::cout << "here " << start_level << " " << end_level << std::endl;
             createAndSubmitPlaceholderJob(
                     requested_execution_time,
                     requested_parallelism,
@@ -202,7 +221,8 @@ namespace wrench {
             unsigned long requested_parallelism,
             unsigned long start_level,
             unsigned long end_level) {
-        std::cout << requested_execution_time << " " << requested_parallelism << " " << start_level << " " << end_level << std::endl;
+//        std::cout << requested_execution_time << " " << requested_parallelism << " " << start_level << " " << end_level
+//                  << std::endl;
         requested_execution_time = requested_execution_time * EXECUTION_TIME_FUDGE_FACTOR;
 
         // Aggregate tasks
@@ -241,7 +261,7 @@ namespace wrench {
         // submit the corresponding pilot job
         this->job_manager->submitJob(this->pending_placeholder_job->pilot_job, this->batch_service,
                                      service_specific_args);
-        std::cout << "Finished submitting" << std::endl;
+//        std::cout << "Finished submitting" << std::endl;
     }
 
 
@@ -563,6 +583,7 @@ namespace wrench {
 
     /**
      * Minimize the total runtime by picking an optimal number of hosts
+     * TODO rename to a more accurate name
      * @param start_level
      * @param end_level
      * @return (wait time, makespan, num_hosts)
@@ -577,7 +598,7 @@ namespace wrench {
             std::tuple<double, double> total_time = TestClusteringWMS::estimateTotalTime(start_level, end_level, i);
             double curr_makespan = std::get<0>(total_time);
             double curr_wait = std::get<1>(total_time);
-            std::cout << "coumputing " << curr_makespan << " " << curr_wait << std::endl;
+//            std::cout << "coumputing " << curr_makespan << " " << curr_wait << std::endl;
             if (makespan + wait_time > curr_makespan + curr_wait) {
                 makespan = curr_makespan;
                 wait_time = curr_wait;
