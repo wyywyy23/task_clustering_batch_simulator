@@ -119,7 +119,7 @@ def run_simulator(command):
         password = urllib.parse.quote_plus('password')
         myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
         mydb = myclient["simulations"]
-        mycol = mydb["mycol3"]
+        mycol = mydb["test_col"]
         mycol.insert_one(obj)
     except Exception as e:
         print("Mongo failure")
@@ -146,14 +146,14 @@ def main():
     for i in range (0, len(levels)):
         # command[4], max_tasks = random_workflow(min_level=i, max_level=i, min_tasks=1, max_tasks=50)
         command[4], max_tasks =  deterministic_workflow(levels[i])
-        username = urllib.parse.quote_plus('evan')
-        password = urllib.parse.quote_plus('password')
-        myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
-        mydb = myclient["simulations"]
-        mycol = mydb["workflows3"]
-        mycol.insert_one({"workflow":command[4]})
+        # username = urllib.parse.quote_plus('evan')
+        # password = urllib.parse.quote_plus('password')
+        # myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
+        # mydb = myclient["simulations"]
+        # mycol = mydb["workflows3"]
+        # mycol.insert_one({"workflow":command[4]})
 
-        set_algorithm(("static:one_job-" + str(max_tasks)), command)
+        set_algorithm("test:overlap:pnolimit", command)
         command[5] = 100000
         vary_start_time(command, 10)
 
