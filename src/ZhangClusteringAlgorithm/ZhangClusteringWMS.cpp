@@ -519,19 +519,45 @@ namespace wrench {
       //  (so that we can inform the caller)
 
       // Figure out the estimated wait time
-      std::set<std::tuple<std::string,unsigned int,unsigned int, double>> job_config;
-      std::string config_key = "config_XXXX_" + std::to_string(sequence++); // need to make it unique for BATSCHED
-      job_config.insert(std::make_tuple(config_key, (unsigned int)picked_parallelism, 1, best_makespan));
-      std::map<std::string, double> estimates = this->batch_service->getStartTimeEstimates(job_config);
-      if (estimates[config_key] < 0) {
-        throw std::runtime_error("Could not obtain start time estimate... aborting");
-      }
-      double wait_time_estimate = std::max<double>(0, estimates[config_key] - this->simulation->getCurrentSimulatedDate());
+//      std::set<std::tuple<std::string,unsigned int,unsigned int, double>> job_config;
+//      std::string config_key = "config_XXXX_" + std::to_string(sequence++); // need to make it unique for BATSCHED
+//      job_config.insert(std::make_tuple(config_key, (unsigned int)picked_parallelism, 1, best_makespan));
+//      std::map<std::string, double> estimates = this->batch_service->getStartTimeEstimates(job_config);
+//      if (estimates[config_key] < 0) {
+//        throw std::runtime_error("Could not obtain start time estimate... aborting");
+//      }
+//      double wait_time_estimate = std::max<double>(0, estimates[config_key] - this->simulation->getCurrentSimulatedDate());
+      double wait_time_estimate = 0;
+      double leeway = 0;
+      do {
+          best_makespan = best_makespan + leeway / 2;
+          wait_time_estimate = estimateWaitTime(picked_parallelism, best_makespan, &sequence);
+          leeway = parent_runtime + best_makespan - wait_time_estimate;
+      } while (leeway > 600);
+
+      best_makespan = (leeway > 0) ? (best_makespan + leeway) : best_makespan;
+
+//      double real_wait_time = (wait_time_estimate - parent_runtime < 0) ? wait_time_estimate : (wait_time_estimate - parent_runtime);
 
       WRENCH_INFO("GroupLevel(%ld,%ld): parallelism=%ld, wait_time=%.2lf, execution_time=%.2lf",
                   start_level, end_level, picked_parallelism, wait_time_estimate, best_makespan);
 
       return std::make_tuple(wait_time_estimate, best_makespan, picked_parallelism);
+    }
+
+    double ZhangClusteringWMS::estimateWaitTime(long parallelism, double makespan, int *sequence) {
+      std::set <std::tuple<std::string, unsigned int, unsigned int, double>> job_config;
+      std::string config_key = "config_XXXX_" + std::to_string((*sequence)++); // need to make it unique for BATSCHED
+      job_config.insert(std::make_tuple(config_key, (unsigned int) parallelism, 1, makespan));
+      std::map<std::string, double> estimates = this->batch_service->getStartTimeEstimates(job_config);
+
+      if (estimates[config_key] < 0) {
+        throw std::runtime_error("Could not obtain start time estimate... aborting");
+      }
+
+      double wait_time_estimate = std::max<double>(0, estimates[config_key] -
+                                                      this->simulation->getCurrentSimulatedDate());
+      return wait_time_estimate;
     }
 
 };
