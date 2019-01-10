@@ -22,6 +22,8 @@ namespace wrench {
 
     class Simulator;
 
+    double parent_runtime = 0;
+    
     ZhangClusteringWMS::ZhangClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit, BatchService *batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
       this->simulator = simulator;
@@ -187,6 +189,9 @@ namespace wrench {
             unsigned long end_level) {
 
       requested_execution_time = requested_execution_time * EXECUTION_TIME_FUDGE_FACTOR;
+      
+      // Set global parent runtime to use for leeway calculation
+      parent_runtime = requested_execution_time;
 
       // Aggregate tasks
       std::vector<WorkflowTask *> tasks;
