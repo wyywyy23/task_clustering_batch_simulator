@@ -95,7 +95,7 @@ def run_simulator(command):
     end = start
     try:
         # Timeout throws exception, this is okay i guess
-        res = subprocess.check_output(command, timeout=18000)
+        res = subprocess.check_output(command, timeout=900)
         end = time.time()
         res = print_process_output(res, end - start)
         obj['success'] = True
@@ -110,7 +110,7 @@ def run_simulator(command):
     except Exception as e:
         print('Exception in simulation: {}\n\n'.format(e))
         obj['success'] = False
-        obj['error'] = e
+        obj['error'] = str(e)
 
     obj['runtime'] = end - start
 
@@ -119,7 +119,7 @@ def run_simulator(command):
         password = urllib.parse.quote_plus('password')
         myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
         mydb = myclient["simulations"]
-        mycol = mydb["test_col"]
+        mycol = mydb["1-15-2-benchmark"]
         mycol.insert_one(obj)
     except Exception as e:
         print("Mongo failure")
@@ -142,7 +142,7 @@ def main():
     Runs each algorithm per workflow/time
     '''
     # for i in range(3):
-    levels = [2, 5, 10, 15, 20]
+    levels = [2, 5, 10]
     for i in range (0, len(levels)):
         # command[4], max_tasks = random_workflow(min_level=i, max_level=i, min_tasks=1, max_tasks=50)
         command[4], max_tasks =  deterministic_workflow(levels[i])
@@ -153,38 +153,42 @@ def main():
         # mycol = mydb["workflows3"]
         # mycol.insert_one({"workflow":command[4]})
 
+        print("\nWORKFLOW: " + command[4] + "\n\n")
+
+        print("\nRUNNING: test:overlap:pnolimit\n\n")
         set_algorithm("test:overlap:pnolimit", command)
         command[5] = 100000
         vary_start_time(command, 10)
 
-        '''
-        print("\nWORKFLOW: " + command[4] + "\n\n")
         print("\nRUNNING: evan:overlap:pnolimit\n\n")
         # Run evan
         set_algorithm("evan:overlap:pnolimit", command)
         command[5] = 100000
         vary_start_time(command, 10)
+
         print("\nRUNNING: zhang:overlap:pnolimit\n\n")
         # Run zhang
         set_algorithm("zhang:overlap:pnolimit", command)
         command[5] = 100000
         vary_start_time(command, 10)
+        
         print("\nRUNNING: static:one_job_per_task\n\n")
         # Run static:one_job_per_task
         set_algorithm("static:one_job_per_task", command)
         command[5] = 100000
         vary_start_time(command, 10)
+        
         print("\nRUNNING: static:one_job-0\n\n")
         # Run one_job but pick best # of nodes
         set_algorithm("static:one_job-0", command)
         command[5] = 100000
         vary_start_time(command, 10)
+        
         print("\nRUNNING: static:one_job-max\n\n")
         # Run one_job but pick #nodes=largest # of tasks in any level
         set_algorithm(("static:one_job-" + str(max_tasks)), command)
         command[5] = 100000
         vary_start_time(command, 10)
-        '''
 
 
 
