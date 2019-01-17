@@ -119,7 +119,7 @@ def run_simulator(command):
         password = urllib.parse.quote_plus('password')
         myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
         mydb = myclient["simulations"]
-        mycol = mydb["1-10-zhang"]
+        mycol = mydb["1-17-zhang"]
         mycol.insert_one(obj)
     except Exception as e:
         print("Mongo failure")
