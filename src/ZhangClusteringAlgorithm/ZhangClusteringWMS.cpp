@@ -529,13 +529,22 @@ namespace wrench {
 //      double wait_time_estimate = std::max<double>(0, estimates[config_key] - this->simulation->getCurrentSimulatedDate());
       double wait_time_estimate = 0;
       double leeway = 0;
+      /**
       do {
           best_makespan = best_makespan + leeway / 2;
           wait_time_estimate = estimateWaitTime(picked_parallelism, best_makespan, &sequence);
           leeway = parent_runtime + best_makespan - wait_time_estimate;
+          std::cout << "LEEWAY: " << leeway << std::endl;
+          std::cout << "WAIT: " << wait_time_estimate << std::endl;
+          std::cout << (leeway > 600) << std::endl;
       } while (leeway > 600);
+      **/
 
+      wait_time_estimate = estimateWaitTime(picked_parallelism, best_makespan, &sequence);    
+      leeway = parent_runtime - wait_time_estimate;
       best_makespan = (leeway > 0) ? (best_makespan + leeway) : best_makespan;
+      // this would be an unnecessary call if leeway was < 0
+      wait_time_estimate = estimateWaitTime(picked_parallelism, best_makespan, &sequence);
 
 //      double real_wait_time = (wait_time_estimate - parent_runtime < 0) ? wait_time_estimate : (wait_time_estimate - parent_runtime);
 
