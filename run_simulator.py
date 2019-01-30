@@ -154,7 +154,7 @@ def main():
         # mycol.insert_one({"workflow":command[4]})
 
         print("\nWORKFLOW: " + command[4] + "\n\n")
-        '''
+
         print("\nRUNNING: test:overlap:pnolimit\n\n")
         set_algorithm("test:overlap:pnolimit", command)
         command[5] = 100000
@@ -165,31 +165,30 @@ def main():
         set_algorithm("evan:overlap:pnolimit", command)
         command[5] = 100000
         vary_start_time(command, 10)
-        '''
+
         print("\nRUNNING: zhang:overlap:pnolimit\n\n")
         # Run zhang
         set_algorithm("zhang:overlap:pnolimit", command)
         command[5] = 100000
         vary_start_time(command, 10)
-        '''
+
         print("\nRUNNING: static:one_job_per_task\n\n")
         # Run static:one_job_per_task
         set_algorithm("static:one_job_per_task", command)
         command[5] = 100000
         vary_start_time(command, 10)
+        
         print("\nRUNNING: static:one_job-0\n\n")
         # Run one_job but pick best # of nodes
         set_algorithm("static:one_job-0", command)
         command[5] = 100000
         vary_start_time(command, 10)
+        
         print("\nRUNNING: static:one_job-max\n\n")
         # Run one_job but pick #nodes=largest # of tasks in any level
         set_algorithm(("static:one_job-" + str(max_tasks)), command)
         command[5] = 100000
         vary_start_time(command, 10)
-        '''
-
-
 
 
 if __name__ == "__main__":
