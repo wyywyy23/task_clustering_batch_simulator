@@ -260,6 +260,7 @@ namespace wrench {
     }
 
     void ZhangClusteringWMS::processEventPilotJobExpiration(std::unique_ptr <PilotJobExpiredEvent> e) {
+        std::cout << "JOB EXPIRATION!!!" << std::endl;
 
         // Find the placeholder job
         ZhangPlaceHolderJob *placeholder_job = nullptr;
@@ -603,19 +604,53 @@ namespace wrench {
         // Start partial dag with first level
         unsigned long candidate_end_level = start_level;
         while (candidate_end_level < end_level) {
+            std::cout << "START LEVEL: " << start_level << std::endl;
+            std::cout << "END LEVEL: " << candidate_end_level << std::endl;
             unsigned long max_parallelism = maxParallelism(start_level, candidate_end_level);
             double partial_dag_runtime = WorkflowUtil::estimateMakespan(
                     this->getWorkflow()->getTasksInTopLevelRange(start_level, candidate_end_level),
                     max_parallelism, this->core_speed);
             peel_runtime[1] = partial_dag_runtime;
             real_runtime[1] = peel_runtime[1];
-            do {
+            // Modifying original algo. from here
+            peel_wait_time[1] = estimateWaitTime(max_parallelism, peel_runtime[1], &sequence);
+            std::cout << "RUNTIME: " << peel_runtime[1] << std::endl;
+            std::cout << "WAITTIME: " << peel_wait_time[1] << std::endl;
+            std::cout << "PARENT RUNTIME: " << parent_runtime << std::endl;
+            double overlap = (peel_runtime[1] + peel_wait_time[1] + leeway) - parent_runtime;
+            /**
+            while (overlap < 0) {
                 peel_runtime[1] = peel_runtime[1] + leeway / 2;
                 peel_wait_time[1] = estimateWaitTime(max_parallelism, peel_runtime[1], &sequence);
                 leeway = parent_runtime + real_runtime[1] - peel_wait_time[1];
-            } while (leeway > 600);
+                std::cout << "PEEL RUNTIME: " << peel_runtime[1] << std::endl;
+                std::cout << "PEEL WAIT TIME: " << peel_wait_time[1] << std::endl;
+                std::cout << "LEEWAY: " << leeway << std::endl;
+                std::cout << "leeway > 600 -> " << (leeway > 600) << std::endl;
+                // 3 issues:
+                // if parent_runtime is 0 i.e. fist task running
+                // if wait time stops increasing due to no other jobs in line i.e leeway->infinity, but wait is constant
+                // just add enough leeway to overlap parent run with current wait and runtime
+                overlap = (peel_runtime[1] + peel_wait_time[1] + leeway) - parent_runtime;
+                // TODO - recalculate wait time if doing like this
+            }
+            */
+            if (parent_runtime <= 0) {
+                // no leeway needed
+                std::cout << "PARENT RUNTIME <= 0" << std::endl;
+            } else if (parent_runtime > peel_wait_time[1]) {
+                leeway = parent_runtime - peel_wait_time[1];
+                std::cout << "LEEWAY: " << leeway << std::endl;
+            } else {
+                // no leeway needed
+            }
+
+            // Resuming original algo. here
             if (leeway > 0) {
                 peel_runtime[1] = peel_runtime[1] + leeway;
+                // recalculate wait if runtime was modified
+                // this may lead to some unneccessary leeway if wait increases significantly
+                peel_wait_time[1] = estimateWaitTime(max_parallelism, peel_runtime[1], &sequence);
             }
             double real_wait_time = peel_wait_time[1] - parent_runtime;
             if (real_wait_time < 0) {
@@ -641,10 +676,12 @@ namespace wrench {
             candidate_end_level++;
         }
         if (giant) {
+            std::cout << "RETURNING GIANT" << std::endl;
             // return whole thing
             // going to run static algo if partial dag = DAG, so makespan and wait don't matter
             return std::make_tuple(0, 0, end_level);
         } else {
+            std::cout << "SPLITTING, END LEVEL=" << candidate_end_level << std::endl;
             // return partial dag
             return std::make_tuple(peel_wait_time[1], peel_runtime[1], candidate_end_level);
         }

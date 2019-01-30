@@ -95,7 +95,7 @@ def run_simulator(command):
     end = start
     try:
         # Timeout throws exception, this is okay i guess
-        res = subprocess.check_output(command, timeout=600)
+        res = subprocess.check_output(command, timeout=900)
         end = time.time()
         res = print_process_output(res, end - start)
         obj['success'] = True
@@ -119,7 +119,7 @@ def run_simulator(command):
         password = urllib.parse.quote_plus('password')
         myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
         mydb = myclient["simulations"]
-        mycol = mydb["1-17-zhang"]
+        mycol = mydb["1-24-zhang"]
         mycol.insert_one(obj)
     except Exception as e:
         print("Mongo failure")
