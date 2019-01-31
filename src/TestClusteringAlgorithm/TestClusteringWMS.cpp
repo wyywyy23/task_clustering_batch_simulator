@@ -114,55 +114,52 @@ namespace wrench {
 
         //      WRENCH_INFO("START LEVEL = %ld", start_level);
 
-//        double best_ratio = DBL_MAX;
-        double best_total_time = DBL_MAX;
-        unsigned long end_level;
-        unsigned long requested_parallelism;
-        double estimated_wait_time;
-        double requested_execution_time;
 
         unsigned long num_levels = this->getWorkflow()->getNumLevels();
+        unsigned long end_level = num_levels - 1;
         // start filling from start level as index
-        std::tuple<double, double, unsigned long> time_estimates[num_levels];
+        std::tuple<double, double, unsigned long> time_estimates[num_levels][2];
         for (unsigned long i = start_level; i < num_levels; i++) {
             std::tuple<double, double, unsigned long> wait_run_par = computeBestNumHosts(start_level, i);
-            time_estimates[i] = wait_run_par;
+            time_estimates[i][0] = wait_run_par;
         }
 
-        // Default everything to start level as single job
-        std::tuple<double, double, unsigned long> start_level_estimates = time_estimates[start_level];
-        best_total_time = std::get<0>(start_level_estimates) + std::get<1>(start_level_estimates);
-        end_level = start_level;
-        requested_parallelism = std::get<2>(start_level_estimates);
-        estimated_wait_time = std::get<0>(start_level_estimates);
-        requested_execution_time = std::get<1>(start_level_estimates);
-        std::cout << "START LEVEL TIME " << best_total_time << std::endl;
+        for (unsigned long i = start_level; i < num_levels; i++) {
+            std::tuple<double, double, unsigned long> wait_run_par = computeBestNumHosts(i, end_level);
+            time_estimates[i][1] = wait_run_par;
+        }
+
+        std::tuple<double, double, unsigned long> entire_workflow = time_estimates[0][1];
+        unsigned long requested_parallelism = std::get<2>(entire_workflow);
+        double estimated_wait_time = std::get<0>(entire_workflow);
+        double requested_execution_time = std::get<1>(entire_workflow);
+        double best_total_time = estimated_wait_time + requested_execution_time;
+
+        std::cout << "Entire workflow - " << "start level: " << start_level << " end level " << end_level << std::endl;
+        std::cout << "parallelism: " << requested_parallelism << " wait time: " << estimated_wait_time << " runtime: "
+                  << requested_execution_time << std::endl;
 
         // Apply the DAG GROUPING heuristic (Fig. 5 in the paper)
-        for (unsigned long candidate_end_level = start_level + 1;
-             candidate_end_level < this->getWorkflow()->getNumLevels(); candidate_end_level++) {
-//            std::tuple<double, double, unsigned long> wait_run_par = computeLevelGroupingRatio(start_level,
-//                                                                                               candidate_end_level);
-            std::tuple<double, double, unsigned long> wait_run_par = time_estimates[candidate_end_level];
-            double wait_time = std::get<0>(wait_run_par);
-            double run_time = std::get<1>(wait_run_par);
-            unsigned long parallelism = std::get<2>(wait_run_par);
-//            double ratio = wait_time / run_time;
-            double total_time = estimated_wait_time + std::max<double>(requested_execution_time, wait_time) + run_time;
-//            std::cout << candidate_end_level << " " << start_level << std::endl;
-//            std::cout << "total: " << total_time << std::endl;
-//            double ratio = wait_time / run_time;
-            std::cout << candidate_end_level << " LEVEL TIME " << total_time << std::endl;
-            if (total_time <= best_total_time) {
-                end_level = candidate_end_level;
-//                best_ratio = ratio;
+        for (int i = start_level; i < num_levels - 1; i++) {
+            std::tuple<double, double, unsigned long> start_to_split = time_estimates[i][0];
+            std::tuple<double, double, unsigned long> rest = time_estimates[i + 1][1];
+            double total_time =
+                    std::get<0>(start_to_split) + std::max<double>(std::get<1>(start_to_split), std::get<0>(rest)) +
+                    std::get<1>(rest);
+            std::cout << "start level: " << start_level << " end level: " << i << " wait: "
+                      << std::get<0>(start_to_split) << " runtime: " << std::get<1>(start_to_split) << " nodes: "
+                      << std::get<2>(start_to_split) << std::endl;
+            std::cout << "rest level: " << i + 1 << " end level: " << end_level << " wait: "
+                      << std::get<0>(rest) << " runtime: " << std::get<1>(rest) << " nodes: "
+                      << std::get<2>(rest) << std::endl;
+            std::cout << "total time: " << total_time << std::endl;
+            if (total_time < best_total_time) {
+                end_level = i;
                 best_total_time = total_time;
-                requested_execution_time = run_time;
-                requested_parallelism = parallelism;
-                estimated_wait_time = wait_time;
-//                std::cout << end_level << " " << best_total_time << " " << requested_execution_time << " " << requested_parallelism << " " << estimated_wait_time << std::endl;
-            } else {
-//                break;
+                requested_execution_time = std::get<1>(start_to_split);
+                requested_parallelism = std::get<2>(start_to_split);
+                estimated_wait_time = std::get<0>(start_to_split);
+                std::cout << "found better split: " << end_level;
             }
         }
 
@@ -508,77 +505,6 @@ namespace wrench {
         double wait_time_estimate = std::max<double>(0, estimates[config_key] -
                                                         this->simulation->getCurrentSimulatedDate());
         return wait_time_estimate;
-    }
-
-    /**
-    *
-    * @param start_level
-    * @param end_level
-    * @return
-    */
-    std::tuple<double, double, unsigned long> TestClusteringWMS::computeLevelGroupingRatio(
-            unsigned long start_level, unsigned long end_level) {
-
-        static int sequence = 0;
-
-        // Figure out parallelism
-        unsigned long parallelism = 0;
-        for (unsigned long l = start_level; l <= end_level; l++) {
-            unsigned long num_tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l).size();
-            if (this->plimit) {
-                if (num_tasks_in_level > this->number_of_hosts) {
-                    throw std::runtime_error("TestClusteringWMS::applyGroupingHeuristic(): Workflow level " +
-                                             std::to_string(l) +
-                                             " has more tasks than " +
-                                             "number of hosts on the batch service, which is not " +
-                                             "handled by the algorithm by Zhang et al.");
-                }
-            }
-            unsigned long level_parallelism = std::min<unsigned long>(num_tasks_in_level, this->number_of_hosts);
-            parallelism = std::max<unsigned long>(parallelism, level_parallelism);
-        }
-
-        // At this point, parallelism is the max parallelism in the DAG
-
-        //      WRENCH_INFO("THERE ARE %ld tasks in level range %ld-%ld",
-        //              this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level).size(), start_level, end_level);
-
-        unsigned long picked_parallelism = ULONG_MAX;
-        double best_makespan = -1.0;
-        double best_wait_estimate = 0.0;
-
-        if (this->plimit) { //Ensure strict application of Zhang's
-            picked_parallelism = parallelism;
-            best_makespan = WorkflowUtil::estimateMakespan(
-                    this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
-                    picked_parallelism, this->core_speed);
-            best_wait_estimate = TestClusteringWMS::estimateWaitTime(picked_parallelism, best_makespan, &sequence);
-
-        } else { // Fix Zhang Problem #1 and also potentially improves resource usage for smaller jobs
-
-            double best_level_time = -1.0;
-            // Figure out the maximum execution time
-            for (unsigned long i = 1; i <= parallelism; i++) {
-
-                double makespan = WorkflowUtil::estimateMakespan(
-                        this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
-                        i, this->core_speed);
-                // TODO change this to local variable. wait time estimate is returned below, so must return wait time for best total time.
-                double wait_estimate = TestClusteringWMS::estimateWaitTime(i, makespan, &sequence);
-                double this_level_time = makespan + wait_estimate;
-                if ((best_level_time < 0) or (this_level_time < best_level_time)) {
-                    picked_parallelism = i;
-                    best_makespan = makespan;
-                    best_wait_estimate = wait_estimate;
-                    best_level_time = this_level_time;
-                }
-            }
-        }
-
-        WRENCH_INFO("GroupLevel(%ld,%ld): parallelism=%ld, wait_time=%.2lf, execution_time=%.2lf",
-                    start_level, end_level, picked_parallelism, best_wait_estimate, best_makespan);
-
-        return std::make_tuple(best_wait_estimate, best_makespan, picked_parallelism);
     }
 
     /**

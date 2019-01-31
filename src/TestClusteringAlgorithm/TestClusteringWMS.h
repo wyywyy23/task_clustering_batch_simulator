@@ -19,34 +19,46 @@
 namespace wrench {
 
     class Simulator;
+
     class TestPlaceHolderJob;
 
     class TestClusteringWMS : public WMS {
 
     public:
 
-        TestClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit, BatchService *batch_service);
+        TestClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit,
+                          BatchService *batch_service);
 
     private:
 
         BatchService *batch_service;
 
         int main() override;
+
         void applyGroupingHeuristic();
+
         void createAndSubmitPlaceholderJob(double requested_execution_time,
                                            unsigned long requested_parallelism,
                                            unsigned long start_level,
                                            unsigned long end_level);
-        void processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) override;
-        void processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) override;
-        void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) override;
-        void processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) override;
+
+        void processEventPilotJobStart(std::unique_ptr <PilotJobStartedEvent> e) override;
+
+        void processEventPilotJobExpiration(std::unique_ptr <PilotJobExpiredEvent> e) override;
+
+        void processEventStandardJobCompletion(std::unique_ptr <StandardJobCompletedEvent> e) override;
+
+        void processEventStandardJobFailure(std::unique_ptr <StandardJobFailedEvent> e) override;
+
         double
-        estimateWaitTime(long parallelism, double makespan, int * sequence);
-        std::tuple<double, double, unsigned long> computeLevelGroupingRatio(unsigned long start_level, unsigned long end_level);
-        std::tuple<double, double, unsigned long> computeBestNumHosts(unsigned long start_level, unsigned long end_level);
+        estimateWaitTime(long parallelism, double makespan, int *sequence);
+
+        std::tuple<double, double, unsigned long>
+        computeBestNumHosts(unsigned long start_level, unsigned long end_level);
+
         std::tuple<double, double> estimateTotalTime(
                 unsigned long start_level, unsigned long end_level, unsigned long num_hosts);
+
         unsigned long findMaxTasks(unsigned long start_level, unsigned long end_level);
 
         Simulator *simulator;
@@ -60,7 +72,7 @@ namespace wrench {
         double core_speed;
         unsigned long number_of_hosts;
 
-        std::shared_ptr<JobManager> job_manager;
+        std::shared_ptr <JobManager> job_manager;
 
 
     };
