@@ -23,6 +23,8 @@ namespace wrench {
 
     class Simulator;
 
+    double parent_runtime = 0;
+
     TestClusteringWMS::TestClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit,
                                          BatchService *batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
@@ -129,12 +131,12 @@ namespace wrench {
             time_estimates[i][1] = wait_run_par;
         }
 
-        std::tuple<double, double, unsigned long> entire_workflow = time_estimates[0][1];
+        std::tuple<double, double, unsigned long> entire_workflow = time_estimates[start_level][1];
         unsigned long requested_parallelism = std::get<2>(entire_workflow);
         double estimated_wait_time = std::get<0>(entire_workflow);
         double requested_execution_time = std::get<1>(entire_workflow);
         double best_total_time = estimated_wait_time + requested_execution_time;
-
+        
         std::cout << "Entire workflow - " << "start level: " << start_level << " end level " << end_level << std::endl;
         std::cout << "parallelism: " << requested_parallelism << " wait time: " << estimated_wait_time << " runtime: "
                   << requested_execution_time << std::endl;
@@ -149,7 +151,7 @@ namespace wrench {
             std::cout << "start level: " << start_level << " end level: " << i << " wait: "
                       << std::get<0>(start_to_split) << " runtime: " << std::get<1>(start_to_split) << " nodes: "
                       << std::get<2>(start_to_split) << std::endl;
-            std::cout << "rest level: " << i + 1 << " end level: " << end_level << " wait: "
+            std::cout << "rest level: " << i + 1 << " end level: " << (num_levels - 1) << " wait: "
                       << std::get<0>(rest) << " runtime: " << std::get<1>(rest) << " nodes: "
                       << std::get<2>(rest) << std::endl;
             std::cout << "total time: " << total_time << std::endl;
@@ -159,7 +161,7 @@ namespace wrench {
                 requested_execution_time = std::get<1>(start_to_split);
                 requested_parallelism = std::get<2>(start_to_split);
                 estimated_wait_time = std::get<0>(start_to_split);
-                std::cout << "found better split: " << end_level;
+                std::cout << "found better split: " << end_level << std::endl;;
             }
         }
 
@@ -181,6 +183,11 @@ namespace wrench {
 //        std::cout << this->individual_mode << std::endl;
         if (not individual_mode) {
 //            std::cout << "here " << start_level << " " << end_level << std::endl;
+            // Add leeway
+            if (parent_runtime > estimated_wait_time) {
+                std::cout << "ADDING LEEWAY: " << (parent_runtime - estimated_wait_time) << std::endl;
+                requested_execution_time += parent_runtime - estimated_wait_time;
+            }
             createAndSubmitPlaceholderJob(
                     requested_execution_time,
                     requested_parallelism,
@@ -221,6 +228,7 @@ namespace wrench {
 //        std::cout << requested_execution_time << " " << requested_parallelism << " " << start_level << " " << end_level
 //                  << std::endl;
         requested_execution_time = requested_execution_time * EXECUTION_TIME_FUDGE_FACTOR;
+        parent_runtime = requested_execution_time;
 
         // Aggregate tasks
         std::vector < WorkflowTask * > tasks;
@@ -309,7 +317,7 @@ namespace wrench {
     }
 
     void TestClusteringWMS::processEventPilotJobExpiration(std::unique_ptr <PilotJobExpiredEvent> e) {
-
+        std::cout << "GOT EXPIRATION" << std::endl;
         // Find the placeholder job
         TestPlaceHolderJob *placeholder_job = nullptr;
         for (auto ph : this->running_placeholder_jobs) {
