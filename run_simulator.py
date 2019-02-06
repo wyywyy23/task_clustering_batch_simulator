@@ -119,7 +119,7 @@ def run_simulator(command):
         password = urllib.parse.quote_plus('password')
         myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
         mydb = myclient["simulations"]
-        mycol = mydb["1-15-2-benchmark"]
+        mycol = mydb["1-24-zhang"]
         mycol.insert_one(obj)
     except Exception as e:
         print("Mongo failure")
@@ -171,7 +171,7 @@ def main():
         set_algorithm("zhang:overlap:pnolimit", command)
         command[5] = 100000
         vary_start_time(command, 10)
-        
+
         print("\nRUNNING: static:one_job_per_task\n\n")
         # Run static:one_job_per_task
         set_algorithm("static:one_job_per_task", command)
@@ -189,9 +189,6 @@ def main():
         set_algorithm(("static:one_job-" + str(max_tasks)), command)
         command[5] = 100000
         vary_start_time(command, 10)
-
-
-
 
 
 if __name__ == "__main__":
