@@ -10,6 +10,8 @@
 #include "EvanClusteringAlgorithm/EvanClusteringWMS.h"
 #include "TestClusteringAlgorithm/TestClusteringWMS.h"
 
+#include <sys/types.h>
+
 XBT_LOG_NEW_DEFAULT_CATEGORY(task_clustering_simulator, "Log category for Task Clustering Simulator");
 
 using namespace wrench;
@@ -301,12 +303,15 @@ void Simulator::setupSimulationPlatform(Simulation *simulation, unsigned long nu
   xml += "   </zone>\n";
   xml += "</platform>\n";
 
-  FILE *platform_file = fopen("/tmp/platform.xml", "w");
+  const char *file_name = ("/tmp/platform_" + std::to_string(getpid()) + ".xml").c_str();
+  // char *file_name = "/tmp/platform.xml";
+  std::cout << file_name << std::endl;
+  FILE *platform_file = fopen(file_name, "w");
   fprintf(platform_file, "%s", xml.c_str());
   fclose(platform_file);
 
   try {
-    simulation->instantiatePlatform("/tmp/platform.xml");
+    simulation->instantiatePlatform(file_name);
   } catch (std::invalid_argument &e) {  // Unfortunately S4U doesn't throw for this...
     throw std::runtime_error("Invalid generated XML platform file");
   }

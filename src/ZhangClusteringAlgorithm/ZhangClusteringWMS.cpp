@@ -23,7 +23,7 @@ namespace wrench {
 
     class Simulator;
 
-    double parent_runtime = 0;
+    static double parent_runtime = 0;
     static int sequence = 0;
 
     ZhangClusteringWMS::ZhangClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit,

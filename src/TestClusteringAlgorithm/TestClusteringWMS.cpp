@@ -23,7 +23,7 @@ namespace wrench {
 
     class Simulator;
 
-    double parent_runtime = 0;
+    static double parent_runtime = 0;
 
     TestClusteringWMS::TestClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit,
                                          BatchService *batch_service) :

@@ -66,7 +66,7 @@ def write_to_mongo(obj):
     password = urllib.parse.quote_plus('password')
     myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
     mydb = myclient["simulations"]
-    mycol = mydb["test-p-sim"]
+    mycol = mydb["benchmark-1"]
     mycol.insert_one(obj)
 
 def run_simulator(command):
@@ -97,7 +97,8 @@ def run_simulator(command):
 
     lock.acquire()
     try:
-        write_to_mongo(obj)
+        # write_to_mongo(obj)
+        pass
     except Exception as e:
         print("Mongo failure")
         print(obj)
@@ -105,33 +106,45 @@ def run_simulator(command):
     lock.release()
 
 def execute():
+    print("started thread")
     has_commands = True
-    while has_commands:
+    command = None
+    while True:
         lock.acquire()
         if len(commands) == 0:
-            has_commands = False
+            command = None
         else:
             command = commands.pop(0)
-            print_command(command)
         lock.release()
+        if command:
+            run_simulator(command)
+            # print_command(command)
+        else:
+            print("thread exiting")
+            return
 
 def main():
-    trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json']
+    # trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json']
+    trace_files = ['../batch_logs/swf_traces_json/gaia.json']
     workflows = ['levels:666:10:3600:36000:10:3600:3600:10:3600:36000:10:3600:36000:10:3600:36000:10:3600:36000:10:3600:36000:10:3600:36000', 'levels:666:50:3600:36000:50:3600:3600:50:3600:36000:50:3600:36000:50:3600:36000:50:3600:36000:50:3600:36000:50:3600:36000']
     start_times = ['125000', '156250', '195312', '244140', '305175', '381469', '476837', '596046', '745058', '931322']
     # Missing static:one_job-max
     algorithms = ['static:one_job-0', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'evan:overlap:pnolimit', 'test:overlap:pnolimit']
-    # start_times = ['125000']
+    start_times = ['125000']
     # algorithms = ['static:one_job-0']
+    workflows = ['levels:666:10:3600:36000:10:3600:3600:10:3600:36000:10:3600:36000:10:3600:36000:10:3600:36000:10:3600:36000:10:3600:36000']
 
-    for workflow in workflows:
-        for start_time in start_times:
-            for algorithm in algorithms:
-                command = simulator_command()
-                command[4] = workflow
-                command[5] = start_time
-                command[6] = algorithm
-                commands.append(command)
+    for trace in trace_files:
+        for workflow in workflows:
+            for start_time in start_times:
+                for algorithm in algorithms:
+                    command = simulator_command()
+                    command[1] = '2004'
+                    command[2] = trace
+                    command[4] = workflow
+                    command[5] = start_time
+                    command[6] = algorithm
+                    commands.append(command)
 
     threads = []
     cores = 8
