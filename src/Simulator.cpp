@@ -303,9 +303,11 @@ void Simulator::setupSimulationPlatform(Simulation *simulation, unsigned long nu
   xml += "   </zone>\n";
   xml += "</platform>\n";
 
-  const char *file_name = ("/tmp/platform_" + std::to_string(getpid()) + ".xml").c_str();
-  // char *file_name = "/tmp/platform.xml";
-  std::cout << file_name << std::endl;
+  std::string file = ("/tmp/platform_" + std::to_string(getpid()) + ".xml");
+  int file_length = file.length();
+  char file_name[file_length + 1];
+  strcpy(file_name, file.c_str());
+  file_name[file_length] = '\0';
   FILE *platform_file = fopen(file_name, "w");
   fprintf(platform_file, "%s", xml.c_str());
   fclose(platform_file);
