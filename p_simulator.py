@@ -5,6 +5,7 @@ import urllib.parse
 from datetime import datetime
 from threading import Thread
 from threading import Lock
+import time
 
 lock = Lock()
 commands = []
@@ -14,7 +15,7 @@ def simulator_command():
     num_compute_nodes = '100'
     job_trace_file = '../batch_logs/swf_traces_json/kth_sp2.json'
     max_sys_jobs = '1000'
-    workflow_specification = 'levels:666:50:3600:36000:50:3600:3600:50:3600:36000:50:3600:36000'
+    workflow_specification = 'levels:666:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600'
     start_time = '100000'
     algorithm = 'evan:overlap:pnolimit'
     batch_algorithm = 'conservative_bf'
@@ -66,7 +67,7 @@ def write_to_mongo(obj):
     password = urllib.parse.quote_plus('password')
     myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
     mydb = myclient["simulations"]
-    mycol = mydb["benchmark-1"]
+    mycol = mydb["benchmark-2"]
     mycol.insert_one(obj)
 
 def run_simulator(command):
@@ -88,10 +89,13 @@ def run_simulator(command):
         # if len(res) > 5:
         #     obj['split'] = True
     except Exception as e:
+        lock.acquire()
+        print_command(command)
         print('Exception in simulation: {}\n\n'.format(e))
         obj['success'] = False
         obj['error'] = str(e)
-
+        lock.release()
+    return
     obj['runtime'] = end - start
     obj['timestamp'] = datetime.utcnow()
 
@@ -123,33 +127,51 @@ def execute():
             print("thread exiting")
             return
 
+# TODO - will break if not a levels workflow
+def get_algorithm(algorithm, workflow):
+    if 'max' not in algorithm:
+        return algorithm
+    else:
+        max_tasks = workflow[11:13]
+        return 'static:one_job-' + max_tasks
+
 def main():
     # trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json']
-    trace_files = ['../batch_logs/swf_traces_json/gaia.json']
-    workflows = ['levels:666:10:3600:36000:10:3600:3600:10:3600:36000:10:3600:36000:10:3600:36000:10:3600:36000:10:3600:36000:10:3600:36000', 'levels:666:50:3600:36000:50:3600:3600:50:3600:36000:50:3600:36000:50:3600:36000:50:3600:36000:50:3600:36000:50:3600:36000']
+    trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json', '../batch_logs/swf_traces_json/sdsc_sp2.json']
+    workflows = ['levels:666:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600','levels:666:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600', 'levels:666:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600']
     start_times = ['125000', '156250', '195312', '244140', '305175', '381469', '476837', '596046', '745058', '931322']
     # Missing static:one_job-max
-    algorithms = ['static:one_job-0', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'evan:overlap:pnolimit', 'test:overlap:pnolimit']
-    start_times = ['125000']
+    algorithms = ['static:one_job-0', 'static:one_job-max', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'evan:overlap:pnolimit', 'test:overlap:pnolimit']
+    # start_times = ['125000']
     # algorithms = ['static:one_job-0']
-    workflows = ['levels:666:10:3600:36000:10:3600:3600:10:3600:36000:10:3600:36000:10:3600:36000:10:3600:36000:10:3600:36000:10:3600:36000']
+    # workflows = ['levels:666:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600']
 
     for trace in trace_files:
         for workflow in workflows:
             for start_time in start_times:
                 for algorithm in algorithms:
                     command = simulator_command()
-                    command[1] = '2004'
+                    if 'kth' in algorithm:
+                        command[1] = '128'
+                    else:
+                        command[1] = '100'
                     command[2] = trace
                     command[4] = workflow
                     command[5] = start_time
-                    command[6] = algorithm
+                    command[6] = get_algorithm(algorithm, workflow)
                     commands.append(command)
-
+    '''
+    for command in commands:
+        print_command(command)
+    print(len(commands))
+    exit()
+    '''
     threads = []
     cores = 8
 
     for i in range(cores):
+        # if i > 0:
+        #    time.sleep(15)
         thread = Thread(target=execute)
         thread.start()
         threads.append(thread)
