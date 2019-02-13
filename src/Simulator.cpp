@@ -466,7 +466,7 @@ Workflow *Simulator::createDAXWorkflow(std::vector<std::string> spec_tokens) {
 
   auto original_workflow = new Workflow();
   try {
-    original_workflow->loadFromDAX(filename, "1");
+    original_workflow->loadFromDAXorJSON(filename, "1");
   } catch (std::invalid_argument &e) {
     throw std::runtime_error("Cannot import workflow from DAX");
   }
