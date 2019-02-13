@@ -50,9 +50,6 @@ namespace wrench {
 
         void processEventStandardJobFailure(std::unique_ptr <StandardJobFailedEvent> e) override;
 
-        std::tuple<double, double, unsigned long>
-        computeLevelGroupingRatio(unsigned long start_level, unsigned long end_level);
-
         double estimateWaitTime(long parallelism, double makespan, int *sequence);
 
         unsigned long getStartLevel();
