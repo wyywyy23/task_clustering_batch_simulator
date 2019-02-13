@@ -67,7 +67,7 @@ def write_to_mongo(obj):
     password = urllib.parse.quote_plus('password')
     myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
     mydb = myclient["simulations"]
-    mycol = mydb["benchmark-2"]
+    mycol = mydb["benchmark-3"]
     mycol.insert_one(obj)
 
 def run_simulator(command):
@@ -118,6 +118,7 @@ def execute():
         if len(commands) == 0:
             command = None
         else:
+            print("Running simulation: %d" % (len(commands)))
             command = commands.pop(0)
         lock.release()
         if command:
@@ -160,6 +161,7 @@ def main():
                     command[5] = start_time
                     command[6] = get_algorithm(algorithm, workflow)
                     commands.append(command)
+    print("Total simulations to run: %d" % len(commands))
     '''
     for command in commands:
         print_command(command)
