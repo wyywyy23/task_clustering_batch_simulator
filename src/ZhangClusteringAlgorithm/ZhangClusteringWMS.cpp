@@ -516,6 +516,8 @@ namespace wrench {
                     max_parallelism, this->core_speed);
             real_runtime[1] = peel_runtime[1];
             std::cout << "parent runtime: " << parent_runtime << std::endl;
+            // Causes a walltime assert fail, make sure to reset
+            leeway = 0;
             do {
                 double new_runtime = peel_runtime[1] + leeway / 2;
                 double new_wait_time = estimateWaitTime(max_parallelism, new_runtime, &sequence);
@@ -542,6 +544,8 @@ namespace wrench {
             if (real_wait_time < 0) {
                 real_wait_time = peel_wait_time[1];
             }
+            std::cout << "real wait: " << real_wait_time << std::endl;
+            std::cout << "real runtime: " << real_runtime[1] << std::endl;
             if (giant) {
                 if (real_wait_time > real_runtime[1]) {
                     candidate_end_level++;
