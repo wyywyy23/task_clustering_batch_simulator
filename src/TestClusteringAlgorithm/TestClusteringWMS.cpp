@@ -136,42 +136,60 @@ namespace wrench {
         double estimated_wait_time = std::get<0>(entire_workflow);
         double requested_execution_time = std::get<1>(entire_workflow);
         double best_total_time = estimated_wait_time + requested_execution_time;
-        
+
         std::cout << "Entire workflow - " << "start level: " << start_level << " end level " << end_level << std::endl;
         std::cout << "parallelism: " << requested_parallelism << " wait time: " << estimated_wait_time << " runtime: "
                   << requested_execution_time << std::endl;
 
-        // Apply the DAG GROUPING heuristic (Fig. 5 in the paper)
-        for (int i = start_level; i < num_levels - 1; i++) {
+        // Apply henri's grouping heuristic
+        for (int i = start_level; i < (int) num_levels - 1; i++) {
             std::tuple<double, double, unsigned long> start_to_split = time_estimates[i][0];
             std::tuple<double, double, unsigned long> rest = time_estimates[i + 1][1];
+            double wait_one = std::get<0>(start_to_split);
+            double run_one = std::get<1>(start_to_split);
+            double wait_two = std::get<0>(rest);
+            double run_two = std::get<1>(rest);
+
+            // Check if leeway is needed
+            if (run_one > wait_two) {
+                double leeway_needed = run_one - wait_two;
+                if (leeway_needed > (run_two * 0.10)) {
+                    std::cout << "Ignoring split -> leeway = " << leeway_needed << std::endl;
+                    // split would waste too much cpu time
+                    continue;
+                }
+            }
+
             double total_time =
-                    std::get<0>(start_to_split) + std::max<double>(std::get<1>(start_to_split), std::get<0>(rest)) +
-                    std::get<1>(rest);
+                    wait_one + std::max<double>(run_one, wait_two) +
+                    run_two;
             std::cout << "start level: " << start_level << " end level: " << i << " wait: "
-                      << std::get<0>(start_to_split) << " runtime: " << std::get<1>(start_to_split) << " nodes: "
+                      << wait_one << " runtime: " << run_one << " nodes: "
                       << std::get<2>(start_to_split) << std::endl;
             std::cout << "rest level: " << i + 1 << " end level: " << (num_levels - 1) << " wait: "
-                      << std::get<0>(rest) << " runtime: " << std::get<1>(rest) << " nodes: "
+                      << wait_two << " runtime: " << run_two << " nodes: "
                       << std::get<2>(rest) << std::endl;
             std::cout << "total time: " << total_time << std::endl;
             if (total_time < best_total_time) {
                 end_level = i;
                 best_total_time = total_time;
-                requested_execution_time = std::get<1>(start_to_split);
+                requested_execution_time = run_one;
                 requested_parallelism = std::get<2>(start_to_split);
-                estimated_wait_time = std::get<0>(start_to_split);
+                estimated_wait_time = wait_one;
                 std::cout << "found better split: " << end_level << std::endl;;
             }
         }
 
-        if ((start_level == 0) and (end_level == this->getWorkflow()->getNumLevels() - 1)) {
-            if (requested_execution_time * 2.0 >= estimated_wait_time) {
-                this->individual_mode = true;
-            }
-        } else {
-            std::cout << "*** SPLITTING *** " << start_level << " " << end_level << std::endl;
-        }
+        std::cout << "END LEVEL: " << end_level << std::endl;
+
+        // Let's default to one_job
+        // if ((start_level == 0) and (end_level == this->getWorkflow()->getNumLevels() - 1)) {
+        //     if (requested_execution_time * 2.0 >= estimated_wait_time) {
+        //         this->individual_mode = true;
+        //     }
+        // } else {
+        //     std::cout << "*** SPLITTING *** " << start_level << " " << end_level << std::endl;
+        // }
 
         if (this->individual_mode) {
             WRENCH_INFO("GROUPING: INDIVIDUAL");
