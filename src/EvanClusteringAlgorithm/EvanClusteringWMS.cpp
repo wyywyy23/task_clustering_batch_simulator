@@ -89,71 +89,48 @@ namespace wrench {
             return;
         }
 
-        // peelLevel() (Fig. 4 in the paper)
-        double runtime_all, wait_time_all;
-        double peel_runtime[2], peel_wait_time[2];
-
-        unsigned long max_parallelism = maxParallelism(start_level, end_level);
-
-        // calculate the runtime of entire DAG
-        runtime_all = WorkflowUtil::estimateMakespan(
-                this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
-                max_parallelism, this->core_speed);
-        wait_time_all = estimateWaitTime(max_parallelism, runtime_all, &sequence);
-
-        peel_runtime[0] = runtime_all;
-        peel_wait_time[0] = wait_time_all;
-
         // See if we can do better by grouping (Fig. 5 in the paper)
         // return params: wait_time, makespan, end_level
-        std::tuple<double, double, unsigned long> partial_dag = groupLevels(start_level, end_level, peel_runtime,
-                                                                            peel_wait_time);
+        std::tuple<double, double, unsigned long, unsigned long> partial_dag = groupLevels(start_level, end_level);
+        // Don't even need wait time to submit job!
         double partial_dag_wait_time = std::get<0>(partial_dag);
         double partial_dag_makespan = std::get<1>(partial_dag);
         unsigned long partial_dag_end_level = std::get<2>(partial_dag);
+        unsigned long partial_dag_parallelism = std::get<3>(partial_dag);
 
         if (partial_dag_end_level >= end_level) {
-            if (runtime_all * 2.0 < wait_time_all) {
-                // submit remaining dag as 1 job
-            } else {
-                // submit remaining dag as 1 job per task
-            }
-            this->individual_mode = true;
+            // this->individual_mode = true;
+            // come up with a heuristic for picking one_job_per_task?
         }
 
-        if (this->individual_mode) {
-            WRENCH_INFO("GROUPING: INDIVIDUAL");
-        } else {
-            WRENCH_INFO("GROUPING: %ld-%ld",
-                        start_level, end_level);
-        }
+        WRENCH_INFO("GROUPING: %ld-%ld", start_level, end_level);
+        std::cout << "submitting placeholder" << std::endl;
+        std::cout << "makespan: " << partial_dag_makespan << std::endl;
+        std::cout << "parallelism: " << partial_dag_parallelism << std::endl;
+        std::cout << "start: " << start_level << std::endl;
+        std::cout << "end: " << partial_dag_end_level << std::endl;
 
-        if (not individual_mode) {
-            // recalculate parallelism for partial dag
-            unsigned long parallelism = maxParallelism(start_level, partial_dag_end_level);
-            createAndSubmitPlaceholderJob(
-                    partial_dag_makespan,
-                    parallelism,
-                    start_level,
-                    partial_dag_end_level);
-        } else {
-            WRENCH_INFO("Switching to individual mode!");
-            // Submit all READY tasks as individual jobs
-            for (auto task : this->getWorkflow()->getTasks()) {
-                if (task->getState() == WorkflowTask::State::READY) {
-                    StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
-                    std::map <std::string, std::string> service_specific_args;
-                    unsigned long requested_execution_time =
-                            (task->getFlops() / this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
-                    service_specific_args["-N"] = "1";
-                    service_specific_args["-c"] = "1";
-                    service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
-                    WRENCH_INFO("Submitting task %s individually!", task->getID().c_str());
-                    this->job_manager->submitJob(standard_job, this->batch_service, service_specific_args);
-                }
-            }
-        }
+        // createAndSubmitPlaceholderJob(
+        //         partial_dag_makespan,
+        //         partial_dag_parallelism,
+        //         start_level,
+        //         partial_dag_end_level);
 
+        // WRENCH_INFO("Switching to individual mode!");
+        // // Submit all READY tasks as individual jobs
+        // for (auto task : this->getWorkflow()->getTasks()) {
+        //     if (task->getState() == WorkflowTask::State::READY) {
+        //         StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
+        //         std::map <std::string, std::string> service_specific_args;
+        //         unsigned long requested_execution_time =
+        //                 (task->getFlops() / this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
+        //         service_specific_args["-N"] = "1";
+        //         service_specific_args["-c"] = "1";
+        //         service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
+        //         WRENCH_INFO("Submitting task %s individually!", task->getID().c_str());
+        //         this->job_manager->submitJob(standard_job, this->batch_service, service_specific_args);
+        //     }
+        // }
     }
 
     /**
@@ -509,100 +486,58 @@ namespace wrench {
         return best_parallelism;
     }
 
-    // return params: wait_time, run_time, end_level
-    std::tuple<double, double, unsigned long>
-    EvanClusteringWMS::groupLevels(unsigned long start_level, unsigned long end_level, double peel_runtime[2],
-                                    double peel_wait_time[2]) {
-        double real_runtime[2];
-        double runtime_all, wait_time_all, leeway;
-        runtime_all = peel_runtime[0];
-        wait_time_all = peel_wait_time[0];
-        real_runtime[0] = peel_runtime[0];
-        bool giant = true;
-        // Start partial dag with first level
-        unsigned long candidate_end_level = start_level;
-        while (candidate_end_level < end_level) {
-            std::cout << "START LEVEL: " << start_level << std::endl;
-            std::cout << "END LEVEL: " << candidate_end_level << std::endl;
-            unsigned long max_parallelism = maxParallelism(start_level, candidate_end_level);
-            double partial_dag_runtime = WorkflowUtil::estimateMakespan(
-                    this->getWorkflow()->getTasksInTopLevelRange(start_level, candidate_end_level),
-                    max_parallelism, this->core_speed);
-            peel_runtime[1] = partial_dag_runtime;
-            real_runtime[1] = peel_runtime[1];
-            // Modifying original algo. from here
-            peel_wait_time[1] = estimateWaitTime(max_parallelism, peel_runtime[1], &sequence);
-            std::cout << "RUNTIME: " << peel_runtime[1] << std::endl;
-            std::cout << "WAITTIME: " << peel_wait_time[1] << std::endl;
-            std::cout << "PARENT RUNTIME: " << parent_runtime << std::endl;
-            double overlap = (peel_runtime[1] + peel_wait_time[1] + leeway) - parent_runtime;
-            /**
-            while (overlap < 0) {
-                peel_runtime[1] = peel_runtime[1] + leeway / 2;
-                peel_wait_time[1] = estimateWaitTime(max_parallelism, peel_runtime[1], &sequence);
-                leeway = parent_runtime + real_runtime[1] - peel_wait_time[1];
-                std::cout << "PEEL RUNTIME: " << peel_runtime[1] << std::endl;
-                std::cout << "PEEL WAIT TIME: " << peel_wait_time[1] << std::endl;
-                std::cout << "LEEWAY: " << leeway << std::endl;
-                std::cout << "leeway > 600 -> " << (leeway > 600) << std::endl;
-                // 3 issues:
-                // if parent_runtime is 0 i.e. fist task running
-                // if wait time stops increasing due to no other jobs in line i.e leeway->infinity, but wait is constant
-                // just add enough leeway to overlap parent run with current wait and runtime
-                overlap = (peel_runtime[1] + peel_wait_time[1] + leeway) - parent_runtime;
-                // TODO - recalculate wait time if doing like this
-            }
-            */
-            if (parent_runtime <= 0) {
-                // no leeway needed
-                std::cout << "PARENT RUNTIME <= 0" << std::endl;
-            } else if (parent_runtime > peel_wait_time[1]) {
-                leeway = parent_runtime - peel_wait_time[1];
-                std::cout << "LEEWAY: " << leeway << std::endl;
-            } else {
-                // no leeway needed
-            }
+    // return params: wait_time, run_time, end_level, parallelism
+    std::tuple<double, double, unsigned long, unsigned long>
+    EvanClusteringWMS::groupLevels(unsigned long start_level, unsigned long end_level) {
 
-            // Resuming original algo. here
-            if (leeway > 0) {
-                peel_runtime[1] = peel_runtime[1] + leeway;
-                // recalculate wait if runtime was modified
-                // this may lead to some unneccessary leeway if wait increases significantly
-                peel_wait_time[1] = estimateWaitTime(max_parallelism, peel_runtime[1], &sequence);
-            }
-            double real_wait_time = peel_wait_time[1] - parent_runtime;
-            if (real_wait_time < 0) {
-                real_wait_time = peel_wait_time[1];
-            }
-            if (giant) {
-                if (real_wait_time > real_runtime[1]) {
-                    candidate_end_level++;
+        // automatically add leeway to first level grouping
+        unsigned long candidate_end_level = start_level;
+        unsigned long best_parallelism = -1;
+        double best_runtime = -1;
+        double best_wait_time = DBL_MAX;
+
+        for (unsigned long i = start_level; i < end_level - 1; i++) {
+            std::cout << "start: " << start_level << " end: " << i << std::endl;
+            unsigned long parallelism = maxParallelism(start_level, i);
+            double runtime = WorkflowUtil::estimateMakespan(
+                this->getWorkflow()->getTasksInTopLevelRange(start_level, i),
+                    parallelism, this->core_speed);
+            double wait_time = estimateWaitTime(parallelism, runtime, &sequence);
+
+            // consider the leeway
+            if (wait_time < parent_runtime) {
+                double leeway = parent_runtime - wait_time;
+                if (leeway > (runtime * 0.10)) {
+                    // leeway wastes resources
                     continue;
+                } else {
+                    runtime += leeway;
+                    wait_time = estimateWaitTime(parallelism, runtime, &sequence);
                 }
             }
-            giant = false;
-            if (peel_wait_time[1] - parent_runtime > 0) {
-                if (peel_wait_time[1] / real_runtime[1] > peel_wait_time[0] / real_runtime[0]) {
-                    break;
-                } else if (peel_wait_time[1] / real_runtime[1] > wait_time_all / runtime_all) {
-                    break;
-                }
+            // borrowing this concept from zhang
+            double real_wait_time = wait_time;
+            if (parent_runtime <= wait_time) {
+                real_wait_time = wait_time - parent_runtime;
             }
-            peel_wait_time[0] = peel_wait_time[1];
-            peel_runtime[0] = peel_runtime[1];
-            real_runtime[0] = real_runtime[1];
-            candidate_end_level++;
+            double current_ratio = runtime / real_wait_time;
+            double best_ratio = best_runtime / wait_time;
+            if (current_ratio >= best_ratio) {
+                best_runtime = runtime;
+                best_wait_time = real_wait_time;
+                best_parallelism = parallelism;
+                candidate_end_level = i;
+            }
         }
-        if (giant) {
-            std::cout << "RETURNING GIANT" << std::endl;
-            // return whole thing
-            // going to run static algo if partial dag = DAG, so makespan and wait don't matter
-            return std::make_tuple(0, 0, end_level);
-        } else {
-            std::cout << "SPLITTING, END LEVEL=" << candidate_end_level << std::endl;
-            // return partial dag
-            return std::make_tuple(peel_wait_time[1], peel_runtime[1], candidate_end_level);
-        }
+
+        // calculate wait time if using "real wait time"
+        best_wait_time = estimateWaitTime(best_parallelism, best_runtime, &sequence);
+
+        std::cout << "wait: " << best_wait_time << std::endl;
+        std::cout << "run: " << best_runtime << std::endl;
+        std::cout << "parallelism: " << best_parallelism << std::endl;
+
+        return std::make_tuple(best_wait_time, best_runtime, candidate_end_level, best_parallelism);
     }
 
 };

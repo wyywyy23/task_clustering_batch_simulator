@@ -56,9 +56,8 @@ namespace wrench {
 
         unsigned long maxParallelism(unsigned long start_level, unsigned long end_level);
 
-        std::tuple<double, double, unsigned long>
-        groupLevels(unsigned long start_level, unsigned long end_level, double peel_runtime[2],
-                    double peel_wait_time[2]);
+        std::tuple<double, double, unsigned long, unsigned long>
+        groupLevels(unsigned long start_level, unsigned long end_level);
 
         Simulator *simulator;
         bool individual_mode;
