@@ -482,8 +482,10 @@ namespace wrench {
 
     // Zhang is supposed to fail automatically if number of tasks > number of hosts
     // Just return max hosts to avoid failure for now
-    // end_level = num_levels - 1
     unsigned long ZhangClusteringWMS::maxParallelism(unsigned long start_level, unsigned long end_level) {
+        if (this->plimit) {
+            // Implement strict zhang application here...
+        }
         unsigned long parallelism = 0;
         for (unsigned long i = start_level; i <= end_level; i++) {
             unsigned long num_tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(i, i).size();
@@ -503,56 +505,38 @@ namespace wrench {
         wait_time_all = peel_wait_time[0];
         real_runtime[0] = peel_runtime[0];
         bool giant = true;
-        // Start partial dag with first level
+        // Start partial dag with only first level
         unsigned long candidate_end_level = start_level;
         while (candidate_end_level < end_level) {
             std::cout << "START LEVEL: " << start_level << std::endl;
             std::cout << "END LEVEL: " << candidate_end_level << std::endl;
             unsigned long max_parallelism = maxParallelism(start_level, candidate_end_level);
-            double partial_dag_runtime = WorkflowUtil::estimateMakespan(
+            peel_runtime[1] = WorkflowUtil::estimateMakespan(
                     this->getWorkflow()->getTasksInTopLevelRange(start_level, candidate_end_level),
                     max_parallelism, this->core_speed);
-            peel_runtime[1] = partial_dag_runtime;
             real_runtime[1] = peel_runtime[1];
-            // Modifying original algo. from here
-            peel_wait_time[1] = estimateWaitTime(max_parallelism, peel_runtime[1], &sequence);
-            std::cout << "RUNTIME: " << peel_runtime[1] << std::endl;
-            std::cout << "WAITTIME: " << peel_wait_time[1] << std::endl;
-            std::cout << "PARENT RUNTIME: " << parent_runtime << std::endl;
-            double overlap = (peel_runtime[1] + peel_wait_time[1] + leeway) - parent_runtime;
-            /**
-            while (overlap < 0) {
-                peel_runtime[1] = peel_runtime[1] + leeway / 2;
-                peel_wait_time[1] = estimateWaitTime(max_parallelism, peel_runtime[1], &sequence);
-                leeway = parent_runtime + real_runtime[1] - peel_wait_time[1];
-                std::cout << "PEEL RUNTIME: " << peel_runtime[1] << std::endl;
-                std::cout << "PEEL WAIT TIME: " << peel_wait_time[1] << std::endl;
-                std::cout << "LEEWAY: " << leeway << std::endl;
-                std::cout << "leeway > 600 -> " << (leeway > 600) << std::endl;
-                // 3 issues:
-                // if parent_runtime is 0 i.e. fist task running
-                // if wait time stops increasing due to no other jobs in line i.e leeway->infinity, but wait is constant
-                // just add enough leeway to overlap parent run with current wait and runtime
-                overlap = (peel_runtime[1] + peel_wait_time[1] + leeway) - parent_runtime;
-                // TODO - recalculate wait time if doing like this
-            }
-            */
-            if (parent_runtime <= 0) {
-                // no leeway needed
-                std::cout << "PARENT RUNTIME <= 0" << std::endl;
-            } else if (parent_runtime > peel_wait_time[1]) {
-                leeway = parent_runtime - peel_wait_time[1];
-                std::cout << "LEEWAY: " << leeway << std::endl;
-            } else {
-                // no leeway needed
-            }
-
-            // Resuming original algo. here
+            std::cout << "parent runtime: " << parent_runtime << std::endl;
+            do {
+                double new_runtime = peel_runtime[1] + leeway / 2;
+                double new_wait_time = estimateWaitTime(max_parallelism, new_runtime, &sequence);
+                double new_leeway = parent_runtime + real_runtime[1] - new_wait_time;
+                std::cout << "new runtime: " << new_runtime << std::endl;
+                std::cout << "new wait time: " << new_wait_time << std::endl;
+                std::cout << "new leeway: " << new_leeway << std::endl;
+                if ((int) new_leeway == (int) leeway) {
+                    // leeway has not changed, we should stop iterating
+                    break;
+                } else {
+                    peel_runtime[1] = new_runtime;
+                    peel_wait_time[1] = new_wait_time;
+                    leeway = new_leeway;
+                }
+            } while (leeway > 600);
+            // What if the parent runtime was 0?
+            // What if leeway never decreases below 10 minutes?
             if (leeway > 0) {
+                // we should recalculate the wait time here?
                 peel_runtime[1] = peel_runtime[1] + leeway;
-                // recalculate wait if runtime was modified
-                // this may lead to some unneccessary leeway if wait increases significantly
-                peel_wait_time[1] = estimateWaitTime(max_parallelism, peel_runtime[1], &sequence);
             }
             double real_wait_time = peel_wait_time[1] - parent_runtime;
             if (real_wait_time < 0) {
@@ -566,12 +550,15 @@ namespace wrench {
             }
             giant = false;
             if (peel_wait_time[1] - parent_runtime > 0) {
+                // This seems wrong! A better ratio would mean '<'
                 if (peel_wait_time[1] / real_runtime[1] > peel_wait_time[0] / real_runtime[0]) {
                     break;
                 } else if (peel_wait_time[1] / real_runtime[1] > wait_time_all / runtime_all) {
                     break;
                 }
             }
+            // What the heck is this doing??
+            std::cout << "Reached bottom" << std::endl;
             peel_wait_time[0] = peel_wait_time[1];
             peel_runtime[0] = peel_runtime[1];
             real_runtime[0] = real_runtime[1];
@@ -584,6 +571,8 @@ namespace wrench {
             return std::make_tuple(0, 0, end_level);
         } else {
             std::cout << "SPLITTING, END LEVEL=" << candidate_end_level << std::endl;
+            std::cout << "WAIT: " << peel_wait_time[1] << std::endl;
+            std::cout << "RUN: " << peel_runtime[1] << std::endl;
             // return partial dag
             return std::make_tuple(peel_wait_time[1], peel_runtime[1], candidate_end_level);
         }
