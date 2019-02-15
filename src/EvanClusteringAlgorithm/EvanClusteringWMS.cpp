@@ -110,11 +110,11 @@ namespace wrench {
         std::cout << "start: " << start_level << std::endl;
         std::cout << "end: " << partial_dag_end_level << std::endl;
 
-        // createAndSubmitPlaceholderJob(
-        //         partial_dag_makespan,
-        //         partial_dag_parallelism,
-        //         start_level,
-        //         partial_dag_end_level);
+        createAndSubmitPlaceholderJob(
+                partial_dag_makespan,
+                partial_dag_parallelism,
+                start_level,
+                partial_dag_end_level);
 
         // WRENCH_INFO("Switching to individual mode!");
         // // Submit all READY tasks as individual jobs
