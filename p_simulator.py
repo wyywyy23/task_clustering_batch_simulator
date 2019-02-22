@@ -67,7 +67,7 @@ def write_to_mongo(obj):
     password = urllib.parse.quote_plus('password')
     myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
     mydb = myclient["simulations"]
-    mycol = mydb["benchmark-3"]
+    mycol = mydb["benchmark-5"]
     mycol.insert_one(obj)
 
 def run_simulator(command):
@@ -76,7 +76,7 @@ def run_simulator(command):
     end = start
     try:
         # Timeout throws exception, this is okay i guess
-        res = subprocess.check_output(command, timeout=900)
+        res = subprocess.check_output(command, timeout=1800)
         end = time.time()
         res = print_process_output(command, res, end - start)
         obj['success'] = True
@@ -95,14 +95,14 @@ def run_simulator(command):
         obj['success'] = False
         obj['error'] = str(e)
         lock.release()
-    return
+
     obj['runtime'] = end - start
     obj['timestamp'] = datetime.utcnow()
 
     lock.acquire()
     try:
-        # write_to_mongo(obj)
-        pass
+        write_to_mongo(obj)
+        # pass
     except Exception as e:
         print("Mongo failure")
         print(obj)
@@ -136,15 +136,30 @@ def get_algorithm(algorithm, workflow):
         max_tasks = workflow[11:13]
         return 'static:one_job-' + max_tasks
 
+def get_compute_nodes(trace):
+    if 'kth' in trace:
+        return '100'
+    elif 'sdsc' in trace:
+        return '128'
+    elif 'gaia' in trace:
+        return '2004'
+    elif 'ricc' in trace:
+        return '8192'
+    else:
+        print('unknown trace')
+        exit()
+
 def main():
     # trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json']
-    trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json', '../batch_logs/swf_traces_json/sdsc_sp2.json']
-    workflows = ['levels:666:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600','levels:666:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600', 'levels:666:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600']
-    start_times = ['125000', '156250', '195312', '244140', '305175', '381469', '476837', '596046', '745058', '931322']
+    trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json', '../batch_logs/swf_traces_json/sdsc_sp2.json', '../batch_logs/swf_traces_json/gaia.json', '../batch_logs/swf_traces_json/ricc.json']
+    workflows = ['levels:666:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600', 'levels:666:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600', 'levels:666:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600', 'levels:666:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600', 'levels:666:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600', 'dax:../workflows/montage_100.dax', 'dax:../workflows/cybershake_100.dax', 'dax:../workflows/epigenomics_100.dax', 'dax:../workflows/inspiral_100.dax', 'dax:../workflows/sipht_100.dax']
+    # start_times = ['125000', '156250', '195312', '244140', '305175', '381469', '476837', '596046', '745058', '931322']
+    # start_times = ['75000', '150000', '225000', '300000', '375000', '450000', '525000', '600000', '675000', '750000']
+    start_times = ['30000', '60000', '90000', '120000', '150000', '180000', '210000', '240000', '270000', '300000']
     # Missing static:one_job-max
-    algorithms = ['static:one_job-0', 'static:one_job-max', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'evan:overlap:pnolimit', 'test:overlap:pnolimit']
+    # Take out one_job_max
+    algorithms = ['static:one_job-0', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'test:overlap:pnolimit', 'evan:overlap:pnolimit']
     # start_times = ['125000']
-    # algorithms = ['static:one_job-0']
     # workflows = ['levels:666:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600']
 
     for trace in trace_files:
@@ -152,24 +167,25 @@ def main():
             for start_time in start_times:
                 for algorithm in algorithms:
                     command = simulator_command()
-                    if 'kth' in algorithm:
-                        command[1] = '128'
-                    else:
-                        command[1] = '100'
+                    command[1] = get_compute_nodes(trace)
                     command[2] = trace
                     command[4] = workflow
                     command[5] = start_time
                     command[6] = get_algorithm(algorithm, workflow)
                     commands.append(command)
+    
+    commands.clear()
+    fd = open('unfinished_b5.txt', 'r')
+    line = fd.readline()
+    while line:
+        com = line[2:-3].split("\', \'")
+        commands.append(com)
+        line = fd.readline()
+    
     print("Total simulations to run: %d" % len(commands))
-    '''
-    for command in commands:
-        print_command(command)
-    print(len(commands))
-    exit()
-    '''
+    
     threads = []
-    cores = 8
+    cores = 12
 
     for i in range(cores):
         # if i > 0:

@@ -155,6 +155,9 @@ namespace wrench {
                 double leeway_needed = run_one - wait_two;
                 if (leeway_needed > (run_two * 0.10)) {
                     std::cout << "Ignoring split -> leeway = " << leeway_needed << std::endl;
+                    std::cout << "WAIT2: " << wait_two << std::endl;
+                    std::cout << "RUN2: " << run_two << std::endl;
+                    std::cout << "RUN1: " << run_one << std::endl;
                     // split would waste too much cpu time
                     continue;
                 }
@@ -183,13 +186,17 @@ namespace wrench {
         std::cout << "END LEVEL: " << end_level << std::endl;
 
         // Let's default to one_job
-        // if ((start_level == 0) and (end_level == this->getWorkflow()->getNumLevels() - 1)) {
-        //     if (requested_execution_time * 2.0 >= estimated_wait_time) {
-        //         this->individual_mode = true;
-        //     }
-        // } else {
-        //     std::cout << "*** SPLITTING *** " << start_level << " " << end_level << std::endl;
-        // }
+        if (end_level == this->getWorkflow()->getNumLevels() - 1) {
+            if (requested_execution_time * 2.0 >= estimated_wait_time) {
+                this->individual_mode = true;
+            }
+        } else {
+            if (start_level == 0) {
+                std::cout << "RUNNING AS ONE JOB" << std::endl;
+            } else {
+                std::cout << "*** SPLITTING *** " << start_level << " " << end_level << std::endl;
+            }
+        }
 
         if (this->individual_mode) {
             WRENCH_INFO("GROUPING: INDIVIDUAL");

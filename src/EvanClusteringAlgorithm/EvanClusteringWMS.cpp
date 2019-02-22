@@ -99,38 +99,43 @@ namespace wrench {
         unsigned long partial_dag_parallelism = std::get<3>(partial_dag);
 
         if (partial_dag_end_level >= end_level) {
-            // this->individual_mode = true;
-            // come up with a heuristic for picking one_job_per_task?
+            if (partial_dag_wait_time > 2.0 * partial_dag_makespan) {
+                this->individual_mode = true;
+                std::cout << "SUBMITTING INDIVIDUAL" << std::endl;
+            }
+            // come up with a better heuristic for picking one_job_per_task?
         }
 
         WRENCH_INFO("GROUPING: %ld-%ld", start_level, end_level);
-        std::cout << "submitting placeholder" << std::endl;
         std::cout << "makespan: " << partial_dag_makespan << std::endl;
         std::cout << "parallelism: " << partial_dag_parallelism << std::endl;
         std::cout << "start: " << start_level << std::endl;
         std::cout << "end: " << partial_dag_end_level << std::endl;
 
-        createAndSubmitPlaceholderJob(
-                partial_dag_makespan,
-                partial_dag_parallelism,
-                start_level,
-                partial_dag_end_level);
+        if (not this->individual_mode) {
+            createAndSubmitPlaceholderJob(
+                    partial_dag_makespan,
+                    partial_dag_parallelism,
+                    start_level,
+                    partial_dag_end_level);
+            return;
+        }
 
-        // WRENCH_INFO("Switching to individual mode!");
-        // // Submit all READY tasks as individual jobs
-        // for (auto task : this->getWorkflow()->getTasks()) {
-        //     if (task->getState() == WorkflowTask::State::READY) {
-        //         StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
-        //         std::map <std::string, std::string> service_specific_args;
-        //         unsigned long requested_execution_time =
-        //                 (task->getFlops() / this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
-        //         service_specific_args["-N"] = "1";
-        //         service_specific_args["-c"] = "1";
-        //         service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
-        //         WRENCH_INFO("Submitting task %s individually!", task->getID().c_str());
-        //         this->job_manager->submitJob(standard_job, this->batch_service, service_specific_args);
-        //     }
-        // }
+        WRENCH_INFO("Switching to individual mode!");
+        // Submit all READY tasks as individual jobs
+        for (auto task : this->getWorkflow()->getTasks()) {
+            if (task->getState() == WorkflowTask::State::READY) {
+                StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
+                std::map <std::string, std::string> service_specific_args;
+                unsigned long requested_execution_time =
+                        (task->getFlops() / this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
+                service_specific_args["-N"] = "1";
+                service_specific_args["-c"] = "1";
+                service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
+                WRENCH_INFO("Submitting task %s individually!", task->getID().c_str());
+                this->job_manager->submitJob(standard_job, this->batch_service, service_specific_args);
+            }
+        }
     }
 
     /**
@@ -167,7 +172,6 @@ namespace wrench {
         service_specific_args["-N"] = std::to_string(requested_parallelism);
         service_specific_args["-c"] = "1";
         service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
-
 
         // Keep track of the placeholder job
         this->pending_placeholder_job = new EvanPlaceHolderJob(
@@ -492,11 +496,12 @@ namespace wrench {
 
         // automatically add leeway to first level grouping
         unsigned long candidate_end_level = start_level;
-        unsigned long best_parallelism = -1;
+        unsigned long best_parallelism = 0;
         double best_runtime = -1;
         double best_wait_time = DBL_MAX;
 
-        for (unsigned long i = start_level; i < end_level - 1; i++) {
+        // end level is inclusive in here
+        for (unsigned long i = start_level; i <= end_level; i++) {
             std::cout << "start: " << start_level << " end: " << i << std::endl;
             unsigned long parallelism = maxParallelism(start_level, i);
             double runtime = WorkflowUtil::estimateMakespan(
@@ -507,7 +512,8 @@ namespace wrench {
             // consider the leeway
             if (wait_time < parent_runtime) {
                 double leeway = parent_runtime - wait_time;
-                if (leeway > (runtime * 0.10)) {
+                // allow leeway if at end level AND no other viable grouping was picked
+                if (leeway > (runtime * 0.10) && !(i == end_level && best_parallelism == 0)) {
                     // leeway wastes resources
                     continue;
                 } else {
@@ -522,6 +528,8 @@ namespace wrench {
             }
             double current_ratio = runtime / real_wait_time;
             double best_ratio = best_runtime / wait_time;
+            std::cout << "BEST RATIO: " << best_ratio << std::endl;
+            std::cout << "CURRENT RATIO: " << current_ratio << std::endl;
             if (current_ratio >= best_ratio) {
                 best_runtime = runtime;
                 best_wait_time = real_wait_time;
