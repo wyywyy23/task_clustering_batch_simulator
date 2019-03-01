@@ -98,6 +98,8 @@ namespace wrench {
         unsigned long partial_dag_end_level = std::get<2>(partial_dag);
         unsigned long partial_dag_parallelism = std::get<3>(partial_dag);
 
+        // This heuristic totally sucks - just submit as one_job-0
+        /**
         if (partial_dag_end_level >= end_level) {
             if (partial_dag_wait_time > 2.0 * partial_dag_makespan) {
                 this->individual_mode = true;
@@ -105,6 +107,7 @@ namespace wrench {
             }
             // come up with a better heuristic for picking one_job_per_task?
         }
+        */
 
         WRENCH_INFO("GROUPING: %ld-%ld", start_level, end_level);
         std::cout << "makespan: " << partial_dag_makespan << std::endl;

@@ -185,9 +185,10 @@ namespace wrench {
 
         std::cout << "END LEVEL: " << end_level << std::endl;
 
-        // Let's default to one_job
+        // Let's just never default to individual_mode for now
+        /**
         if (end_level == this->getWorkflow()->getNumLevels() - 1) {
-            if (requested_execution_time * 2.0 >= estimated_wait_time) {
+            if (estimated_wait_time > requested_execution_time * 2.0) {
                 this->individual_mode = true;
             }
         } else {
@@ -197,7 +198,8 @@ namespace wrench {
                 std::cout << "*** SPLITTING *** " << start_level << " " << end_level << std::endl;
             }
         }
-
+        */
+        
         if (this->individual_mode) {
             WRENCH_INFO("GROUPING: INDIVIDUAL");
         } else {
