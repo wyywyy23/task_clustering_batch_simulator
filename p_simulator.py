@@ -67,7 +67,7 @@ def write_to_mongo(obj):
     password = urllib.parse.quote_plus('password')
     myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
     mydb = myclient["simulations"]
-    mycol = mydb["benchmark-5"]
+    mycol = mydb["benchmark-7"]
     mycol.insert_one(obj)
 
 def run_simulator(command):
@@ -101,8 +101,8 @@ def run_simulator(command):
 
     lock.acquire()
     try:
-        write_to_mongo(obj)
-        # pass
+        # write_to_mongo(obj)
+        pass
     except Exception as e:
         print("Mongo failure")
         print(obj)
@@ -150,30 +150,34 @@ def get_compute_nodes(trace):
         exit()
 
 def main():
-    # trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json']
-    trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json', '../batch_logs/swf_traces_json/sdsc_sp2.json', '../batch_logs/swf_traces_json/gaia.json', '../batch_logs/swf_traces_json/ricc.json']
-    workflows = ['levels:666:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600', 'levels:666:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600', 'levels:666:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600', 'levels:666:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600', 'levels:666:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600', 'dax:../workflows/montage_100.dax', 'dax:../workflows/cybershake_100.dax', 'dax:../workflows/epigenomics_100.dax', 'dax:../workflows/inspiral_100.dax', 'dax:../workflows/sipht_100.dax']
+    trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json']
+    # trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json', '../batch_logs/swf_traces_json/sdsc_sp2.json', '../batch_logs/swf_traces_json/gaia.json', '../batch_logs/swf_traces_json/ricc.json']
+    # workflows = ['levels:666:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600', 'levels:666:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600:20:3600:3600', 'levels:666:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600:30:3600:3600', 'levels:666:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600:40:3600:3600', 'levels:666:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600', 'dax:../workflows/montage_100.dax', 'dax:../workflows/cybershake_100.dax', 'dax:../workflows/epigenomics_100.dax', 'dax:../workflows/inspiral_100.dax', 'dax:../workflows/sipht_100.dax']
     # start_times = ['125000', '156250', '195312', '244140', '305175', '381469', '476837', '596046', '745058', '931322']
     # start_times = ['75000', '150000', '225000', '300000', '375000', '450000', '525000', '600000', '675000', '750000']
-    start_times = ['30000', '60000', '90000', '120000', '150000', '180000', '210000', '240000', '270000', '300000']
+    workflows = ['levels:666:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600', 'levels:666:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000', 'levels:666:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000']
+    start_times = ['30000', '60000', '90000', '120000', '150000', '180000', '210000', '240000', '270000', '300000', '330000', '360000', '390000', '420000', '450000', '480000', '510000', '540000', '570000', '600000']
     # Missing static:one_job-max
     # Take out one_job_max
-    algorithms = ['static:one_job-0', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'test:overlap:pnolimit', 'evan:overlap:pnolimit']
+    # algorithms = ['static:one_job-0', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'test:overlap:pnolimit', 'evan:overlap:pnolimit']
+    algorithms = ['test:overlap:pnolimit']
+    num_nodes = ['50', '60', '70', '80', '90', '100', '110', '120', '130', '140', '150']
     # start_times = ['125000']
     # workflows = ['levels:666:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600']
 
     for trace in trace_files:
-        for workflow in workflows:
-            for start_time in start_times:
-                for algorithm in algorithms:
-                    command = simulator_command()
-                    command[1] = get_compute_nodes(trace)
-                    command[2] = trace
-                    command[4] = workflow
-                    command[5] = start_time
-                    command[6] = get_algorithm(algorithm, workflow)
-                    commands.append(command)
-    
+        for nodes in num_nodes:
+            for workflow in workflows:
+                for start_time in start_times:
+                    for algorithm in algorithms:
+                        command = simulator_command()
+                        command[1] = nodes
+                        command[2] = trace
+                        command[4] = workflow
+                        command[5] = start_time
+                        command[6] = get_algorithm(algorithm, workflow)
+                        commands.append(command)
+    '''
     commands.clear()
     fd = open('unfinished_b5.txt', 'r')
     line = fd.readline()
@@ -181,11 +185,11 @@ def main():
         com = line[2:-3].split("\', \'")
         commands.append(com)
         line = fd.readline()
-    
+    '''
     print("Total simulations to run: %d" % len(commands))
     
     threads = []
-    cores = 12
+    cores = 8
 
     for i in range(cores):
         # if i > 0:
