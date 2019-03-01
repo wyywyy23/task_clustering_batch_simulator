@@ -103,6 +103,7 @@ int Simulator::main(int argc, char **argv) {
     std::cerr << "      - Cluster tasks with single-parent-single-child depepdencies" << "\n";
     std::cerr << "    * \e[1mzhang:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
     std::cerr << "      - The algorithm by Zhang, Koelbel, and Cooper" << "\n";
+    std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING - WE DEFAULT TO NEVER FAIL**" << "\n";
     std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
     std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
     std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
@@ -112,7 +113,8 @@ int Simulator::main(int argc, char **argv) {
     std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts" << "\n";
     std::cerr << "        to pack that tasks into a job" << "\n";
     std::cerr << "    * \e[1mevan:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
-    std::cerr << "      - Updates to Zhang et al. algorithm" << "\n";
+    std::cerr << "      - Improvements to Zhang et al. algorithm" << "\n";
+    std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
     std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
     std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
     std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
@@ -123,6 +125,7 @@ int Simulator::main(int argc, char **argv) {
     std::cerr << "        to pack that tasks into a job" << "\n";
     std::cerr << "    * \e[1mtest:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
     std::cerr << "      - Testing a new algorithm" << "\n";
+    std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
     std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
     std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
     std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
