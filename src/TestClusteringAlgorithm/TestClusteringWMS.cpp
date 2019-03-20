@@ -142,7 +142,7 @@ namespace wrench {
                   << requested_execution_time << std::endl;
 
         // Apply henri's grouping heuristic
-        for (int i = start_level; i < (int) num_levels - 1; i++) {
+        for (unsigned int i = start_level; i < (int) num_levels - 1; i++) {
             std::tuple<double, double, unsigned long> start_to_split = time_estimates[i][0];
             std::tuple<double, double, unsigned long> rest = time_estimates[i + 1][1];
             double wait_one = std::get<0>(start_to_split);
@@ -549,16 +549,22 @@ namespace wrench {
      * @param end_level
      * @return (wait time, makespan, num_hosts)
      */
+     //TODO: Take as input a % waste
     std::tuple<double, double, unsigned long> TestClusteringWMS::computeBestNumHosts(
             unsigned long start_level, unsigned long end_level) {
         double makespan = DBL_MAX;
         double wait_time = DBL_MAX;
         unsigned long num_hosts = 1;
         unsigned long max_tasks = TestClusteringWMS::findMaxTasks(start_level, end_level);
+        double waste_bound = .20; // TODO: REMOVE THIS HARDCODING LATER
         for (unsigned long i = 1; i <= max_tasks; i++) {
             std::tuple<double, double> total_time = TestClusteringWMS::estimateTotalTime(start_level, end_level, i);
             double curr_makespan = std::get<0>(total_time);
             double curr_wait = std::get<1>(total_time);
+//          TODO:   double curr_waste = (i * curr_makespan - (sum of all task times from start_level to end_level)) / (i * curr_makespan);
+//          TODO:   if (curr_waste > waste_bound)  continue;
+
+
 //            std::cout << "coumputing " << curr_makespan << " " << curr_wait << std::endl;
             if (makespan + wait_time > curr_makespan + curr_wait) {
                 makespan = curr_makespan;
