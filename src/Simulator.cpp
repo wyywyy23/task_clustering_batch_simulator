@@ -221,6 +221,7 @@ int Simulator::main(int argc, char **argv) {
                                       {BatchServiceProperty::SIMULATE_COMPUTATION_AS_SLEEP, "true"},
                                       {BatchServiceProperty::BATSCHED_CONTIGUOUS_ALLOCATION, "true"},
                                       {BatchServiceProperty::BATSCHED_LOGGING_MUTED, "true"},
+                                      {BatchServiceProperty::USE_REAL_RUNTIMES_AS_REQUESTED_RUNTIMES, "true"}
                                      }, {});
   } catch (std::invalid_argument &e) {
 
