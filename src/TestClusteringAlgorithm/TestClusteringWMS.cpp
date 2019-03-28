@@ -142,7 +142,7 @@ namespace wrench {
                   << requested_execution_time << std::endl;
 
         // Apply henri's grouping heuristic
-        for (unsigned int i = start_level; i < (int) num_levels - 1; i++) {
+        for (int i = start_level; i < (int) num_levels - 1; i++) {
             std::tuple<double, double, unsigned long> start_to_split = time_estimates[i][0];
             std::tuple<double, double, unsigned long> rest = time_estimates[i + 1][1];
             double wait_one = std::get<0>(start_to_split);
@@ -556,13 +556,23 @@ namespace wrench {
         double wait_time = DBL_MAX;
         unsigned long num_hosts = 1;
         unsigned long max_tasks = TestClusteringWMS::findMaxTasks(start_level, end_level);
-        double waste_bound = .20; // TODO: REMOVE THIS HARDCODING LATER
+        double waste_bound = DBL_MAX; // TODO: REMOVE THIS HARDCODING LATER
         for (unsigned long i = 1; i <= max_tasks; i++) {
             std::tuple<double, double> total_time = TestClusteringWMS::estimateTotalTime(start_level, end_level, i);
             double curr_makespan = std::get<0>(total_time);
             double curr_wait = std::get<1>(total_time);
-//          TODO:   double curr_waste = (i * curr_makespan - (sum of all task times from start_level to end_level)) / (i * curr_makespan);
-//          TODO:   if (curr_waste > waste_bound)  continue;
+            
+            // Calculate the wasted ratio
+            double all_tasks_time = 0;
+            for (unsigned long j = start_level; j <= end_level; j++) {
+                all_tasks_time += WorkflowUtil::estimateMakespan(
+                                this->getWorkflow()->getTasksInTopLevelRange(j, j),
+                                1, this->core_speed);
+            }
+            double curr_waste = (i * curr_makespan - all_tasks_time) / (i * curr_makespan);
+            if (curr_waste > waste_bound) {
+                continue;
+            }
 
 
 //            std::cout << "coumputing " << curr_makespan << " " << curr_wait << std::endl;
@@ -588,7 +598,6 @@ namespace wrench {
         double makespan = WorkflowUtil::estimateMakespan(
                 this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
                 num_hosts, this->core_speed);
-        // TODO why does wait estimate need makespan?
         double wait_time = TestClusteringWMS::estimateWaitTime(num_hosts, makespan, &sequence);
         return std::make_tuple(makespan, wait_time);
     }

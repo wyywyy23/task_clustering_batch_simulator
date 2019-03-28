@@ -87,8 +87,19 @@ namespace wrench {
 
       std::string job_id_prefix = "my_tentative_job";
       std::set<std::tuple<std::string,unsigned int,unsigned int, double>> set_of_job_configurations;
+      double waste_bound = DBL_MAX;
+      unsigned long num_jobs = real_max_num_nodes;
       for (unsigned int n = 1; n <= real_max_num_nodes; n++) {
         double walltime_seconds = this->estimateMakespan(core_speed, n);
+                    
+        // Calculate the wasted ratio
+        double all_tasks_time = this->estimateMakespan(core_speed, 1);
+        double curr_waste = (n * walltime_seconds - all_tasks_time) / (n * walltime_seconds);
+        if (curr_waste > waste_bound) {
+            num_jobs--;
+            continue;
+        }
+
         walltime_seconds *= EXECUTION_TIME_FUDGE_FACTOR;
         std::tuple<std::string, unsigned int, unsigned int, double> my_job =
                 std::make_tuple(job_id_prefix + "_" + std::to_string(Simulator::sequence_number++),
@@ -110,7 +121,7 @@ namespace wrench {
         throw std::runtime_error(std::string("Couldn't acquire queue wait time predictions: ") + e.what());
       }
 
-      if (jobs_estimated_start_times.size() != real_max_num_nodes) {
+      if (jobs_estimated_start_times.size() != /**real_max_num_nodes*/num_jobs) {
         throw std::runtime_error("Was expecting " + std::to_string(real_max_num_nodes) + " wait time estimates but got " +
                                  std::to_string(jobs_estimated_start_times.size()) + "instead!");
       }
