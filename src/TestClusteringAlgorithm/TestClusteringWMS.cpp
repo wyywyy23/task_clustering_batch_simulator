@@ -15,7 +15,7 @@
 #include "TestPlaceHolderJob.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(test_clustering_wms,
-"Log category for Test Clustering WMS");
+                             "Log category for Test Clustering WMS");
 
 #define EXECUTION_TIME_FUDGE_FACTOR 1.1
 
@@ -26,11 +26,13 @@ namespace wrench {
     static double parent_runtime = 0;
 
     TestClusteringWMS::TestClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit,
+                                         double waste_bound,
                                          BatchService *batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
         this->simulator = simulator;
         this->overlap = overlap;
         this->plimit = plimit;
+        this->waste_bound = waste_bound;
         this->batch_service = batch_service;
         this->pending_placeholder_job = nullptr;
         this->individual_mode = false;
@@ -90,7 +92,7 @@ namespace wrench {
         // Compute my start level first as the first level that's not fully completed
         unsigned long start_level = 0;
         for (unsigned long i = 0; i < this->getWorkflow()->getNumLevels(); i++) {
-            std::vector < WorkflowTask * > tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(i, i);
+            std::vector<WorkflowTask *> tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(i, i);
             bool all_completed = true;
             for (auto task : tasks_in_level) {
                 if (task->getState() != WorkflowTask::State::COMPLETED) {
@@ -199,7 +201,7 @@ namespace wrench {
             }
         }
         */
-        
+
         if (this->individual_mode) {
             WRENCH_INFO("GROUPING: INDIVIDUAL");
         } else {
@@ -226,7 +228,7 @@ namespace wrench {
             for (auto task : this->getWorkflow()->getTasks()) {
                 if (task->getState() == WorkflowTask::State::READY) {
                     StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
-                    std::map <std::string, std::string> service_specific_args;
+                    std::map<std::string, std::string> service_specific_args;
                     requested_execution_time = (task->getFlops() / this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
                     service_specific_args["-N"] = "1";
                     service_specific_args["-c"] = "1";
@@ -258,9 +260,9 @@ namespace wrench {
         parent_runtime = requested_execution_time;
 
         // Aggregate tasks
-        std::vector < WorkflowTask * > tasks;
+        std::vector<WorkflowTask *> tasks;
         for (unsigned long l = start_level; l <= end_level; l++) {
-            std::vector < WorkflowTask * > tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
+            std::vector<WorkflowTask *> tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
             for (auto t : tasks_in_level) {
                 if (t->getState() != WorkflowTask::COMPLETED) {
                     tasks.push_back(t);
@@ -269,7 +271,7 @@ namespace wrench {
         }
 
         // Submit the pilot job
-        std::map <std::string, std::string> service_specific_args;
+        std::map<std::string, std::string> service_specific_args;
         service_specific_args["-N"] = std::to_string(requested_parallelism);
         service_specific_args["-c"] = "1";
         service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
@@ -297,7 +299,7 @@ namespace wrench {
     }
 
 
-    void TestClusteringWMS::processEventPilotJobStart(std::unique_ptr <PilotJobStartedEvent> e) {
+    void TestClusteringWMS::processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) {
 
         // Update queue waiting time
         this->simulator->total_queue_wait_time +=
@@ -343,7 +345,7 @@ namespace wrench {
 
     }
 
-    void TestClusteringWMS::processEventPilotJobExpiration(std::unique_ptr <PilotJobExpiredEvent> e) {
+    void TestClusteringWMS::processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) {
         std::cout << "GOT EXPIRATION" << std::endl;
         // Find the placeholder job
         TestPlaceHolderJob *placeholder_job = nullptr;
@@ -408,7 +410,7 @@ namespace wrench {
 
         // Cancel running pilot jobs if none of their tasks has started
 
-        std::set < TestPlaceHolderJob * > to_remove;
+        std::set<TestPlaceHolderJob *> to_remove;
         for (auto ph : this->running_placeholder_jobs) {
             bool started = false;
             for (auto task : ph->tasks) {
@@ -438,7 +440,7 @@ namespace wrench {
 
     }
 
-    void TestClusteringWMS::processEventStandardJobCompletion(std::unique_ptr <StandardJobCompletedEvent> e) {
+    void TestClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
 
         WorkflowTask *completed_task = e->standard_job->tasks[0]; // only one task per job
 
@@ -489,7 +491,7 @@ namespace wrench {
 
         // Start all newly ready tasks that depended on the completed task, IN ANY PLACEHOLDER
         // This shouldn't happen in individual mode, but can't hurt
-        std::vector < WorkflowTask * > children = this->getWorkflow()->getTaskChildren(completed_task);
+        std::vector<WorkflowTask *> children = this->getWorkflow()->getTaskChildren(completed_task);
         for (auto ph : this->running_placeholder_jobs) {
             for (auto task : ph->tasks) {
                 if ((std::find(children.begin(), children.end(), task) != children.end()) and
@@ -508,7 +510,7 @@ namespace wrench {
                     StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
                     WRENCH_INFO("Submitting task %s individually!",
                                 task->getID().c_str());
-                    std::map <std::string, std::string> service_specific_args;
+                    std::map<std::string, std::string> service_specific_args;
                     double requested_execution_time =
                             (task->getFlops() / this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
                     service_specific_args["-N"] = "1";
@@ -522,13 +524,13 @@ namespace wrench {
 
     }
 
-    void TestClusteringWMS::processEventStandardJobFailure(std::unique_ptr <StandardJobFailedEvent> e) {
+    void TestClusteringWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
         WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS",
                     e->standard_job->tasks[0]->getID().c_str());
     }
 
     double TestClusteringWMS::estimateWaitTime(long parallelism, double makespan, int *sequence) {
-        std::set <std::tuple<std::string, unsigned int, unsigned int, double>> job_config;
+        std::set<std::tuple<std::string, unsigned int, unsigned int, double>> job_config;
         std::string config_key = "config_XXXX_" + std::to_string((*sequence)++); // need to make it unique for BATSCHED
         job_config.insert(std::make_tuple(config_key, (unsigned int) parallelism, 1, makespan));
         std::map<std::string, double> estimates = this->batch_service->getStartTimeEstimates(job_config);
@@ -549,28 +551,27 @@ namespace wrench {
      * @param end_level
      * @return (wait time, makespan, num_hosts)
      */
-     //TODO: Take as input a % waste
+    //TODO: Take as input a % waste
     std::tuple<double, double, unsigned long> TestClusteringWMS::computeBestNumHosts(
             unsigned long start_level, unsigned long end_level) {
         double makespan = DBL_MAX;
         double wait_time = DBL_MAX;
         unsigned long num_hosts = 1;
         unsigned long max_tasks = TestClusteringWMS::findMaxTasks(start_level, end_level);
-        double waste_bound = DBL_MAX; // TODO: REMOVE THIS HARDCODING LATER
         for (unsigned long i = 1; i <= max_tasks; i++) {
             std::tuple<double, double> total_time = TestClusteringWMS::estimateTotalTime(start_level, end_level, i);
             double curr_makespan = std::get<0>(total_time);
             double curr_wait = std::get<1>(total_time);
-            
+
             // Calculate the wasted ratio
             double all_tasks_time = 0;
             for (unsigned long j = start_level; j <= end_level; j++) {
                 all_tasks_time += WorkflowUtil::estimateMakespan(
-                                this->getWorkflow()->getTasksInTopLevelRange(j, j),
-                                1, this->core_speed);
+                        this->getWorkflow()->getTasksInTopLevelRange(j, j),
+                        1, this->core_speed);
             }
             double curr_waste = (i * curr_makespan - all_tasks_time) / (i * curr_makespan);
-            if (curr_waste > waste_bound) {
+            if (curr_waste > this->waste_bound) {
                 continue;
             }
 

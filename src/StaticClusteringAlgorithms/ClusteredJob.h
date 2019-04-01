@@ -43,10 +43,13 @@ namespace wrench {
 
         bool isNumNodesBasedOnQueueWaitTimePrediction();
 
+        void setWasteBound(double waste_bound);
+
     private:
         std::vector<wrench::WorkflowTask *> tasks;
         unsigned long num_nodes = 0;
         bool num_nodes_based_on_queue_wait_time_predictions = false;
+        double waste_bound = 1;
     };
 
 };

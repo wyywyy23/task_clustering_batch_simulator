@@ -89,7 +89,6 @@ namespace wrench {
 
         std::string job_id_prefix = "my_tentative_job";
         std::set<std::tuple<std::string, unsigned int, unsigned int, double>> set_of_job_configurations;
-        double waste_bound = DBL_MAX;
         unsigned long num_jobs = real_max_num_nodes;
         for (unsigned int n = 1; n <= real_max_num_nodes; n++) {
             double walltime_seconds = this->estimateMakespan(core_speed, n);
@@ -97,7 +96,7 @@ namespace wrench {
             // Calculate the wasted ratio
             double all_tasks_time = this->estimateMakespan(core_speed, 1);
             double curr_waste = (n * walltime_seconds - all_tasks_time) / (n * walltime_seconds);
-            if (curr_waste > waste_bound) {
+            if (curr_waste > this->waste_bound) {
                 num_jobs--;
                 continue;
             }
@@ -202,4 +201,10 @@ namespace wrench {
 
         return max_parallelism;
     }
+
+    void ClusteredJob::setWasteBound(double waste_bound) {
+        // TODO error checking?
+        this->waste_bound = waste_bound;
+    }
+
 };

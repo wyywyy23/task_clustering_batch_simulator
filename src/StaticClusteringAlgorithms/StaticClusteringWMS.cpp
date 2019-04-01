@@ -90,8 +90,9 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
     }
 
     /** A single Job **/
+    // TODO This will probably be broken if not doing one_job-0
     if (tokens[0] == "one_job") {
-        if (tokens.size() != 2) {
+        if (tokens.size() != 3) {
             throw std::invalid_argument("Invalid static:one_job specification");
         }
 
@@ -99,11 +100,15 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
         if ((sscanf(tokens[1].c_str(), "%lu", &num_nodes) != 1)) {
             throw std::invalid_argument("Invalid static:one_job-m specification");
         }
+
+        unsigned long waste_bound = std::stod(tokens[2]);
+
         ClusteredJob *job = new ClusteredJob();
         for (auto t : this->getWorkflow()->getTasks()) {
             job->addTask(t);
         }
         job->setNumNodes(num_nodes);
+        job->setWasteBound(waste_bound);
         jobs.insert(job);
         return jobs;
     }

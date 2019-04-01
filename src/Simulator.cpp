@@ -48,10 +48,11 @@ int Simulator::main(int argc, char **argv) {
         std::cerr << "      - run each workflow level as a job" << "\n";
         std::cerr << "      - m: number of hosts used to execute each job" << "\n";
         std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-        std::cerr << "    * \e[1mstatic:one_job-m\e[0m" << "\n";
+        std::cerr << "    * \e[1mstatic:one_job-m-waste_bound\e[0m" << "\n";
         std::cerr << "      - run the workflow as a single job" << "\n";
         std::cerr << "      - m: number of hosts used to execute the job" << "\n";
         std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "      - waste_bound: maximum percentage of wasted node time e.g. 0.2" << "\n";
         std::cerr << "    * \e[1mstatic:one_job_per_task\e[0m" << "\n";
         std::cerr << "      - run each task as a single one-host job" << "\n";
         std::cerr << "      - Submit a job only once a task is ready, no queue wait time estimation" << "\n";
@@ -123,17 +124,9 @@ int Simulator::main(int argc, char **argv) {
         std::cerr << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although" << "\n";
         std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts" << "\n";
         std::cerr << "        to pack that tasks into a job" << "\n";
-        std::cerr << "    * \e[1mtest:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
+        std::cerr << "    * \e[1mtest:waste_bound\e[0m" << "\n";
         std::cerr << "      - Testing a new algorithm" << "\n";
-        std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
-        std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
-        std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
-        std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
-        std::cerr << "      - [plimit|pnolimit]: plimit is the original algorithm that will complain if the workflow" << "\n";
-        std::cerr << "        parallelism is larger than the number of hosts. pnolimit is an extension that will not" << "\n";
-        std::cerr << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although" << "\n";
-        std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts" << "\n";
-        std::cerr << "        to pack that tasks into a job" << "\n";
+        std::cerr << "      - waste_bound: maximum percentage of wasted node time e.g. 0.2" << "\n";
         std::cerr << "    * \e[1mlevelbylevel:[overlap|nooverlap]:levelclustering\e[0m" << "\n";
         std::cerr << "        - A level-by-level-with overlap algorithm that clusters tasks in each level." << "\n";
         std::cerr << "          Tasks in level n+1 are submitted to the batch queue as soon as all tasks in level n" << "\n";
@@ -577,26 +570,17 @@ WMS *Simulator::createWMS(std::string hostname,
 
     } else if (tokens[0] == "test") {
 
-        if (tokens.size() != 3) {
+        if (tokens.size() != 2) {
             throw std::invalid_argument("createWMS(): Invalid test specification");
         }
-        bool overlap;
-        if (tokens[1] == "overlap") {
-            overlap = true;
-        } else if (tokens[1] == "nooverlap") {
-            overlap = false;
-        } else {
-            throw std::invalid_argument("createWMS(): Invalid test specification");
-        }
-        bool plimit;
-        if (tokens[2] == "plimit") {
-            plimit = true;
-        } else if (tokens[2] == "pnolimit") {
-            plimit = false;
-        } else {
-            throw std::invalid_argument("createWMS(): Invalid test specification");
-        }
-        return new TestClusteringWMS(this, hostname, overlap, plimit, batch_service);
+
+        double waste_bound = std::stod(tokens[1]);
+
+        /* Currently unused for this algorithm */
+        bool overlap = true;
+        bool plimit = false;
+
+        return new TestClusteringWMS(this, hostname, overlap, plimit, waste_bound, batch_service);
 
     } else if (tokens[0] == "levelbylevel") {
         if (tokens.size() != 3) {

@@ -26,7 +26,7 @@ namespace wrench {
 
     public:
 
-        TestClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit,
+        TestClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit, double waste_bound,
                           BatchService *batch_service);
 
     private:
@@ -42,13 +42,13 @@ namespace wrench {
                                            unsigned long start_level,
                                            unsigned long end_level);
 
-        void processEventPilotJobStart(std::unique_ptr <PilotJobStartedEvent> e) override;
+        void processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) override;
 
-        void processEventPilotJobExpiration(std::unique_ptr <PilotJobExpiredEvent> e) override;
+        void processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) override;
 
-        void processEventStandardJobCompletion(std::unique_ptr <StandardJobCompletedEvent> e) override;
+        void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) override;
 
-        void processEventStandardJobFailure(std::unique_ptr <StandardJobFailedEvent> e) override;
+        void processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) override;
 
         double
         estimateWaitTime(long parallelism, double makespan, int *sequence);
@@ -65,6 +65,7 @@ namespace wrench {
         bool individual_mode;
         bool overlap;
         bool plimit;
+        double waste_bound;
 
         std::set<TestPlaceHolderJob *> running_placeholder_jobs;
         TestPlaceHolderJob *pending_placeholder_job;
@@ -72,7 +73,7 @@ namespace wrench {
         double core_speed;
         unsigned long number_of_hosts;
 
-        std::shared_ptr <JobManager> job_manager;
+        std::shared_ptr<JobManager> job_manager;
 
 
     };
