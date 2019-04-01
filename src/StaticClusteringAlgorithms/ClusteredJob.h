@@ -19,17 +19,27 @@ namespace wrench {
 
     public:
         void setNumNodes(unsigned long num_nodes, bool based_on_queue_wait_time_prediction = false);
+
         unsigned long getNumNodes();
+
         unsigned long getNumTasks();
-        std::vector<wrench::WorkflowTask *>  getTasks();
+
+        std::vector<wrench::WorkflowTask *> getTasks();
+
         void addTask(wrench::WorkflowTask *task);
+
         bool isReady();
+
         bool isTaskOK(wrench::WorkflowTask *task);
+
         double estimateMakespan(double core_speed);
+
         double estimateMakespan(double core_speed, unsigned long num_nodes);
+
         unsigned long getMaxParallelism();
 
-        unsigned long computeBestNumNodesBasedOnQueueWaitTimePredictions(unsigned long max_num_nodes, double core_speed, BatchService *batch_service);
+        unsigned long computeBestNumNodesBasedOnQueueWaitTimePredictions(unsigned long max_num_nodes, double core_speed,
+                                                                         BatchService *batch_service);
 
         bool isNumNodesBasedOnQueueWaitTimePrediction();
 
