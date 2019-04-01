@@ -20,600 +20,600 @@ unsigned long Simulator::sequence_number = 0;
 
 int Simulator::main(int argc, char **argv) {
 
-  // Create and initialize a simulation
-  auto simulation = new wrench::Simulation();
-  simulation->init(&argc, argv);
+    // Create and initialize a simulation
+    auto simulation = new wrench::Simulation();
+    simulation->init(&argc, argv);
 
-  // Parse command-line arguments
-  if ((argc != 8) and (argc != 9)) {
-    std::cerr << "\e[1;31mUsage: " << argv[0] << " <num_compute_nodes> <job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm> <batch algorithm> [csv batch log file]\e[0m" << "\n";
-    std::cerr << "  \e[1;32m### workflow specification options ###\e[0m" << "\n";
-    std::cerr << "    *  \e[1mindep:s:n:t1:t2\e[0m " << "\n";
-    std::cerr << "      - Just a set of independent tasks" << "\n";
-    std::cerr << "      - n: number of tasks" << "\n";
-    std::cerr << "      - t1/t2: min/max task durations in integral seconds (actual times uniformly sampled)" << "\n";
-    std::cerr << "      - s: rng seed" << "\n";
-    std::cerr << "    * \e[1mlevels:s:l0:t0:T0:l1:t1:T1:....:ln:tn:Tn\e[0m" << "\n";
-    std::cerr << "      - A strictly levelled workflow" << "\n";
-    std::cerr << "      - lx: num tasks in level x" << "\n";
-    std::cerr << "      - each task in level x depends on ALL tasks in level x-1" << "\n";
-    std::cerr << "      - tx/Tx: min/max task durations in level x, in integral second (times uniformly sampled)" << "\n";
-    std::cerr << "      - s: rng seed" << "\n";
-    std::cerr << "    * \e[1mdax:filename\e[0m" << "\n";
-    std::cerr << "      - A workflow imported from a DAX file" << "\n";
-    std::cerr << "      - Files and Data dependencies are ignored. Only control dependencies are preserved" << "\n";
-    std::cerr << "\n";
-    std::cerr << "  \e[1;32m### algorithm options ###\e[0m" << "\n";
-    std::cerr << "    * \e[1mstatic:levelbylevel-m\e[0m" << "\n";
-    std::cerr << "      - run each workflow level as a job" << "\n";
-    std::cerr << "      - m: number of hosts used to execute each job" << "\n";
-    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "    * \e[1mstatic:one_job-m\e[0m" << "\n";
-    std::cerr << "      - run the workflow as a single job" << "\n";
-    std::cerr << "      - m: number of hosts used to execute the job" << "\n";
-    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "    * \e[1mstatic:one_job_per_task\e[0m" << "\n";
-    std::cerr << "      - run each task as a single one-host job" << "\n";
-    std::cerr << "      - Submit a job only once a task is ready, no queue wait time estimation" << "\n";
-    std::cerr << "    * \e[1mstatic:hc-[vprior|vposterior|vnone]-n-m\e[0m" << "\n";
-    std::cerr << "      - Horizontal Clustering algorithm (ref [12] in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al.)" << "\n";
-    std::cerr << "      - Simply clusters tasks in each level in whatever order and execute " << "\n";
-    std::cerr << "        each cluster on the same number of hosts " << "\n";
-    std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
-    std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
-    std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
-    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "    * \e[1mstatic:dfjs-[vprior|vposterior|vnone]-t-m\e[0m" << "\n";
-    std::cerr << "      - DFJS algorithm (ref [5] in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al.)" << "\n";
-    std::cerr << "      - Simply greedily clusters tasks in each level in whatever order so that " << "\n";
-    std::cerr << "        each cluster has a runtime that's bounded. (extended to deal with numbers of hosts)" << "\n";
-    std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
-    std::cerr << "      - t: bound on runtime (in seconds)" << "\n";
-    std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
-    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "    * \e[1mstatic:hrb-[vprior|vposterior|vnone]-n-m\e[0m" << "\n";
-    std::cerr << "      - The HRB algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
-    std::cerr << "      - Modified to specify 'number of tasks per cluster' rather than 'number of clusters per level'" << "\n";
-    std::cerr << "      - Cluster tasks in each level so that clusters are load-balanced" << "\n";
-    std::cerr << "        (extended to deal with numbers of hosts)" << "\n";
-    std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
-    std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
-    std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
-    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "    * \e[1mstatic:hifb-[vprior|vposterior|vnone-]n-m\e[0m" << "\n";
-    std::cerr << "      - The HIFB algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
-    std::cerr << "      - Modified to specify 'number of tasks per cluster' rather than 'number of clusters per level'" << "\n";
-    std::cerr << "      - Cluster tasks in each level so that clusters have similar impact factors" << "\n";
-    std::cerr << "        (extended to deal with numbers of hosts)" << "\n";
-    std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
-    std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
-    std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
-    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "    * \e[1mstatic:hdb-[vprior|vposterior|vnone]-n-m\e[0m" << "\n";
-    std::cerr << "      - The HDB algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
-    std::cerr << "      - Modified to specify 'number of tasks per cluster' rather than 'number of clusters per level'" << "\n";
-    std::cerr << "      - Cluster tasks in each level so that clusters have similar distances" << "\n";
-    std::cerr << "        (extended to deal with numbers of hosts)" << "\n";
-    std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
-    std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
-    std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
-    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "    * \e[1mstatic:vc\e[0m" << "\n";
-    std::cerr << "      - The VC algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
-    std::cerr << "      - Cluster tasks with single-parent-single-child depepdencies" << "\n";
-    std::cerr << "    * \e[1mzhang:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
-    std::cerr << "      - The algorithm by Zhang, Koelbel, and Cooper" << "\n";
-    std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING - WE DEFAULT TO NEVER FAIL**" << "\n";
-    std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
-    std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
-    std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
-    std::cerr << "      - [plimit|pnolimit]: plimit is the original algorithm that will complain if the workflow" << "\n";
-    std::cerr << "        parallelism is larger than the number of hosts. pnolimit is an extension that will not" << "\n";
-    std::cerr << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although" << "\n";
-    std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts" << "\n";
-    std::cerr << "        to pack that tasks into a job" << "\n";
-    std::cerr << "    * \e[1mevan:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
-    std::cerr << "      - Improvements to Zhang et al. algorithm" << "\n";
-    std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
-    std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
-    std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
-    std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
-    std::cerr << "      - [plimit|pnolimit]: plimit is the original algorithm that will complain if the workflow" << "\n";
-    std::cerr << "        parallelism is larger than the number of hosts. pnolimit is an extension that will not" << "\n";
-    std::cerr << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although" << "\n";
-    std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts" << "\n";
-    std::cerr << "        to pack that tasks into a job" << "\n";
-    std::cerr << "    * \e[1mtest:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
-    std::cerr << "      - Testing a new algorithm" << "\n";
-    std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
-    std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
-    std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
-    std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
-    std::cerr << "      - [plimit|pnolimit]: plimit is the original algorithm that will complain if the workflow" << "\n";
-    std::cerr << "        parallelism is larger than the number of hosts. pnolimit is an extension that will not" << "\n";
-    std::cerr << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although" << "\n";
-    std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts" << "\n";
-    std::cerr << "        to pack that tasks into a job" << "\n";
-    std::cerr << "    * \e[1mlevelbylevel:[overlap|nooverlap]:levelclustering\e[0m" << "\n";
-    std::cerr << "        - A level-by-level-with overlap algorithm that clusters tasks in each level." << "\n";
-    std::cerr << "          Tasks in level n+1 are submitted to the batch queue as soon as all tasks in level n" << "\n";
-    std::cerr << "          have started. Timout behavior similar as that in the algorithm by Zhang et al." << "\n";
-    std::cerr << "        - levelclustering: the algorithm uses to cluster tasks in each level. Options are: " << "\n";
-    std::cerr << "          - one_job-m: the level is submitted as a single job" << "\n";
-    std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
-    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "          - one_job_per_task: one job per task" << "\n";
-    std::cerr << "          - hc-n-m:  HC static algorithm" << "\n";
-    std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
-    std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
-    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "          - djfs-t-m1-m2: DJFS static algorithm" << "\n";
-    std::cerr << "            - t: bound on runtime (in seconds)" << "\n";
-    std::cerr << "            - m1: number of hosts used to compute the cluster" << "\n";
-    std::cerr << "            - m2: number of hosts used to execute each cluster" << "\n";
-    std::cerr << "              - if m2 = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "          - hrb-n-m: HRB algorithm" << "\n";
-    std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
-    std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
-    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "          - hifb-n-m: HIFB algorithm" << "\n";
-    std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
-    std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
-    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "          - hdb-n-m: HDC algorithm" << "\n";
-    std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
-    std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
-    std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
-    std::cerr << "          - clever: A clever heuristic" << "\n";
-    std::cerr << "            - A heuristic that cleverly splits a level into jobs based on task executiong times " << "\n";
-    std::cerr << "              and queue wait times" << "\n";
-    std::cerr << "\n";
-    std::cerr << "  \e[1;32m### batch algorithm options ###\e[0m" << "\n";
-    std::cerr << "    * \e[1mconservative_bf\e[0m" << "\n";
-    std::cerr << "      - classical conservative backfilling" << "\n";
-    std::cerr << "    * \e[1mfast_conservative_bf\e[0m" << "\n";
-    std::cerr << "      - faster backfilling algorithm, still conservative but not exactly canon" << "\n";
-    std::cerr << "    * \e[1mfcfs_fast\e[0m" << "\n";
-    std::cerr << "      - first come, first serve" << "\n";
-    std::cerr << "\n";
-    exit(1);
-  }
-  unsigned long num_compute_nodes;
-  if ((sscanf(argv[1], "%lu", &num_compute_nodes) != 1) or (num_compute_nodes < 1)) {
-    std::cerr << "Invalid number of compute nodes\n";
-  }
-
-  unsigned long max_num_jobs;
-  if ((sscanf(argv[3], "%lu", &max_num_jobs) != 1) or (max_num_jobs < 1)) {
-    std::cerr << "Invalid maximum number of jobs\n";
-  }
-
-
-  double workflow_start_time;
-  if ((sscanf(argv[5], "%lf", &workflow_start_time) != 1) or (workflow_start_time < 0)) {
-    std::cerr << "Invalid workflow start time\n";
-  }
-
-  std::string scheduler_spec = std::string(argv[6]);
-
-  // Setup the simulation platform
-  setupSimulationPlatform(simulation, num_compute_nodes);
-
-  // Create a BatchService
-  std::vector<std::string> compute_nodes;
-  for (unsigned int i=0; i < num_compute_nodes; i++) {
-    compute_nodes.push_back(std::string("ComputeNode_") + std::to_string(i));
-  }
-  wrench::BatchService *batch_service = nullptr;
-  std::string login_hostname = "Login";
-
-  std::string csv_batch_log = "/tmp/batch_log.csv";
-  if (argc == 9) {
-    csv_batch_log = std::string(argv[8]);
-  }
-
-  try {
-    batch_service = new BatchService(login_hostname, compute_nodes, 0,
-                                     {{BatchServiceProperty::OUTPUT_CSV_JOB_LOG, csv_batch_log},
-                                      {BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, std::string(argv[7])},
-                                      {BatchServiceProperty::TASK_SELECTION_ALGORITHM, "minimum_top_level"},
-                                      {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])},
-                                      {BatchServiceProperty::SIMULATE_COMPUTATION_AS_SLEEP, "true"},
-                                      {BatchServiceProperty::BATSCHED_CONTIGUOUS_ALLOCATION, "true"},
-                                      {BatchServiceProperty::BATSCHED_LOGGING_MUTED, "true"},
-                                      {BatchServiceProperty::USE_REAL_RUNTIMES_AS_REQUESTED_RUNTIMES, "true"}
-                                     }, {});
-  } catch (std::invalid_argument &e) {
-
-    WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
-    WRENCH_INFO("Trying the non-BATSCHED version with FCFS...");
-    try {
-      batch_service = new BatchService(login_hostname, compute_nodes, 0,
-                                       {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
-                                        {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])}
-                                       }, {});
-    } catch (std::invalid_argument &e) {
-      std::cerr << "Giving up as I cannot instantiate the Batch Service: " << e.what() << "\n";
-      exit(1);
+    // Parse command-line arguments
+    if ((argc != 8) and (argc != 9)) {
+        std::cerr << "\e[1;31mUsage: " << argv[0] << " <num_compute_nodes> <job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm> <batch algorithm> [csv batch log file]\e[0m" << "\n";
+        std::cerr << "  \e[1;32m### workflow specification options ###\e[0m" << "\n";
+        std::cerr << "    *  \e[1mindep:s:n:t1:t2\e[0m " << "\n";
+        std::cerr << "      - Just a set of independent tasks" << "\n";
+        std::cerr << "      - n: number of tasks" << "\n";
+        std::cerr << "      - t1/t2: min/max task durations in integral seconds (actual times uniformly sampled)" << "\n";
+        std::cerr << "      - s: rng seed" << "\n";
+        std::cerr << "    * \e[1mlevels:s:l0:t0:T0:l1:t1:T1:....:ln:tn:Tn\e[0m" << "\n";
+        std::cerr << "      - A strictly levelled workflow" << "\n";
+        std::cerr << "      - lx: num tasks in level x" << "\n";
+        std::cerr << "      - each task in level x depends on ALL tasks in level x-1" << "\n";
+        std::cerr << "      - tx/Tx: min/max task durations in level x, in integral second (times uniformly sampled)" << "\n";
+        std::cerr << "      - s: rng seed" << "\n";
+        std::cerr << "    * \e[1mdax:filename\e[0m" << "\n";
+        std::cerr << "      - A workflow imported from a DAX file" << "\n";
+        std::cerr << "      - Files and Data dependencies are ignored. Only control dependencies are preserved" << "\n";
+        std::cerr << "\n";
+        std::cerr << "  \e[1;32m### algorithm options ###\e[0m" << "\n";
+        std::cerr << "    * \e[1mstatic:levelbylevel-m\e[0m" << "\n";
+        std::cerr << "      - run each workflow level as a job" << "\n";
+        std::cerr << "      - m: number of hosts used to execute each job" << "\n";
+        std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "    * \e[1mstatic:one_job-m\e[0m" << "\n";
+        std::cerr << "      - run the workflow as a single job" << "\n";
+        std::cerr << "      - m: number of hosts used to execute the job" << "\n";
+        std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "    * \e[1mstatic:one_job_per_task\e[0m" << "\n";
+        std::cerr << "      - run each task as a single one-host job" << "\n";
+        std::cerr << "      - Submit a job only once a task is ready, no queue wait time estimation" << "\n";
+        std::cerr << "    * \e[1mstatic:hc-[vprior|vposterior|vnone]-n-m\e[0m" << "\n";
+        std::cerr << "      - Horizontal Clustering algorithm (ref [12] in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al.)" << "\n";
+        std::cerr << "      - Simply clusters tasks in each level in whatever order and execute " << "\n";
+        std::cerr << "        each cluster on the same number of hosts " << "\n";
+        std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
+        std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
+        std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
+        std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "    * \e[1mstatic:dfjs-[vprior|vposterior|vnone]-t-m\e[0m" << "\n";
+        std::cerr << "      - DFJS algorithm (ref [5] in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al.)" << "\n";
+        std::cerr << "      - Simply greedily clusters tasks in each level in whatever order so that " << "\n";
+        std::cerr << "        each cluster has a runtime that's bounded. (extended to deal with numbers of hosts)" << "\n";
+        std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
+        std::cerr << "      - t: bound on runtime (in seconds)" << "\n";
+        std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
+        std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "    * \e[1mstatic:hrb-[vprior|vposterior|vnone]-n-m\e[0m" << "\n";
+        std::cerr << "      - The HRB algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
+        std::cerr << "      - Modified to specify 'number of tasks per cluster' rather than 'number of clusters per level'" << "\n";
+        std::cerr << "      - Cluster tasks in each level so that clusters are load-balanced" << "\n";
+        std::cerr << "        (extended to deal with numbers of hosts)" << "\n";
+        std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
+        std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
+        std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
+        std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "    * \e[1mstatic:hifb-[vprior|vposterior|vnone-]n-m\e[0m" << "\n";
+        std::cerr << "      - The HIFB algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
+        std::cerr << "      - Modified to specify 'number of tasks per cluster' rather than 'number of clusters per level'" << "\n";
+        std::cerr << "      - Cluster tasks in each level so that clusters have similar impact factors" << "\n";
+        std::cerr << "        (extended to deal with numbers of hosts)" << "\n";
+        std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
+        std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
+        std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
+        std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "    * \e[1mstatic:hdb-[vprior|vposterior|vnone]-n-m\e[0m" << "\n";
+        std::cerr << "      - The HDB algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
+        std::cerr << "      - Modified to specify 'number of tasks per cluster' rather than 'number of clusters per level'" << "\n";
+        std::cerr << "      - Cluster tasks in each level so that clusters have similar distances" << "\n";
+        std::cerr << "        (extended to deal with numbers of hosts)" << "\n";
+        std::cerr << "      - [vprior|vposterior|vnone]: application of vertical clustering" << "\n";
+        std::cerr << "      - n: number of ready tasks in each cluster" << "\n";
+        std::cerr << "      - m: number of hosts used to execute each cluster" << "\n";
+        std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "    * \e[1mstatic:vc\e[0m" << "\n";
+        std::cerr << "      - The VC algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al." << "\n";
+        std::cerr << "      - Cluster tasks with single-parent-single-child depepdencies" << "\n";
+        std::cerr << "    * \e[1mzhang:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
+        std::cerr << "      - The algorithm by Zhang, Koelbel, and Cooper" << "\n";
+        std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING - WE DEFAULT TO NEVER FAIL**" << "\n";
+        std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
+        std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
+        std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
+        std::cerr << "      - [plimit|pnolimit]: plimit is the original algorithm that will complain if the workflow" << "\n";
+        std::cerr << "        parallelism is larger than the number of hosts. pnolimit is an extension that will not" << "\n";
+        std::cerr << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although" << "\n";
+        std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts" << "\n";
+        std::cerr << "        to pack that tasks into a job" << "\n";
+        std::cerr << "    * \e[1mevan:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
+        std::cerr << "      - Improvements to Zhang et al. algorithm" << "\n";
+        std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
+        std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
+        std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
+        std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
+        std::cerr << "      - [plimit|pnolimit]: plimit is the original algorithm that will complain if the workflow" << "\n";
+        std::cerr << "        parallelism is larger than the number of hosts. pnolimit is an extension that will not" << "\n";
+        std::cerr << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although" << "\n";
+        std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts" << "\n";
+        std::cerr << "        to pack that tasks into a job" << "\n";
+        std::cerr << "    * \e[1mtest:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
+        std::cerr << "      - Testing a new algorithm" << "\n";
+        std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
+        std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
+        std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
+        std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
+        std::cerr << "      - [plimit|pnolimit]: plimit is the original algorithm that will complain if the workflow" << "\n";
+        std::cerr << "        parallelism is larger than the number of hosts. pnolimit is an extension that will not" << "\n";
+        std::cerr << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although" << "\n";
+        std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts" << "\n";
+        std::cerr << "        to pack that tasks into a job" << "\n";
+        std::cerr << "    * \e[1mlevelbylevel:[overlap|nooverlap]:levelclustering\e[0m" << "\n";
+        std::cerr << "        - A level-by-level-with overlap algorithm that clusters tasks in each level." << "\n";
+        std::cerr << "          Tasks in level n+1 are submitted to the batch queue as soon as all tasks in level n" << "\n";
+        std::cerr << "          have started. Timout behavior similar as that in the algorithm by Zhang et al." << "\n";
+        std::cerr << "        - levelclustering: the algorithm uses to cluster tasks in each level. Options are: " << "\n";
+        std::cerr << "          - one_job-m: the level is submitted as a single job" << "\n";
+        std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
+        std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "          - one_job_per_task: one job per task" << "\n";
+        std::cerr << "          - hc-n-m:  HC static algorithm" << "\n";
+        std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
+        std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
+        std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "          - djfs-t-m1-m2: DJFS static algorithm" << "\n";
+        std::cerr << "            - t: bound on runtime (in seconds)" << "\n";
+        std::cerr << "            - m1: number of hosts used to compute the cluster" << "\n";
+        std::cerr << "            - m2: number of hosts used to execute each cluster" << "\n";
+        std::cerr << "              - if m2 = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "          - hrb-n-m: HRB algorithm" << "\n";
+        std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
+        std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
+        std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "          - hifb-n-m: HIFB algorithm" << "\n";
+        std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
+        std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
+        std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "          - hdb-n-m: HDC algorithm" << "\n";
+        std::cerr << "            - n: number of ready tasks in each cluster" << "\n";
+        std::cerr << "            - m: number of hosts used to execute each cluster" << "\n";
+        std::cerr << "              - if m = 0, then pick best number nodes based on queue wait time prediction" << "\n";
+        std::cerr << "          - clever: A clever heuristic" << "\n";
+        std::cerr << "            - A heuristic that cleverly splits a level into jobs based on task executiong times " << "\n";
+        std::cerr << "              and queue wait times" << "\n";
+        std::cerr << "\n";
+        std::cerr << "  \e[1;32m### batch algorithm options ###\e[0m" << "\n";
+        std::cerr << "    * \e[1mconservative_bf\e[0m" << "\n";
+        std::cerr << "      - classical conservative backfilling" << "\n";
+        std::cerr << "    * \e[1mfast_conservative_bf\e[0m" << "\n";
+        std::cerr << "      - faster backfilling algorithm, still conservative but not exactly canon" << "\n";
+        std::cerr << "    * \e[1mfcfs_fast\e[0m" << "\n";
+        std::cerr << "      - first come, first serve" << "\n";
+        std::cerr << "\n";
+        exit(1);
     }
-  }
+    unsigned long num_compute_nodes;
+    if ((sscanf(argv[1], "%lu", &num_compute_nodes) != 1) or (num_compute_nodes < 1)) {
+        std::cerr << "Invalid number of compute nodes\n";
+    }
 
-  simulation->add(batch_service);
-
-  // Create the WMS
-  WMS *wms = nullptr;
-  try {
-    wms = createWMS("Login", batch_service, max_num_jobs, scheduler_spec);
-  } catch (std::invalid_argument &e) {
-    std::cerr << "Cannot instantiate WMS: " << e.what() << "\n";
-    exit(1);
-  }
-
-  try {
-    simulation->add(wms);
-  } catch (std::invalid_argument &e) {
-    std::cerr << "Cannot add WMS to simulation: " << e.what() << "\n";
-    exit(1);
-  }
+    unsigned long max_num_jobs;
+    if ((sscanf(argv[3], "%lu", &max_num_jobs) != 1) or (max_num_jobs < 1)) {
+        std::cerr << "Invalid maximum number of jobs\n";
+    }
 
 
-  // Create the Workflow
-  Workflow *workflow = nullptr;
-  try {
-    workflow = createWorkflow(argv[4]);
-  } catch (std::invalid_argument &e) {
-    std::cerr << "Cannot create workflow: " << e.what() << "\n";
-    exit(1);
-  }
-  wms->addWorkflow(workflow, workflow_start_time);
+    double workflow_start_time;
+    if ((sscanf(argv[5], "%lf", &workflow_start_time) != 1) or (workflow_start_time < 0)) {
+        std::cerr << "Invalid workflow start time\n";
+    }
 
-  // Launch the simulation
-  try {
-    WRENCH_INFO("Launching simulation!");
-    simulation->launch();
-  } catch (std::runtime_error &e) {
-    std::cerr << "Simulation failed: " << e.what() << "\n";
-    exit(1);
-  }
-  WRENCH_INFO("Simulation done!");
+    std::string scheduler_spec = std::string(argv[6]);
 
-  WorkflowUtil::printRAM();
+    // Setup the simulation platform
+    setupSimulationPlatform(simulation, num_compute_nodes);
 
-  std::cout << "MAKESPAN=" << (workflow->getCompletionDate() - workflow_start_time) << "\n";
-  std::cout << "NUM PILOT JOB EXPIRATIONS=" << this->num_pilot_job_expirations_with_remaining_tasks_to_do << "\n";
-  std::cout << "TOTAL QUEUE WAIT SECONDS=" << this->total_queue_wait_time << "\n";
-  std::cout << "USED NODE SECONDS=" << this->used_node_seconds << "\n";
-  std::cout << "WASTED NODE SECONDS=" << this->wasted_node_seconds << "\n";
-  std::cout << "CSV LOG FILE=" << csv_batch_log << "\n";
+    // Create a BatchService
+    std::vector<std::string> compute_nodes;
+    for (unsigned int i=0; i < num_compute_nodes; i++) {
+        compute_nodes.push_back(std::string("ComputeNode_") + std::to_string(i));
+    }
+    wrench::BatchService *batch_service = nullptr;
+    std::string login_hostname = "Login";
 
-  return 0;
+    std::string csv_batch_log = "/tmp/batch_log.csv";
+    if (argc == 9) {
+        csv_batch_log = std::string(argv[8]);
+    }
+
+    try {
+        batch_service = new BatchService(login_hostname, compute_nodes, 0,
+                                         {{BatchServiceProperty::OUTPUT_CSV_JOB_LOG, csv_batch_log},
+                                          {BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, std::string(argv[7])},
+                                          {BatchServiceProperty::TASK_SELECTION_ALGORITHM, "minimum_top_level"},
+                                          {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])},
+                                          {BatchServiceProperty::SIMULATE_COMPUTATION_AS_SLEEP, "true"},
+                                          {BatchServiceProperty::BATSCHED_CONTIGUOUS_ALLOCATION, "true"},
+                                          {BatchServiceProperty::BATSCHED_LOGGING_MUTED, "true"},
+                                          {BatchServiceProperty::USE_REAL_RUNTIMES_AS_REQUESTED_RUNTIMES, "true"}
+                                         }, {});
+    } catch (std::invalid_argument &e) {
+
+        WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
+        WRENCH_INFO("Trying the non-BATSCHED version with FCFS...");
+        try {
+            batch_service = new BatchService(login_hostname, compute_nodes, 0,
+                                             {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
+                                              {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])}
+                                             }, {});
+        } catch (std::invalid_argument &e) {
+            std::cerr << "Giving up as I cannot instantiate the Batch Service: " << e.what() << "\n";
+            exit(1);
+        }
+    }
+
+    simulation->add(batch_service);
+
+    // Create the WMS
+    WMS *wms = nullptr;
+    try {
+        wms = createWMS("Login", batch_service, max_num_jobs, scheduler_spec);
+    } catch (std::invalid_argument &e) {
+        std::cerr << "Cannot instantiate WMS: " << e.what() << "\n";
+        exit(1);
+    }
+
+    try {
+        simulation->add(wms);
+    } catch (std::invalid_argument &e) {
+        std::cerr << "Cannot add WMS to simulation: " << e.what() << "\n";
+        exit(1);
+    }
+
+
+    // Create the Workflow
+    Workflow *workflow = nullptr;
+    try {
+        workflow = createWorkflow(argv[4]);
+    } catch (std::invalid_argument &e) {
+        std::cerr << "Cannot create workflow: " << e.what() << "\n";
+        exit(1);
+    }
+    wms->addWorkflow(workflow, workflow_start_time);
+
+    // Launch the simulation
+    try {
+        WRENCH_INFO("Launching simulation!");
+        simulation->launch();
+    } catch (std::runtime_error &e) {
+        std::cerr << "Simulation failed: " << e.what() << "\n";
+        exit(1);
+    }
+    WRENCH_INFO("Simulation done!");
+
+    WorkflowUtil::printRAM();
+
+    std::cout << "MAKESPAN=" << (workflow->getCompletionDate() - workflow_start_time) << "\n";
+    std::cout << "NUM PILOT JOB EXPIRATIONS=" << this->num_pilot_job_expirations_with_remaining_tasks_to_do << "\n";
+    std::cout << "TOTAL QUEUE WAIT SECONDS=" << this->total_queue_wait_time << "\n";
+    std::cout << "USED NODE SECONDS=" << this->used_node_seconds << "\n";
+    std::cout << "WASTED NODE SECONDS=" << this->wasted_node_seconds << "\n";
+    std::cout << "CSV LOG FILE=" << csv_batch_log << "\n";
+
+    return 0;
 }
 
 void Simulator::setupSimulationPlatform(Simulation *simulation, unsigned long num_compute_nodes) {
 
-  // Create a the platform file
-  std::string xml = "<?xml version='1.0'?>\n"
-          "<!DOCTYPE platform SYSTEM \"http://simgrid.gforge.inria.fr/simgrid/simgrid.dtd\">\n"
-          "<platform version=\"4.1\">\n"
-          "   <zone id=\"AS0\" routing=\"Full\">\n"
-          "     <cluster id=\"cluster\" prefix=\"ComputeNode_\" suffix=\"\" radical=\"0-";
-  xml += std::to_string(num_compute_nodes-1) + "\" speed=\"1f\" bw=\"125GBps\" lat=\"0us\" router_id=\"router\"/>\n";
-  xml += "      <zone id=\"AS1\" routing=\"Full\">\n";
-  xml += "          <host id=\"Login\" speed=\"1f\"/>\n";
-  xml += "      </zone>\n";
-  xml += "      <link id=\"link\" bandwidth=\"125GBps\" latency=\"0ms\"/>\n";
-  xml += "      <zoneRoute src=\"cluster\" dst=\"AS1\" gw_src=\"router\" gw_dst=\"Login\">\n";
-  xml += "        <link_ctn id=\"link\"/>\n";
-  xml += "       </zoneRoute>\n";
-  xml += "   </zone>\n";
-  xml += "</platform>\n";
+    // Create a the platform file
+    std::string xml = "<?xml version='1.0'?>\n"
+                      "<!DOCTYPE platform SYSTEM \"http://simgrid.gforge.inria.fr/simgrid/simgrid.dtd\">\n"
+                      "<platform version=\"4.1\">\n"
+                      "   <zone id=\"AS0\" routing=\"Full\">\n"
+                      "     <cluster id=\"cluster\" prefix=\"ComputeNode_\" suffix=\"\" radical=\"0-";
+    xml += std::to_string(num_compute_nodes-1) + "\" speed=\"1f\" bw=\"125GBps\" lat=\"0us\" router_id=\"router\"/>\n";
+    xml += "      <zone id=\"AS1\" routing=\"Full\">\n";
+    xml += "          <host id=\"Login\" speed=\"1f\"/>\n";
+    xml += "      </zone>\n";
+    xml += "      <link id=\"link\" bandwidth=\"125GBps\" latency=\"0ms\"/>\n";
+    xml += "      <zoneRoute src=\"cluster\" dst=\"AS1\" gw_src=\"router\" gw_dst=\"Login\">\n";
+    xml += "        <link_ctn id=\"link\"/>\n";
+    xml += "       </zoneRoute>\n";
+    xml += "   </zone>\n";
+    xml += "</platform>\n";
 
-  std::string file = ("/tmp/platform_" + std::to_string(getpid()) + ".xml");
-  int file_length = file.length();
-  char file_name[file_length + 1];
-  strcpy(file_name, file.c_str());
-  file_name[file_length] = '\0';
-  FILE *platform_file = fopen(file_name, "w");
-  fprintf(platform_file, "%s", xml.c_str());
-  fclose(platform_file);
+    std::string file = ("/tmp/platform_" + std::to_string(getpid()) + ".xml");
+    int file_length = file.length();
+    char file_name[file_length + 1];
+    strcpy(file_name, file.c_str());
+    file_name[file_length] = '\0';
+    FILE *platform_file = fopen(file_name, "w");
+    fprintf(platform_file, "%s", xml.c_str());
+    fclose(platform_file);
 
-  try {
-    simulation->instantiatePlatform(file_name);
-  } catch (std::invalid_argument &e) {  // Unfortunately S4U doesn't throw for this...
-    throw std::runtime_error("Invalid generated XML platform file");
-  }
+    try {
+        simulation->instantiatePlatform(file_name);
+    } catch (std::invalid_argument &e) {  // Unfortunately S4U doesn't throw for this...
+        throw std::runtime_error("Invalid generated XML platform file");
+    }
 }
 
 Workflow *Simulator::createWorkflow(std::string workflow_spec) {
 
-  std::istringstream ss(workflow_spec);
-  std::string token;
-  std::vector<std::string> tokens;
+    std::istringstream ss(workflow_spec);
+    std::string token;
+    std::vector<std::string> tokens;
 
-  while(std::getline(ss, token, ':')) {
-    tokens.push_back(token);
-  }
-
-  if (tokens[0] == "indep") {
-    if (tokens.size() != 5) {
-      throw std::invalid_argument("createWorkflow(): Invalid workflow specification " + workflow_spec);
-    }
-    try {
-      return createIndepWorkflow(tokens);
-    } catch (std::invalid_argument &e) {
-      throw;
+    while(std::getline(ss, token, ':')) {
+        tokens.push_back(token);
     }
 
-  } else if (tokens[0] == "levels") {
-    if ((tokens.size() == 2) or (tokens.size() - 2) % 3) {
-      throw std::invalid_argument("createWorkflow(): Invalid workflow specification " + workflow_spec);
-    }
-    try {
-      return createLevelsWorkflow(tokens);
-    } catch (std::invalid_argument &e) {
-      throw;
-    }
+    if (tokens[0] == "indep") {
+        if (tokens.size() != 5) {
+            throw std::invalid_argument("createWorkflow(): Invalid workflow specification " + workflow_spec);
+        }
+        try {
+            return createIndepWorkflow(tokens);
+        } catch (std::invalid_argument &e) {
+            throw;
+        }
 
-  } else if (tokens[0] == "dax") {
-    if (tokens.size() != 2) {
-      throw std::invalid_argument("createWorkflow(): Invalid workflow specification " + workflow_spec);
-    }
-    try {
-      return createDAXWorkflow(tokens);
-    } catch (std::invalid_argument &e) {
-      throw;
-    }
+    } else if (tokens[0] == "levels") {
+        if ((tokens.size() == 2) or (tokens.size() - 2) % 3) {
+            throw std::invalid_argument("createWorkflow(): Invalid workflow specification " + workflow_spec);
+        }
+        try {
+            return createLevelsWorkflow(tokens);
+        } catch (std::invalid_argument &e) {
+            throw;
+        }
 
-  } else {
-    throw std::invalid_argument("createWorkflow(): Unknown workflow type " + tokens[0]);
-  }
+    } else if (tokens[0] == "dax") {
+        if (tokens.size() != 2) {
+            throw std::invalid_argument("createWorkflow(): Invalid workflow specification " + workflow_spec);
+        }
+        try {
+            return createDAXWorkflow(tokens);
+        } catch (std::invalid_argument &e) {
+            throw;
+        }
+
+    } else {
+        throw std::invalid_argument("createWorkflow(): Unknown workflow type " + tokens[0]);
+    }
 }
 
 Workflow *Simulator::createIndepWorkflow(std::vector<std::string> spec_tokens) {
-  unsigned int seed;
-  if (sscanf(spec_tokens[1].c_str(), "%u", &seed) != 1) {
-    throw std::invalid_argument("createIndepWorkflow(): invalid RNG ssed in workflow specification");
-  }
-  std::default_random_engine rng(seed);
+    unsigned int seed;
+    if (sscanf(spec_tokens[1].c_str(), "%u", &seed) != 1) {
+        throw std::invalid_argument("createIndepWorkflow(): invalid RNG ssed in workflow specification");
+    }
+    std::default_random_engine rng(seed);
 
-  unsigned long num_tasks;
-  unsigned long min_time;
-  unsigned long max_time;
+    unsigned long num_tasks;
+    unsigned long min_time;
+    unsigned long max_time;
 
-  if ((sscanf(spec_tokens[2].c_str(), "%lu", &num_tasks) != 1) or (num_tasks < 1)) {
-    throw std::invalid_argument("createIndepWorkflow(): invalid number of tasks in workflow specification");
-  }
-  if ((sscanf(spec_tokens[3].c_str(), "%lu", &min_time) != 1) or (min_time < 0.0)) {
-    throw std::invalid_argument("createIndepWorkflow(): invalid min task exec time in workflow specification");
-  }
-  if ((sscanf(spec_tokens[4].c_str(), "%lu", &max_time) != 1) or (max_time < 0.0) or (max_time < min_time)) {
-    throw std::invalid_argument("createIndepWorkflow(): invalid max task exec time in workflow specification");
-  }
+    if ((sscanf(spec_tokens[2].c_str(), "%lu", &num_tasks) != 1) or (num_tasks < 1)) {
+        throw std::invalid_argument("createIndepWorkflow(): invalid number of tasks in workflow specification");
+    }
+    if ((sscanf(spec_tokens[3].c_str(), "%lu", &min_time) != 1) or (min_time < 0.0)) {
+        throw std::invalid_argument("createIndepWorkflow(): invalid min task exec time in workflow specification");
+    }
+    if ((sscanf(spec_tokens[4].c_str(), "%lu", &max_time) != 1) or (max_time < 0.0) or (max_time < min_time)) {
+        throw std::invalid_argument("createIndepWorkflow(): invalid max task exec time in workflow specification");
+    }
 
-  auto workflow = new Workflow();
+    auto workflow = new Workflow();
 
-  static std::uniform_int_distribution<unsigned long> m_udist(min_time, max_time);
-  for (unsigned long i=0; i < num_tasks; i++) {
-    unsigned long flops = m_udist(rng);
-    workflow->addTask("Task_" + std::to_string(i), (double)flops, 1, 1, 1.0, 0.0);
-  }
+    static std::uniform_int_distribution<unsigned long> m_udist(min_time, max_time);
+    for (unsigned long i=0; i < num_tasks; i++) {
+        unsigned long flops = m_udist(rng);
+        workflow->addTask("Task_" + std::to_string(i), (double)flops, 1, 1, 1.0, 0.0);
+    }
 
-  return workflow;
+    return workflow;
 
 }
 
 
 Workflow *Simulator::createLevelsWorkflow(std::vector<std::string> spec_tokens) {
 
-  unsigned int seed;
-  if (sscanf(spec_tokens[1].c_str(), "%u", &seed) != 1) {
-    throw std::invalid_argument("createLevelsWorkflow(): invalid RNG ssed in workflow specification");
-  }
-  std::default_random_engine rng(seed);
+    unsigned int seed;
+    if (sscanf(spec_tokens[1].c_str(), "%u", &seed) != 1) {
+        throw std::invalid_argument("createLevelsWorkflow(): invalid RNG ssed in workflow specification");
+    }
+    std::default_random_engine rng(seed);
 
-  unsigned long num_levels = (spec_tokens.size()-1)/3;
+    unsigned long num_levels = (spec_tokens.size()-1)/3;
 
-  unsigned long num_tasks[num_levels];
-  unsigned long min_times[num_levels];
-  unsigned long max_times[num_levels];
+    unsigned long num_tasks[num_levels];
+    unsigned long min_times[num_levels];
+    unsigned long max_times[num_levels];
 
-  WRENCH_INFO("Creating a 'levels' workflow...");
+    WRENCH_INFO("Creating a 'levels' workflow...");
 
-  for (unsigned long l = 0; l < num_levels; l++) {
-    if ((sscanf(spec_tokens[2+l*3].c_str(), "%lu", &(num_tasks[l])) != 1) or (num_tasks[l] < 1)) {
-      throw std::invalid_argument("createLevelsWorkflow(): invalid number of tasks in level " + std::to_string(l) + " workflow specification");
+    for (unsigned long l = 0; l < num_levels; l++) {
+        if ((sscanf(spec_tokens[2+l*3].c_str(), "%lu", &(num_tasks[l])) != 1) or (num_tasks[l] < 1)) {
+            throw std::invalid_argument("createLevelsWorkflow(): invalid number of tasks in level " + std::to_string(l) + " workflow specification");
+        }
+
+        if ((sscanf(spec_tokens[2+l*3+1].c_str(), "%lu", &(min_times[l])) != 1)) {
+            throw std::invalid_argument("createLevelsWorkflow(): invalid min task exec time in workflow specification");
+        }
+        if ((sscanf(spec_tokens[2+l*3+2].c_str(), "%lu", &(max_times[l])) != 1) or (max_times[l] < min_times[l])) {
+            throw std::invalid_argument("createLevelsWorkflow(): invalid max task exec time in workflow specification");
+        }
     }
 
-    if ((sscanf(spec_tokens[2+l*3+1].c_str(), "%lu", &(min_times[l])) != 1)) {
-      throw std::invalid_argument("createLevelsWorkflow(): invalid min task exec time in workflow specification");
+    auto workflow = new Workflow();
+
+    // Create the tasks
+    std::vector<wrench::WorkflowTask *> tasks[num_levels];
+
+    std::uniform_int_distribution<unsigned long> *m_udists[num_levels];
+    for (unsigned long l=0; l < num_levels; l++) {
+        m_udists[l] = new std::uniform_int_distribution<unsigned long>(min_times[l], max_times[l]);
     }
-    if ((sscanf(spec_tokens[2+l*3+2].c_str(), "%lu", &(max_times[l])) != 1) or (max_times[l] < min_times[l])) {
-      throw std::invalid_argument("createLevelsWorkflow(): invalid max task exec time in workflow specification");
+
+    for (unsigned long l=0; l < num_levels; l++) {
+        for (unsigned long t=0; t < num_tasks[l]; t++) {
+            unsigned long flops = (*m_udists[l])(rng);
+            wrench::WorkflowTask *task = workflow->addTask("Task_l" + std::to_string(l) + "_" +
+                                                           std::to_string(t), (double) flops, 1, 1, 1.0, 0.0);
+            tasks[l].push_back(task);
+        }
     }
-  }
 
-  auto workflow = new Workflow();
-
-  // Create the tasks
-  std::vector<wrench::WorkflowTask *> tasks[num_levels];
-
-  std::uniform_int_distribution<unsigned long> *m_udists[num_levels];
-  for (unsigned long l=0; l < num_levels; l++) {
-    m_udists[l] = new std::uniform_int_distribution<unsigned long>(min_times[l], max_times[l]);
-  }
-
-  for (unsigned long l=0; l < num_levels; l++) {
-    for (unsigned long t=0; t < num_tasks[l]; t++) {
-      unsigned long flops = (*m_udists[l])(rng);
-      wrench::WorkflowTask *task = workflow->addTask("Task_l" + std::to_string(l) + "_" +
-                                                     std::to_string(t), (double) flops, 1, 1, 1.0, 0.0);
-      tasks[l].push_back(task);
+    // Create the control dependencies (right now FULL dependencies)
+    for (unsigned long l=1; l < num_levels; l++) {
+        for (unsigned long t=0; t < num_tasks[l]; t++) {
+            for (unsigned long p=0; p < num_tasks[l-1]; p++) {
+                workflow->addControlDependency(tasks[l-1][p], tasks[l][t]);
+            }
+        }
     }
-  }
-
-  // Create the control dependencies (right now FULL dependencies)
-  for (unsigned long l=1; l < num_levels; l++) {
-    for (unsigned long t=0; t < num_tasks[l]; t++) {
-      for (unsigned long p=0; p < num_tasks[l-1]; p++) {
-        workflow->addControlDependency(tasks[l-1][p], tasks[l][t]);
-      }
-    }
-  }
 
 //  workflow->exportToEPS("/tmp/foo.eps");
 
-  return workflow;
+    return workflow;
 
 }
 
 Workflow *Simulator::createDAXWorkflow(std::vector<std::string> spec_tokens) {
-  std::string filename = spec_tokens[1];
+    std::string filename = spec_tokens[1];
 
-  auto original_workflow = new Workflow();
-  try {
-    original_workflow->loadFromDAXorJSON(filename, "1");
-  } catch (std::invalid_argument &e) {
-    throw std::runtime_error("Cannot import workflow from DAX");
-  }
+    auto original_workflow = new Workflow();
+    try {
+        original_workflow->loadFromDAXorJSON(filename, "1");
+    } catch (std::invalid_argument &e) {
+        throw std::runtime_error("Cannot import workflow from DAX");
+    }
 
-  auto workflow = new Workflow();
+    auto workflow = new Workflow();
 
-  // Add task replicas
-  for (auto t : original_workflow->getTasks()) {
+    // Add task replicas
+    for (auto t : original_workflow->getTasks()) {
 //    WRENCH_INFO("t->getFlops() = %lf", t->getFlops());
-    workflow->addTask(t->getID(), t->getFlops(), 1, 1, 1.0, 0);
-  }
-
-  // Deal with all dependencies (brute-force, but whatever)
-  for (auto t : original_workflow->getTasks()) {
-    std::vector<wrench::WorkflowTask *> parents = original_workflow->getTaskParents(t);
-    std::vector<wrench::WorkflowTask *> children = original_workflow->getTaskChildren(t);
-
-    for (auto p : parents) {
-      std::string parent_id = p->getID();
-      std::string child_id = t->getID();
-      workflow->addControlDependency(workflow->getTaskByID(parent_id), workflow->getTaskByID(child_id));
+        workflow->addTask(t->getID(), t->getFlops(), 1, 1, 1.0, 0);
     }
-    for (auto c : children) {
-      std::string parent_id = t->getID();
-      std::string child_id = c->getID();
-      workflow->addControlDependency(workflow->getTaskByID(parent_id), workflow->getTaskByID(child_id));
+
+    // Deal with all dependencies (brute-force, but whatever)
+    for (auto t : original_workflow->getTasks()) {
+        std::vector<wrench::WorkflowTask *> parents = original_workflow->getTaskParents(t);
+        std::vector<wrench::WorkflowTask *> children = original_workflow->getTaskChildren(t);
+
+        for (auto p : parents) {
+            std::string parent_id = p->getID();
+            std::string child_id = t->getID();
+            workflow->addControlDependency(workflow->getTaskByID(parent_id), workflow->getTaskByID(child_id));
+        }
+        for (auto c : children) {
+            std::string parent_id = t->getID();
+            std::string child_id = c->getID();
+            workflow->addControlDependency(workflow->getTaskByID(parent_id), workflow->getTaskByID(child_id));
+        }
     }
-  }
 //  WRENCH_INFO("NEW WORKFLOW HAS %ld TASKS and %ld LEVELS", workflow->getNumberOfTasks(), workflow->getNumLevels());
 
-  return workflow;
+    return workflow;
 
 }
 
 
 WMS *Simulator::createWMS(std::string hostname,
-               BatchService *batch_service,
-               unsigned long max_num_jobs,
-               std::string scheduler_spec) {
+                          BatchService *batch_service,
+                          unsigned long max_num_jobs,
+                          std::string scheduler_spec) {
 
-  std::istringstream ss(scheduler_spec);
-  std::string token;
-  std::vector<std::string> tokens;
+    std::istringstream ss(scheduler_spec);
+    std::string token;
+    std::vector<std::string> tokens;
 
-  while(std::getline(ss, token, ':')) {
-    tokens.push_back(token);
-  }
-
-  if (tokens[0] == "static") {
-
-    if (tokens.size() != 2) {
-      throw std::invalid_argument("createWMS(): Invalid static specification");
+    while(std::getline(ss, token, ':')) {
+        tokens.push_back(token);
     }
 
-    WMS *wms = new StaticClusteringWMS(this, hostname, batch_service, max_num_jobs, tokens[1]);
-    return wms;
+    if (tokens[0] == "static") {
 
-  } else if (tokens[0] == "zhang") {
+        if (tokens.size() != 2) {
+            throw std::invalid_argument("createWMS(): Invalid static specification");
+        }
 
-    if (tokens.size() != 3) {
-      throw std::invalid_argument("createWMS(): Invalid zhang specification");
-    }
-    bool overlap;
-    if (tokens[1] == "overlap") {
-      overlap = true;
-    } else if (tokens[1] == "nooverlap") {
-      overlap = false;
+        WMS *wms = new StaticClusteringWMS(this, hostname, batch_service, max_num_jobs, tokens[1]);
+        return wms;
+
+    } else if (tokens[0] == "zhang") {
+
+        if (tokens.size() != 3) {
+            throw std::invalid_argument("createWMS(): Invalid zhang specification");
+        }
+        bool overlap;
+        if (tokens[1] == "overlap") {
+            overlap = true;
+        } else if (tokens[1] == "nooverlap") {
+            overlap = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid zhang specification");
+        }
+        bool plimit;
+        if (tokens[2] == "plimit") {
+            plimit = true;
+        } else if (tokens[2] == "pnolimit") {
+            plimit = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid zhang specification");
+        }
+        return new ZhangClusteringWMS(this, hostname, overlap, plimit, batch_service);
+
+    } else if (tokens[0] == "evan") {
+
+        if (tokens.size() != 3) {
+            throw std::invalid_argument("createWMS(): Invalid evan specification");
+        }
+        bool overlap;
+        if (tokens[1] == "overlap") {
+            overlap = true;
+        } else if (tokens[1] == "nooverlap") {
+            overlap = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid evan specification");
+        }
+        bool plimit;
+        if (tokens[2] == "plimit") {
+            plimit = true;
+        } else if (tokens[2] == "pnolimit") {
+            plimit = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid evan specification");
+        }
+        return new EvanClusteringWMS(this, hostname, overlap, plimit, batch_service);
+
+    } else if (tokens[0] == "test") {
+
+        if (tokens.size() != 3) {
+            throw std::invalid_argument("createWMS(): Invalid test specification");
+        }
+        bool overlap;
+        if (tokens[1] == "overlap") {
+            overlap = true;
+        } else if (tokens[1] == "nooverlap") {
+            overlap = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid test specification");
+        }
+        bool plimit;
+        if (tokens[2] == "plimit") {
+            plimit = true;
+        } else if (tokens[2] == "pnolimit") {
+            plimit = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid test specification");
+        }
+        return new TestClusteringWMS(this, hostname, overlap, plimit, batch_service);
+
+    } else if (tokens[0] == "levelbylevel") {
+        if (tokens.size() != 3) {
+            throw std::invalid_argument("createWMS(): Invalid levelbylevel specification");
+        }
+        bool overlap;
+        if (tokens[1] == "overlap") {
+            overlap = true;
+        } else if (tokens[1] == "nooverlap") {
+            overlap = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid levelbylevel specification");
+        }
+        return new LevelByLevelWMS(this, hostname, overlap, tokens[2], batch_service);
+
     } else {
-      throw std::invalid_argument("createWMS(): Invalid zhang specification");
+        throw std::invalid_argument("createStandardJobScheduler(): Unknown algorithm type " + tokens[0]);
     }
-    bool plimit;
-    if (tokens[2] == "plimit") {
-      plimit = true;
-    } else if (tokens[2] == "pnolimit") {
-      plimit = false;
-    } else {
-      throw std::invalid_argument("createWMS(): Invalid zhang specification");
-    }
-    return new ZhangClusteringWMS(this, hostname, overlap, plimit, batch_service);
-
-} else if (tokens[0] == "evan") {
-
-    if (tokens.size() != 3) {
-        throw std::invalid_argument("createWMS(): Invalid evan specification");
-    }
-    bool overlap;
-    if (tokens[1] == "overlap") {
-        overlap = true;
-    } else if (tokens[1] == "nooverlap") {
-        overlap = false;
-    } else {
-        throw std::invalid_argument("createWMS(): Invalid evan specification");
-    }
-    bool plimit;
-    if (tokens[2] == "plimit") {
-        plimit = true;
-    } else if (tokens[2] == "pnolimit") {
-        plimit = false;
-    } else {
-        throw std::invalid_argument("createWMS(): Invalid evan specification");
-    }
-    return new EvanClusteringWMS(this, hostname, overlap, plimit, batch_service);
-
-} else if (tokens[0] == "test") {
-
-    if (tokens.size() != 3) {
-        throw std::invalid_argument("createWMS(): Invalid test specification");
-    }
-    bool overlap;
-    if (tokens[1] == "overlap") {
-        overlap = true;
-    } else if (tokens[1] == "nooverlap") {
-        overlap = false;
-    } else {
-        throw std::invalid_argument("createWMS(): Invalid test specification");
-    }
-    bool plimit;
-    if (tokens[2] == "plimit") {
-        plimit = true;
-    } else if (tokens[2] == "pnolimit") {
-        plimit = false;
-    } else {
-        throw std::invalid_argument("createWMS(): Invalid test specification");
-    }
-    return new TestClusteringWMS(this, hostname, overlap, plimit, batch_service);
-
-} else if (tokens[0] == "levelbylevel") {
-    if (tokens.size() != 3) {
-      throw std::invalid_argument("createWMS(): Invalid levelbylevel specification");
-    }
-    bool overlap;
-    if (tokens[1] == "overlap") {
-      overlap = true;
-    } else if (tokens[1] == "nooverlap") {
-      overlap = false;
-    } else {
-      throw std::invalid_argument("createWMS(): Invalid levelbylevel specification");
-    }
-    return new LevelByLevelWMS(this, hostname, overlap, tokens[2], batch_service);
-
-  } else {
-    throw std::invalid_argument("createStandardJobScheduler(): Unknown algorithm type " + tokens[0]);
-  }
 
 }
