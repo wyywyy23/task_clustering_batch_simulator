@@ -40,7 +40,7 @@ def simulation_dict(command):
     dict['num_p_job_exp'] = -1
     dict['total_queue_wait'] = -1
     dict['used_node_sec'] = -1
-    dict['wasted_node_time'] = -1
+    dict['wasted_node_seconds'] = -1
     dict['error'] = ''
     # for zhang/evan
     # dict['split'] = False
@@ -67,7 +67,7 @@ def write_to_mongo(obj):
     password = urllib.parse.quote_plus('password')
     myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
     mydb = myclient["simulations"]
-    mycol = mydb["benchmark-14"]
+    mycol = mydb["benchmark-17"]
     mycol.insert_one(obj)
 
 def run_simulator(command):
@@ -84,7 +84,7 @@ def run_simulator(command):
         obj['num_p_job_exp'] = float((res[len(res) - 5]).split("=")[1])
         obj['total_queue_wait'] = float((res[len(res) - 4]).split("=")[1])
         obj['used_node_sec'] = float((res[len(res) - 3]).split("=")[1])
-        obj['wasted_node_time'] = float((res[len(res) - 2]).split("=")[1])
+        obj['wasted_node_seconds'] = float((res[len(res) - 2]).split("=")[1])
         # for zhang/evan
         # if len(res) > 5:
         #     obj['split'] = True
@@ -153,11 +153,11 @@ def main():
     trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json']
     # trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json', '../batch_logs/swf_traces_json/sdsc_sp2.json', '../batch_logs/swf_traces_json/gaia.json', '../batch_logs/swf_traces_json/ricc.json']
     # start_times = ['125000', '156250', '195312', '244140', '305175', '381469', '476837', '596046', '745058', '931322']
-    workflows = ['levels:666:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600', 'levels:666:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000', 'levels:666:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000']
-    # Missing static:one_job-max
+    # workflows = ['levels:666:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600', 'levels:666:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000', 'levels:666:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000']
+    workflows = ['levels:666:50:18000:18000:1:18000:18000:50:18000:18000:1:18000:18000:50:18000:18000:1:18000:18000:50:18000:18000:1:18000:18000']
     # Take out one_job_max
-    algorithms = ['static:one_job-0', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'test:overlap:pnolimit', 'evan:overlap:pnolimit', 'levelbylevel:overlap:one_job-0']
-    # algorithms = ['test:overlap:pnolimit']
+    # algorithms = ['static:one_job-0', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'test:overlap:pnolimit', 'evan:overlap:pnolimit', 'levelbylevel:overlap:one_job-0']
+    algorithms = ['test:.05', 'test:.1', 'test:1', 'static:one_job-0-.05', 'static:one_job-0-.1', 'static:one_job-0-1']
     # num_nodes = [str(x * 10) for x in range(5, 16)]
     num_nodes = ['100']
     start_times = [str(x * 14400) for x in range(6, 181)]
