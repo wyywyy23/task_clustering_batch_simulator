@@ -101,7 +101,7 @@ namespace wrench {
                 continue;
             }
 
-            walltime_seconds *= EXECUTION_TIME_FUDGE_FACTOR;
+            // walltime_seconds *= EXECUTION_TIME_FUDGE_FACTOR;
             std::tuple<std::string, unsigned int, unsigned int, double> my_job =
                     std::make_tuple(job_id_prefix + "_" + std::to_string(Simulator::sequence_number++),
                                     n, 1, walltime_seconds);
@@ -165,6 +165,7 @@ namespace wrench {
 
         WRENCH_INFO("Opted to use %lu compute nodes!", best_num_nodes);
 
+        std::cout << "NODES: " << best_num_nodes << std::endl;
 
         return best_num_nodes;
     }

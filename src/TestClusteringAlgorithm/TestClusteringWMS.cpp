@@ -139,8 +139,8 @@ namespace wrench {
         double requested_execution_time = std::get<1>(entire_workflow);
         double best_total_time = estimated_wait_time + requested_execution_time;
 
-        std::cout << "Entire workflow - " << "start level: " << start_level << " end level " << end_level << std::endl;
-        std::cout << "parallelism: " << requested_parallelism << " wait time: " << estimated_wait_time << " runtime: "
+        std::cout << "Entire Workflow Stats " << "Start: " << start_level << " End: " << end_level << std::endl;
+        std::cout << "NODES: " << requested_parallelism << " Wait: " << estimated_wait_time << " Runtime: "
                   << requested_execution_time << std::endl;
 
         // Apply henri's grouping heuristic
@@ -156,11 +156,10 @@ namespace wrench {
             if (run_one > wait_two) {
                 double leeway_needed = run_one - wait_two;
                 if (leeway_needed > (run_two * 0.10)) {
-                    std::cout << "Ignoring split -> leeway = " << leeway_needed << std::endl;
-                    std::cout << "WAIT2: " << wait_two << std::endl;
-                    std::cout << "RUN2: " << run_two << std::endl;
-                    std::cout << "RUN1: " << run_one << std::endl;
-                    // split would waste too much cpu time
+//                    std::cout << "Ignoring split -> leeway = " << leeway_needed << std::endl;
+//                    std::cout << "WAIT2: " << wait_two << std::endl;
+//                    std::cout << "RUN2: " << run_two << std::endl;
+//                    std::cout << "RUN1: " << run_one << std::endl;
                     continue;
                 }
             }
@@ -168,24 +167,25 @@ namespace wrench {
             double total_time =
                     wait_one + std::max<double>(run_one, wait_two) +
                     run_two;
-            std::cout << "start level: " << start_level << " end level: " << i << " wait: "
-                      << wait_one << " runtime: " << run_one << " nodes: "
-                      << std::get<2>(start_to_split) << std::endl;
-            std::cout << "rest level: " << i + 1 << " end level: " << (num_levels - 1) << " wait: "
-                      << wait_two << " runtime: " << run_two << " nodes: "
-                      << std::get<2>(rest) << std::endl;
-            std::cout << "total time: " << total_time << std::endl;
+//            std::cout << "start level: " << start_level << " end level: " << i << " wait: "
+//                      << wait_one << " runtime: " << run_one << " nodes: "
+//                      << std::get<2>(start_to_split) << std::endl;
+//            std::cout << "rest level: " << i + 1 << " end level: " << (num_levels - 1) << " wait: "
+//                      << wait_two << " runtime: " << run_two << " nodes: "
+//                      << std::get<2>(rest) << std::endl;
+//            std::cout << "total time: " << total_time << std::endl;
             if (total_time < best_total_time) {
                 end_level = i;
                 best_total_time = total_time;
                 requested_execution_time = run_one;
                 requested_parallelism = std::get<2>(start_to_split);
                 estimated_wait_time = wait_one;
-                std::cout << "found better split: " << end_level << std::endl;;
+//                std::cout << "Better split end level: " << end_level << std::endl;
             }
         }
 
-        std::cout << "END LEVEL: " << end_level << std::endl;
+        std::cout << "Picking START LEVEL: " << start_level << " END LEVEL: " << end_level << " NODES: "
+                  << requested_parallelism << std::endl;
 
         // Let's just never default to individual_mode for now
         /**
@@ -214,7 +214,7 @@ namespace wrench {
 //            std::cout << "here " << start_level << " " << end_level << std::endl;
             // Add leeway
             if (parent_runtime > estimated_wait_time) {
-                std::cout << "ADDING LEEWAY: " << (parent_runtime - estimated_wait_time) << std::endl;
+//                std::cout << "ADDING LEEWAY: " << (parent_runtime - estimated_wait_time) << std::endl;
                 requested_execution_time += parent_runtime - estimated_wait_time;
             }
             createAndSubmitPlaceholderJob(
@@ -475,6 +475,23 @@ namespace wrench {
                 }
             }
             if (all_tasks_done) {
+                // Update the wasted no seconds metric
+                double first_task_start_time = DBL_MAX;
+                for (auto const &t : placeholder_job->tasks) {
+                    if (t->getStartDate() < first_task_start_time) {
+                        first_task_start_time = t->getStartDate();
+                    }
+                }
+                int num_requested_nodes = stoi(placeholder_job->pilot_job->getServiceSpecificArguments()["-N"]);
+                double job_duration = this->simulation->getCurrentSimulatedDate() - first_task_start_time;
+                double wasted_node_seconds = num_requested_nodes * job_duration;
+                for (auto const &t : placeholder_job->tasks) {
+//                    this->simulator->used_node_seconds += t->getFlops() / this->core_speed;
+                    wasted_node_seconds -= t->getFlops() / this->core_speed;
+                }
+
+                this->simulator->wasted_node_seconds += wasted_node_seconds;
+
                 WRENCH_INFO("All tasks are completed in this placeholder job, so I am terminating it (%s)",
                             placeholder_job->pilot_job->getName().c_str());
                 try {
@@ -575,8 +592,6 @@ namespace wrench {
                 continue;
             }
 
-
-//            std::cout << "coumputing " << curr_makespan << " " << curr_wait << std::endl;
             if (makespan + wait_time > curr_makespan + curr_wait) {
                 makespan = curr_makespan;
                 wait_time = curr_wait;
