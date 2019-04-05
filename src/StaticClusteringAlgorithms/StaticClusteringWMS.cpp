@@ -101,7 +101,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
             throw std::invalid_argument("Invalid static:one_job-m specification");
         }
 
-        unsigned long waste_bound = std::stod(tokens[2]);
+        double waste_bound = std::stod(tokens[2]);
 
         ClusteredJob *job = new ClusteredJob();
         for (auto t : this->getWorkflow()->getTasks()) {
