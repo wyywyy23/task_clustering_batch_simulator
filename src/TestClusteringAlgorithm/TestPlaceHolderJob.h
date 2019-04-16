@@ -28,7 +28,7 @@ namespace wrench {
                       [](const WorkflowTask*  t1, const WorkflowTask*  t2) -> bool
                       {
                           if (t1->getFlops() == t2->getFlops()) {
-                              return ((uintptr_t) t1 > (uintptr_t) t2);
+                              return (t1->getID() >  t2->getID());
                           }
                           return (t1->getFlops() >= t2->getFlops());
 
