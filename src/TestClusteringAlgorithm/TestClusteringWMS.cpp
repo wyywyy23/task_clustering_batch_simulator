@@ -62,6 +62,7 @@ namespace wrench {
             this->waitForAndProcessNextEvent();
 
         }
+        std::cout << "#SPLITS=" << this->number_of_splits << "\n";
         return 0;
     }
 
@@ -105,6 +106,7 @@ namespace wrench {
         }
 
 
+        WRENCH_INFO("NUM RUNNING PLACE_HOLDER JOBS = %ld", this->running_placeholder_jobs.size());
         for (auto ph : this->running_placeholder_jobs) {
             WRENCH_INFO("RUNNING PLACEHOLDER JOB: %lu-%lu", ph->start_level, ph->end_level);
             start_level = 1 + std::max<unsigned long>(start_level, ph->end_level);
@@ -139,8 +141,8 @@ namespace wrench {
         double requested_execution_time = std::get<1>(entire_workflow);
         double best_total_time = estimated_wait_time + requested_execution_time;
 
-        std::cout << "Entire Workflow Stats " << "Start: " << start_level << " End: " << end_level << std::endl;
-        std::cout << "NODES: " << requested_parallelism << " Wait: " << estimated_wait_time << " Runtime: "
+        std::cerr << "Entire Workflow Stats " << "Start: " << start_level << " End: " << end_level << std::endl;
+        std::cerr << "NODES: " << requested_parallelism << " Wait: " << estimated_wait_time << " Runtime: "
                   << requested_execution_time << std::endl;
 
         // Apply henri's grouping heuristic
@@ -184,8 +186,12 @@ namespace wrench {
             }
         }
 
-        std::cout << "Picking START LEVEL: " << start_level << " END LEVEL: " << end_level << " NODES: "
+        std::cerr << "Picking START LEVEL: " << start_level << " END LEVEL: " << end_level << " NODES: "
                   << requested_parallelism << std::endl;
+
+        if (end_level != this->getWorkflow()->getNumLevels() - 1) {
+            this->number_of_splits++;
+        }
 
         // Let's just never default to individual_mode for now
         /**
@@ -254,8 +260,8 @@ namespace wrench {
             unsigned long requested_parallelism,
             unsigned long start_level,
             unsigned long end_level) {
-//        std::cout << requested_execution_time << " " << requested_parallelism << " " << start_level << " " << end_level
-//                  << std::endl;
+        std::cout << "REQUESTING: "<< requested_execution_time << " " << requested_parallelism << " " << start_level << " " << end_level
+                  << std::endl;
         requested_execution_time = requested_execution_time * EXECUTION_TIME_FUDGE_FACTOR;
         parent_runtime = requested_execution_time;
 
@@ -276,10 +282,15 @@ namespace wrench {
         service_specific_args["-c"] = "1";
         service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
 
+        WRENCH_INFO("Created a batch job with with batch arguments: %s:%s:%s",
+                    service_specific_args["-N"].c_str(),
+                    service_specific_args["-t"].c_str(),
+                    service_specific_args["-c"].c_str());
 
         // Keep track of the placeholder job
         this->pending_placeholder_job = new TestPlaceHolderJob(
                 this->job_manager->createPilotJob(),
+                requested_parallelism,
                 tasks,
                 start_level,
                 end_level);
@@ -327,16 +338,19 @@ namespace wrench {
         this->running_placeholder_jobs.insert(placeholder_job);
         this->pending_placeholder_job = nullptr;
 
-        // Submit all ready tasks to it each in its standard job
+        // Submit all ready tasks to it each in its standard job, within node capacity
         std::string output_string = "";
         for (auto task : placeholder_job->tasks) {
-            if (task->getState() == WorkflowTask::READY) {
+            WRENCH_INFO("TASK %s:  READY=%d", task->getID().c_str(), (task->getState() == WorkflowTask::READY));
+            if ((task->getState() == WorkflowTask::READY) and (placeholder_job->num_currently_running_tasks < placeholder_job->num_nodes)) {
                 StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
                 output_string += " " + task->getID();
 
                 WRENCH_INFO("Submitting task %s as part of placeholder job %ld-%ld",
                             task->getID().c_str(), placeholder_job->start_level, placeholder_job->end_level);
                 this->job_manager->submitJob(standard_job, placeholder_job->pilot_job->getComputeService());
+                placeholder_job->num_currently_running_tasks++;
+                WRENCH_INFO("NOW(2):  CURRENTLY  RUNNING: %lu", placeholder_job->num_currently_running_tasks);
             }
         }
 
@@ -466,6 +480,8 @@ namespace wrench {
 
         if (placeholder_job != nullptr) {
 
+            placeholder_job->num_currently_running_tasks--;
+
             // Terminate the pilot job in case all its tasks are done
             bool all_tasks_done = true;
             for (auto t : placeholder_job->tasks) {
@@ -506,17 +522,22 @@ namespace wrench {
 
         }
 
+        WRENCH_INFO("LOOKING FOR STUFF TO SCHEDULE!");
         // Start all newly ready tasks that depended on the completed task, IN ANY PLACEHOLDER
         // This shouldn't happen in individual mode, but can't hurt
-        std::vector<WorkflowTask *> children = this->getWorkflow()->getTaskChildren(completed_task);
+//        std::vector<WorkflowTask *> children = this->getWorkflow()->getTaskChildren(completed_task);
         for (auto ph : this->running_placeholder_jobs) {
             for (auto task : ph->tasks) {
-                if ((std::find(children.begin(), children.end(), task) != children.end()) and
-                    (task->getState() == WorkflowTask::READY)) {
+                if (
+                    (task->getState() == WorkflowTask::READY) and
+                    (ph->num_currently_running_tasks < ph->num_nodes)
+                    ) {
                     StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
                     WRENCH_INFO("Submitting task %s  as part of placeholder job %ld-%ld",
                                 task->getID().c_str(), ph->start_level, ph->end_level);
                     this->job_manager->submitJob(standard_job, ph->pilot_job->getComputeService());
+                    ph->num_currently_running_tasks++;
+                    WRENCH_INFO("NOW: CURRETNLY RUNNING: %lu", ph->num_currently_running_tasks);
                 }
             }
         }

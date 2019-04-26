@@ -76,6 +76,8 @@ namespace wrench {
 
         std::shared_ptr<JobManager> job_manager;
 
+        unsigned long number_of_splits = 0; // Number of times the workflow was split
+
 
     };
 

@@ -256,15 +256,13 @@ int Simulator::main(int argc, char **argv) {
 
     try {
         batch_service = new BatchService(login_hostname, compute_nodes, 0,
-                                         {{BatchServiceProperty::OUTPUT_CSV_JOB_LOG,                      csv_batch_log},
-                                          {BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM,              std::string(
-                                                  argv[7])},
-                                          {BatchServiceProperty::TASK_SELECTION_ALGORITHM,                "minimum_top_level"},
-                                          {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE,           std::string(
-                                                  argv[2])},
-                                          {BatchServiceProperty::SIMULATE_COMPUTATION_AS_SLEEP,           "true"},
-                                          {BatchServiceProperty::BATSCHED_CONTIGUOUS_ALLOCATION,          "true"},
-                                          {BatchServiceProperty::BATSCHED_LOGGING_MUTED,                  "true"},
+                                         {{BatchServiceProperty::OUTPUT_CSV_JOB_LOG, csv_batch_log},
+                                          {BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, std::string(argv[7])},
+                                          {BatchServiceProperty::TASK_SELECTION_ALGORITHM, "maximum_flops"},
+                                          {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])},
+                                          {BatchServiceProperty::SIMULATE_COMPUTATION_AS_SLEEP, "true"},
+                                          {BatchServiceProperty::BATSCHED_CONTIGUOUS_ALLOCATION, "true"},
+                                          {BatchServiceProperty::BATSCHED_LOGGING_MUTED, "true"},
                                           {BatchServiceProperty::USE_REAL_RUNTIMES_AS_REQUESTED_RUNTIMES, "true"}
                                          }, {});
     } catch (std::invalid_argument &e) {

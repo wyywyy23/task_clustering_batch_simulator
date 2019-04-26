@@ -320,6 +320,7 @@ void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
     }
 
     double makespan = WorkflowUtil::estimateMakespan(clustered_job->getTasks(), num_nodes, this->core_speed);
+    std::cout << "MAKESPAN ESTIMATE = " << makespan << "\n";
 
     std::map<std::string, std::string> batch_job_args;
     batch_job_args["-N"] = std::to_string(num_nodes);
@@ -335,6 +336,8 @@ void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
 
     try {
         WRENCH_INFO("Submitting a batch job...");
+        std::cout << "REQUESTING " << (unsigned long) (1 + (makespan * EXECUTION_TIME_FUDGE_FACTOR)) << " " << num_nodes << "\n";
+
         this->job_manager->submitJob(standard_job, batch_service, batch_job_args);
 //    this->job_map.insert(std::make_pair(standard_job, clustered_job));
     } catch (WorkflowExecutionException &e) {
