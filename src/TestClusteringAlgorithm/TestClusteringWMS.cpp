@@ -26,8 +26,7 @@ namespace wrench {
     static double parent_runtime = 0;
 
     TestClusteringWMS::TestClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit,
-                                         double waste_bound,
-                                         BatchService *batch_service) :
+                                         double waste_bound, double beat_bound, BatchService *batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
         this->simulator = simulator;
         this->overlap = overlap;
@@ -36,6 +35,7 @@ namespace wrench {
         this->batch_service = batch_service;
         this->pending_placeholder_job = nullptr;
         this->individual_mode = false;
+        this->beat_bound = beat_bound;
     }
 
     int TestClusteringWMS::main() {
@@ -174,7 +174,7 @@ namespace wrench {
 //                      << wait_two << " runtime: " << run_two << " nodes: "
 //                      << std::get<2>(rest) << std::endl;
 //            std::cout << "total time: " << total_time << std::endl;
-            if (total_time < best_total_time) {
+            if (total_time < (best_total_time * (1 + beat_bound))) {
                 end_level = i;
                 best_total_time = total_time;
                 requested_execution_time = run_one;

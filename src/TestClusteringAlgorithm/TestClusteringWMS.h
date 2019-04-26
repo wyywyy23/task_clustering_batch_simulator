@@ -27,7 +27,7 @@ namespace wrench {
     public:
 
         TestClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit, double waste_bound,
-                          BatchService *batch_service);
+                          double beat_bound, BatchService *batch_service);
 
     private:
 
@@ -66,6 +66,7 @@ namespace wrench {
         bool overlap;
         bool plimit;
         double waste_bound;
+        double beat_bound;
 
         std::set<TestPlaceHolderJob *> running_placeholder_jobs;
         TestPlaceHolderJob *pending_placeholder_job;
