@@ -167,7 +167,15 @@ namespace wrench {
 
             double total_time = wait_one + std::max<double>(run_one, wait_two) + run_two + leeway;
 
-            if ((total_time + (total_time * beat_bound)) < best_total_time) {
+            // Only has to beat with beat_bound if the best grouping is still one_job-0
+            double adjusted_time;
+            if (end_level == num_levels - 1) {
+                adjusted_time = total_time + (total_time * beat_bound);
+            } else {
+                adjusted_time = total_time;
+            }
+
+            if (adjusted_time < best_total_time) {
                 end_level = (unsigned long) i;
                 best_total_time = total_time;
                 requested_execution_time = run_one;
