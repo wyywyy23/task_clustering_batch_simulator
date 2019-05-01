@@ -146,7 +146,7 @@ namespace wrench {
                   << requested_execution_time << std::endl;
 
         // Apply henri's grouping heuristic
-        for (int i = start_level; i < (int) num_levels - 1; i++) {
+        for (int i = (int) start_level; i < (int) num_levels - 1; i++) {
             std::tuple<double, double, unsigned long> start_to_split = time_estimates[i][0];
             std::tuple<double, double, unsigned long> rest = time_estimates[i + 1][1];
             double wait_one = std::get<0>(start_to_split);
@@ -155,34 +155,24 @@ namespace wrench {
             double run_two = std::get<1>(rest);
 
             // Check if leeway is needed
-            if (run_one > wait_two) {
-                double leeway_needed = run_one - wait_two;
-                if (leeway_needed > (run_two * 0.10)) {
-//                    std::cout << "Ignoring split -> leeway = " << leeway_needed << std::endl;
-//                    std::cout << "WAIT2: " << wait_two << std::endl;
-//                    std::cout << "RUN2: " << run_two << std::endl;
-//                    std::cout << "RUN1: " << run_one << std::endl;
+            double leeway = run_one - wait_two;
+            if (leeway > 0) {
+                if (leeway > (run_two * 0.10)) {
+                    // This much leeway is unaccpetable
                     continue;
                 }
+            } else {
+                leeway = 0;
             }
 
-            double total_time =
-                    wait_one + std::max<double>(run_one, wait_two) +
-                    run_two;
-//            std::cout << "start level: " << start_level << " end level: " << i << " wait: "
-//                      << wait_one << " runtime: " << run_one << " nodes: "
-//                      << std::get<2>(start_to_split) << std::endl;
-//            std::cout << "rest level: " << i + 1 << " end level: " << (num_levels - 1) << " wait: "
-//                      << wait_two << " runtime: " << run_two << " nodes: "
-//                      << std::get<2>(rest) << std::endl;
-//            std::cout << "total time: " << total_time << std::endl;
-            if (total_time < (best_total_time * (1 + beat_bound))) {
-                end_level = i;
+            double total_time = wait_one + std::max<double>(run_one, wait_two) + run_two + leeway;
+
+            if ((total_time + (total_time * beat_bound)) < best_total_time) {
+                end_level = (unsigned long) i;
                 best_total_time = total_time;
                 requested_execution_time = run_one;
                 requested_parallelism = std::get<2>(start_to_split);
                 estimated_wait_time = wait_one;
-//                std::cout << "Better split end level: " << end_level << std::endl;
             }
         }
 
@@ -260,7 +250,8 @@ namespace wrench {
             unsigned long requested_parallelism,
             unsigned long start_level,
             unsigned long end_level) {
-        std::cout << "REQUESTING: "<< requested_execution_time << " " << requested_parallelism << " " << start_level << " " << end_level
+        std::cout << "REQUESTING: " << requested_execution_time << " " << requested_parallelism << " " << start_level
+                  << " " << end_level
                   << std::endl;
         requested_execution_time = requested_execution_time * EXECUTION_TIME_FUDGE_FACTOR;
         parent_runtime = requested_execution_time;
@@ -342,7 +333,8 @@ namespace wrench {
         std::string output_string = "";
         for (auto task : placeholder_job->tasks) {
             WRENCH_INFO("TASK %s:  READY=%d", task->getID().c_str(), (task->getState() == WorkflowTask::READY));
-            if ((task->getState() == WorkflowTask::READY) and (placeholder_job->num_currently_running_tasks < placeholder_job->num_nodes)) {
+            if ((task->getState() == WorkflowTask::READY) and
+                (placeholder_job->num_currently_running_tasks < placeholder_job->num_nodes)) {
                 StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
                 output_string += " " + task->getID();
 
@@ -529,9 +521,9 @@ namespace wrench {
         for (auto ph : this->running_placeholder_jobs) {
             for (auto task : ph->tasks) {
                 if (
-                    (task->getState() == WorkflowTask::READY) and
-                    (ph->num_currently_running_tasks < ph->num_nodes)
-                    ) {
+                        (task->getState() == WorkflowTask::READY) and
+                        (ph->num_currently_running_tasks < ph->num_nodes)
+                        ) {
                     StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
                     WRENCH_INFO("Submitting task %s  as part of placeholder job %ld-%ld",
                                 task->getID().c_str(), ph->start_level, ph->end_level);
