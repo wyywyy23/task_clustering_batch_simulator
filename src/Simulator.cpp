@@ -148,25 +148,14 @@ int Simulator::main(int argc, char **argv) {
         std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts"
                   << "\n";
         std::cerr << "        to pack that tasks into a job" << "\n";
-        std::cerr << "    * \e[1mevan:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
+        std::cerr << "    * \e[1mevan:[overlap|nooverlap]:[plimit|pnolimit]:waste_bound\e[0m" << "\n";
         std::cerr << "      - Improvements to Zhang et al. algorithm" << "\n";
         std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
-        std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
-        std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
-        std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
-        std::cerr << "      - [plimit|pnolimit]: plimit is the original algorithm that will complain if the workflow"
-                  << "\n";
-        std::cerr << "        parallelism is larger than the number of hosts. pnolimit is an extension that will not"
-                  << "\n";
-        std::cerr
-                << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although"
-                << "\n";
-        std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts"
-                  << "\n";
-        std::cerr << "        to pack that tasks into a job" << "\n";
-        std::cerr << "    * \e[1mtest:waste_bound\e[0m" << "\n";
+        std::cerr << "      - waste_bound: maximum percentage of wasted node time e.g. 0.2" << "\n";
+        std::cerr << "    * \e[1mtest:waste_bound:beat_bound\e[0m" << "\n";
         std::cerr << "      - Testing a new algorithm" << "\n";
         std::cerr << "      - waste_bound: maximum percentage of wasted node time e.g. 0.2" << "\n";
+        std::cerr << "      - beat_bound: percentage splitting time must beat non-splitting time by to be viable e.g. 0.1" << "\n";
         std::cerr << "    * \e[1mlevelbylevel:[overlap|nooverlap]:levelclustering\e[0m" << "\n";
         std::cerr << "        - A level-by-level-with overlap algorithm that clusters tasks in each level." << "\n";
         std::cerr << "          Tasks in level n+1 are submitted to the batch queue as soon as all tasks in level n"
