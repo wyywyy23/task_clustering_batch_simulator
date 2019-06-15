@@ -176,6 +176,9 @@ namespace wrench {
             }
 
             if (adjusted_time < best_total_time) {
+                std::cout << "NEW TIME: " << total_time << std::endl;
+                std::cout << "ADJUSTED TIME: " << adjusted_time << std::endl;
+                std::cout << "BEST TOTAL: " << best_total_time << std::endl;
                 end_level = (unsigned long) i;
                 best_total_time = total_time;
                 requested_execution_time = run_one;
@@ -184,27 +187,23 @@ namespace wrench {
             }
         }
 
-        std::cerr << "Picking START LEVEL: " << start_level << " END LEVEL: " << end_level << " NODES: "
-                  << requested_parallelism << std::endl;
-
-        if (end_level != this->getWorkflow()->getNumLevels() - 1) {
-            this->number_of_splits++;
-        }
-
         // Let's just never default to individual_mode for now
-        /**
+        // TODO - what if previous levels have not finished yet?
         if (end_level == this->getWorkflow()->getNumLevels() - 1) {
             if (estimated_wait_time > requested_execution_time * 2.0) {
                 this->individual_mode = true;
-            }
-        } else {
-            if (start_level == 0) {
-                std::cout << "RUNNING AS ONE JOB" << std::endl;
-            } else {
-                std::cout << "*** SPLITTING *** " << start_level << " " << end_level << std::endl;
+                std::cout << "INDIVIDUAL MODE" << std::endl;
             }
         }
-        */
+
+        if (not this->individual_mode) {
+            std::cerr << "Picking START LEVEL: " << start_level << " END LEVEL: " << end_level << " NODES: "
+                      << requested_parallelism << std::endl;
+
+            if (end_level != this->getWorkflow()->getNumLevels() - 1) {
+                this->number_of_splits++;
+            }
+        }
 
         if (this->individual_mode) {
             WRENCH_INFO("GROUPING: INDIVIDUAL");
