@@ -14,7 +14,7 @@ def simulator_command():
     executable = './build/simulator'
     num_compute_nodes = '100'
     job_trace_file = '../batch_logs/swf_traces_json/kth_sp2.json'
-    max_sys_jobs = '1500'
+    max_sys_jobs = '2004'
     workflow_specification = 'levels:666:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600'
     start_time = '100000'
     algorithm = 'evan:overlap:pnolimit'
@@ -67,7 +67,7 @@ def write_to_mongo(obj):
     password = urllib.parse.quote_plus('password')
     myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
     mydb = myclient["simulations"]
-    mycol = mydb["benchmark-17"]
+    mycol = mydb["benchmark-31"]
     mycol.insert_one(obj)
 
 def run_simulator(command):
@@ -76,10 +76,14 @@ def run_simulator(command):
     end = start
     try:
         # Timeout throws exception, this is okay i guess
-        res = subprocess.check_output(command, timeout=1800)
+        res = subprocess.check_output(command, timeout=3600, stderr=subprocess.STDOUT)
         end = time.time()
         res = print_process_output(command, res, end - start)
         obj['success'] = True
+        if "test" in command[6]:
+            obj['num_splits'] = int((res[len(res) - 7]).split("=")[1])
+        else:
+            obj['num_splits'] = 0
         obj['makespan'] = float((res[len(res) - 6]).split("=")[1])
         obj['num_p_job_exp'] = float((res[len(res) - 5]).split("=")[1])
         obj['total_queue_wait'] = float((res[len(res) - 4]).split("=")[1])
@@ -149,18 +153,35 @@ def get_compute_nodes(trace):
         print('unknown trace')
         exit()
 
+def create_fork_join(num_levels, tasks_per_level, task_time):
+    workflow = 'levels:666'
+    task_time = task_time * 3600
+    for i in range(0, num_levels):
+        f = ':' + str(tasks_per_level) + ':' + str(task_time) + ':' + str(task_time)
+        j = ':' + '1' +  ':' + str(task_time) + ':' + str(task_time)
+        workflow = workflow + f + j
+    return workflow
+
 def main():
-    trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json']
+    # trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json', './kth_sp2.swf']
+    trace_files = ['../batch_logs/swf_traces_json/gaia.json']
     # trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json', '../batch_logs/swf_traces_json/sdsc_sp2.json', '../batch_logs/swf_traces_json/gaia.json', '../batch_logs/swf_traces_json/ricc.json']
-    # start_times = ['125000', '156250', '195312', '244140', '305175', '381469', '476837', '596046', '745058', '931322']
-    # workflows = ['levels:666:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600', 'levels:666:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000:50:18000:18000', 'levels:666:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000:50:36000:36000']
-    workflows = ['levels:666:50:18000:18000:1:18000:18000:50:18000:18000:1:18000:18000:50:18000:18000:1:18000:18000:50:18000:18000:1:18000:18000']
+    # workflows = ['dax:../m_workflows/m_montage_100.dax', 'dax:../m_workflows/m_epigenomics_100.dax', 'dax:../m_workflows/m_floodplain.dax', 'dax:../m_workflows/m_sipht_100.dax', 'dax:../m_workflows/m_psmerge_small.dax']
+
+    # workflows = [create_fork_join(1, 10, 2), create_fork_join(1, 20, 2), create_fork_join(1, 50, 2), create_fork_join(3, 10, 2), create_fork_join(3, 20, 2), create_fork_join(3, 50, 2), create_fork_join(5, 10, 2), create_fork_join(5, 20, 2), create_fork_join(5, 50, 2), create_fork_join(1, 10, 5), create_fork_join(1, 20, 5), create_fork_join(1, 50, 5), create_fork_join(3, 10, 5), create_fork_join(3, 20, 5), create_fork_join(3, 50, 5), create_fork_join(5, 10, 5), create_fork_join(5, 20, 5), create_fork_join(5, 50, 5), create_fork_join(1, 10, 10), create_fork_join(1, 20, 10), create_fork_join(1, 50, 10), create_fork_join(3, 10, 10), create_fork_join(3, 20, 10), create_fork_join(3, 50, 10), create_fork_join(5, 10, 10), create_fork_join(5, 20, 10), create_fork_join(5, 50, 10)]
+    
+    workflows = []
+    for level in [1, 3, 5]:
+        for length in [2, 5, 10]:
+            workflows.append(create_fork_join(level, 50, length))
+ 
     # Take out one_job_max
-    # algorithms = ['static:one_job-0', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'test:overlap:pnolimit', 'evan:overlap:pnolimit', 'levelbylevel:overlap:one_job-0']
-    algorithms = ['test:.05', 'test:.1', 'test:1', 'static:one_job-0-.05', 'static:one_job-0-.1', 'static:one_job-0-1']
+    algorithms = ['static:one_job-0-1', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'test:1:0', 'evan:overlap:pnolimit:1']
+    # algorithms = ['test:1:0']
     # num_nodes = [str(x * 10) for x in range(5, 16)]
-    num_nodes = ['100']
-    start_times = [str(x * 14400) for x in range(6, 181)]
+    num_nodes = ['2004']
+    # start_times = [str(x * 21600) for x in range(4, 121)]
+    start_times = [str(x * 3600) for x in range(100, 200)]
     # workflows = ['levels:666:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600']
 
     for trace in trace_files:
