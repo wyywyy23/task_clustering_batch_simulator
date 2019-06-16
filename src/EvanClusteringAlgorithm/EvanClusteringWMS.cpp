@@ -60,6 +60,7 @@ namespace wrench {
             this->waitForAndProcessNextEvent();
 
         }
+        std::cout << "#SPLITS=" << this->number_of_splits << "\n";
         return 0;
     }
 
@@ -93,26 +94,33 @@ namespace wrench {
         // See if we can do better by grouping (Fig. 5 in the paper)
         // return params: wait_time, makespan, end_level
         std::tuple<double, double, unsigned long, unsigned long> partial_dag = groupLevels(start_level, end_level);
-        // Don't even need wait time to submit job!
+
         double partial_dag_wait_time = std::get<0>(partial_dag);
         double partial_dag_makespan = std::get<1>(partial_dag);
         unsigned long partial_dag_end_level = std::get<2>(partial_dag);
         unsigned long partial_dag_parallelism = std::get<3>(partial_dag);
 
+        // TODO clean up this code
+
+        // Only submit as individual (one_job_per_task) if partial dag end = workflow end level
+        // AND the wait time is more than twice the makespan
+        // Otherwise submit the partial dag as one job :)
         if (partial_dag_end_level >= end_level) {
             if (partial_dag_wait_time > 2.0 * partial_dag_makespan) {
                 this->individual_mode = true;
-                std::cout << "SUBMITTING INDIVIDUAL" << std::endl;
+                std::cout << "Switching to individual mode!" << std::endl;
             }
-            // come up with a better heuristic for picking one_job_per_task?
+        } else {
+            // yes! we're splitting
+            std::cout << "Splitting @ end level = " << partial_dag_end_level << std::endl;
+            this->number_of_splits++;
         }
 
         WRENCH_INFO("GROUPING: %ld-%ld", start_level, end_level);
         if (not this->individual_mode) {
-            std::cout << "makespan: " << partial_dag_makespan << std::endl;
-            std::cout << "parallelism: " << partial_dag_parallelism << std::endl;
-            std::cout << "start: " << start_level << std::endl;
-            std::cout << "end: " << partial_dag_end_level << std::endl;
+            // std::cout << "makespan: " << partial_dag_makespan << std::endl;
+            std::cout << "NODES: " << partial_dag_parallelism << std::endl;
+            // std::cout << "start: " << start_level << std::endl;
         }
 
         if (not this->individual_mode) {
@@ -125,6 +133,7 @@ namespace wrench {
         }
 
         WRENCH_INFO("Switching to individual mode!");
+
         // Submit all READY tasks as individual jobs
         for (auto task : this->getWorkflow()->getTasks()) {
             if (task->getState() == WorkflowTask::State::READY) {
@@ -372,6 +381,23 @@ namespace wrench {
                 }
             }
             if (all_tasks_done) {
+                // Update the wasted no seconds metric
+                double first_task_start_time = DBL_MAX;
+                for (auto const &t : placeholder_job->tasks) {
+                    if (t->getStartDate() < first_task_start_time) {
+                        first_task_start_time = t->getStartDate();
+                    }
+                }
+                int num_requested_nodes = stoi(placeholder_job->pilot_job->getServiceSpecificArguments()["-N"]);
+                double job_duration = this->simulation->getCurrentSimulatedDate() - first_task_start_time;
+                double wasted_node_seconds = num_requested_nodes * job_duration;
+                for (auto const &t : placeholder_job->tasks) {
+//                    this->simulator->used_node_seconds += t->getFlops() / this->core_speed;
+                    wasted_node_seconds -= t->getFlops() / this->core_speed;
+                }
+
+                this->simulator->wasted_node_seconds += wasted_node_seconds;
+
                 WRENCH_INFO("All tasks are completed in this placeholder job, so I am terminating it (%s)",
                             placeholder_job->pilot_job->getName().c_str());
                 try {
@@ -505,7 +531,7 @@ namespace wrench {
 
         // end level is inclusive in here
         for (unsigned long i = start_level; i <= end_level; i++) {
-            std::cout << "start: " << start_level << " end: " << i << std::endl;
+            // std::cout << "start: " << start_level << " end: " << i << std::endl;
             unsigned long parallelism = maxParallelism(start_level, i);
             double runtime = WorkflowUtil::estimateMakespan(
                     this->getWorkflow()->getTasksInTopLevelRange(start_level, i),
@@ -544,8 +570,8 @@ namespace wrench {
             }
             double current_ratio = runtime / real_wait_time;
             double best_ratio = best_runtime / wait_time;
-            std::cout << "BEST RATIO: " << best_ratio << std::endl;
-            std::cout << "CURRENT RATIO: " << current_ratio << std::endl;
+            // std::cout << "BEST RATIO: " << best_ratio << std::endl;
+            // std::cout << "CURRENT RATIO: " << current_ratio << std::endl;
             if (current_ratio >= best_ratio) {
                 best_runtime = runtime;
                 best_wait_time = real_wait_time;
@@ -557,9 +583,9 @@ namespace wrench {
         // calculate wait time if using "real wait time"
         best_wait_time = estimateWaitTime(best_parallelism, best_runtime, &sequence);
 
-        std::cout << "wait: " << best_wait_time << std::endl;
-        std::cout << "run: " << best_runtime << std::endl;
-        std::cout << "parallelism: " << best_parallelism << std::endl;
+        // std::cout << "wait: " << best_wait_time << std::endl;
+        // std::cout << "run: " << best_runtime << std::endl;
+        // std::cout << "parallelism: " << best_parallelism << std::endl;
 
         return std::make_tuple(best_wait_time, best_runtime, candidate_end_level, best_parallelism);
     }
