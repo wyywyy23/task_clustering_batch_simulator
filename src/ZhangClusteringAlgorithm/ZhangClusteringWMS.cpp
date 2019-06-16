@@ -15,7 +15,7 @@
 #include "ZhangPlaceHolderJob.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(zhang_clustering_wms,
-"Log category for Zhang Clustering WMS");
+                             "Log category for Zhang Clustering WMS");
 
 #define EXECUTION_TIME_FUDGE_FACTOR 1.1
 
@@ -59,6 +59,7 @@ namespace wrench {
             this->waitForAndProcessNextEvent();
 
         }
+        std::cout << "#SPLITS=" << this->number_of_splits << "\n";
         return 0;
     }
 
@@ -113,12 +114,15 @@ namespace wrench {
         unsigned long partial_dag_end_level = std::get<2>(partial_dag);
 
         if (partial_dag_end_level >= end_level) {
-            if (runtime_all * 2.0 < wait_time_all) {
-                // submit remaining dag as 1 job
-            } else {
+            if (wait_time_all > runtime_all * 2.0) {
                 // submit remaining dag as 1 job per task
+                this->individual_mode = true;
+                std::cout << "Switching to individual mode!" << std::endl;
+            } else {
+                // submit remaining dag as 1 job
             }
-            this->individual_mode = true;
+        } else {
+            number_of_splits++;
         }
 
         if (this->individual_mode) {
@@ -131,6 +135,7 @@ namespace wrench {
         if (not individual_mode) {
             // recalculate parallelism for partial dag
             unsigned long parallelism = maxParallelism(start_level, partial_dag_end_level);
+            std::cout << "Nodes: " << parallelism << std::endl;
             createAndSubmitPlaceholderJob(
                     partial_dag_makespan,
                     parallelism,
@@ -142,7 +147,7 @@ namespace wrench {
             for (auto task : this->getWorkflow()->getTasks()) {
                 if (task->getState() == WorkflowTask::State::READY) {
                     StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
-                    std::map <std::string, std::string> service_specific_args;
+                    std::map<std::string, std::string> service_specific_args;
                     unsigned long requested_execution_time =
                             (task->getFlops() / this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
                     service_specific_args["-N"] = "1";
@@ -175,9 +180,9 @@ namespace wrench {
         parent_runtime = requested_execution_time;
 
         // Aggregate tasks
-        std::vector < WorkflowTask * > tasks;
+        std::vector<WorkflowTask *> tasks;
         for (unsigned long l = start_level; l <= end_level; l++) {
-            std::vector < WorkflowTask * > tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
+            std::vector<WorkflowTask *> tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(l, l);
             for (auto t : tasks_in_level) {
                 if (t->getState() != WorkflowTask::COMPLETED) {
                     tasks.push_back(t);
@@ -186,7 +191,7 @@ namespace wrench {
         }
 
         // Submit the pilot job
-        std::map <std::string, std::string> service_specific_args;
+        std::map<std::string, std::string> service_specific_args;
         service_specific_args["-N"] = std::to_string(requested_parallelism);
         service_specific_args["-c"] = "1";
         service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
@@ -213,7 +218,7 @@ namespace wrench {
     }
 
 
-    void ZhangClusteringWMS::processEventPilotJobStart(std::unique_ptr <PilotJobStartedEvent> e) {
+    void ZhangClusteringWMS::processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) {
 
         // Update queue waiting time
         this->simulator->total_queue_wait_time +=
@@ -259,7 +264,7 @@ namespace wrench {
 
     }
 
-    void ZhangClusteringWMS::processEventPilotJobExpiration(std::unique_ptr <PilotJobExpiredEvent> e) {
+    void ZhangClusteringWMS::processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) {
         std::cout << "JOB EXPIRATION!!!" << std::endl;
 
         // Find the placeholder job
@@ -323,7 +328,7 @@ namespace wrench {
 
         // Cancel running pilot jobs if none of their tasks has started
 
-        std::set < ZhangPlaceHolderJob * > to_remove;
+        std::set<ZhangPlaceHolderJob *> to_remove;
         for (auto ph : this->running_placeholder_jobs) {
             bool started = false;
             for (auto task : ph->tasks) {
@@ -353,7 +358,7 @@ namespace wrench {
 
     }
 
-    void ZhangClusteringWMS::processEventStandardJobCompletion(std::unique_ptr <StandardJobCompletedEvent> e) {
+    void ZhangClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
 
         WorkflowTask *completed_task = e->standard_job->tasks[0]; // only one task per job
 
@@ -388,6 +393,23 @@ namespace wrench {
                 }
             }
             if (all_tasks_done) {
+                // Update the wasted no seconds metric
+                double first_task_start_time = DBL_MAX;
+                for (auto const &t : placeholder_job->tasks) {
+                    if (t->getStartDate() < first_task_start_time) {
+                        first_task_start_time = t->getStartDate();
+                    }
+                }
+                int num_requested_nodes = stoi(placeholder_job->pilot_job->getServiceSpecificArguments()["-N"]);
+                double job_duration = this->simulation->getCurrentSimulatedDate() - first_task_start_time;
+                double wasted_node_seconds = num_requested_nodes * job_duration;
+                for (auto const &t : placeholder_job->tasks) {
+//                    this->simulator->used_node_seconds += t->getFlops() / this->core_speed;
+                    wasted_node_seconds -= t->getFlops() / this->core_speed;
+                }
+
+                this->simulator->wasted_node_seconds += wasted_node_seconds;
+
                 WRENCH_INFO("All tasks are completed in this placeholder job, so I am terminating it (%s)",
                             placeholder_job->pilot_job->getName().c_str());
                 try {
@@ -404,7 +426,7 @@ namespace wrench {
 
         // Start all newly ready tasks that depended on the completed task, IN ANY PLACEHOLDER
         // This shouldn't happen in individual mode, but can't hurt
-        std::vector < WorkflowTask * > children = this->getWorkflow()->getTaskChildren(completed_task);
+        std::vector<WorkflowTask *> children = this->getWorkflow()->getTaskChildren(completed_task);
         for (auto ph : this->running_placeholder_jobs) {
             for (auto task : ph->tasks) {
                 if ((std::find(children.begin(), children.end(), task) != children.end()) and
@@ -423,7 +445,7 @@ namespace wrench {
                     StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
                     WRENCH_INFO("Submitting task %s individually!",
                                 task->getID().c_str());
-                    std::map <std::string, std::string> service_specific_args;
+                    std::map<std::string, std::string> service_specific_args;
                     double requested_execution_time =
                             (task->getFlops() / this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
                     service_specific_args["-N"] = "1";
@@ -437,13 +459,13 @@ namespace wrench {
 
     }
 
-    void ZhangClusteringWMS::processEventStandardJobFailure(std::unique_ptr <StandardJobFailedEvent> e) {
+    void ZhangClusteringWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
         WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS",
                     e->standard_job->tasks[0]->getID().c_str());
     }
 
     double ZhangClusteringWMS::estimateWaitTime(long parallelism, double makespan, int *sequence) {
-        std::set <std::tuple<std::string, unsigned int, unsigned int, double>> job_config;
+        std::set<std::tuple<std::string, unsigned int, unsigned int, double>> job_config;
         std::string config_key = "config_XXXX_" + std::to_string((*sequence)++); // need to make it unique for BATSCHED
         job_config.insert(std::make_tuple(config_key, (unsigned int) parallelism, 1, makespan));
         std::map<std::string, double> estimates = this->batch_service->getStartTimeEstimates(job_config);
@@ -461,7 +483,7 @@ namespace wrench {
     unsigned long ZhangClusteringWMS::getStartLevel() {
         unsigned long start_level = 0;
         for (unsigned long i = 0; i < this->getWorkflow()->getNumLevels(); i++) {
-            std::vector < WorkflowTask * > tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(i, i);
+            std::vector<WorkflowTask *> tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(i, i);
             bool all_completed = true;
             for (auto task : tasks_in_level) {
                 if (task->getState() != WorkflowTask::State::COMPLETED) {
@@ -508,23 +530,23 @@ namespace wrench {
         // Start partial dag with only first level
         unsigned long candidate_end_level = start_level;
         while (candidate_end_level < end_level) {
-            std::cout << "START LEVEL: " << start_level << std::endl;
-            std::cout << "END LEVEL: " << candidate_end_level << std::endl;
+            // std::cout << "START LEVEL: " << start_level << std::endl;
+            // std::cout << "END LEVEL: " << candidate_end_level << std::endl;
             unsigned long max_parallelism = maxParallelism(start_level, candidate_end_level);
             peel_runtime[1] = WorkflowUtil::estimateMakespan(
                     this->getWorkflow()->getTasksInTopLevelRange(start_level, candidate_end_level),
                     max_parallelism, this->core_speed);
             real_runtime[1] = peel_runtime[1];
-            std::cout << "parent runtime: " << parent_runtime << std::endl;
+            // std::cout << "parent runtime: " << parent_runtime << std::endl;
             // Causes a walltime assert fail, make sure to reset
             leeway = 0;
             do {
                 double new_runtime = peel_runtime[1] + leeway / 2;
                 double new_wait_time = estimateWaitTime(max_parallelism, new_runtime, &sequence);
                 double new_leeway = parent_runtime + real_runtime[1] - new_wait_time;
-                std::cout << "new runtime: " << new_runtime << std::endl;
-                std::cout << "new wait time: " << new_wait_time << std::endl;
-                std::cout << "new leeway: " << new_leeway << std::endl;
+                // std::cout << "new runtime: " << new_runtime << std::endl;
+                // std::cout << "new wait time: " << new_wait_time << std::endl;
+                // std::cout << "new leeway: " << new_leeway << std::endl;
                 if ((int) new_leeway == (int) leeway) {
                     // leeway has not changed, we should stop iterating
                     break;
@@ -544,8 +566,8 @@ namespace wrench {
             if (real_wait_time < 0) {
                 real_wait_time = peel_wait_time[1];
             }
-            std::cout << "real wait: " << real_wait_time << std::endl;
-            std::cout << "real runtime: " << real_runtime[1] << std::endl;
+            // std::cout << "real wait: " << real_wait_time << std::endl;
+            // std::cout << "real runtime: " << real_runtime[1] << std::endl;
             if (giant) {
                 if (real_wait_time > real_runtime[1]) {
                     candidate_end_level++;
@@ -562,21 +584,21 @@ namespace wrench {
                 }
             }
             // What the heck is this doing??
-            std::cout << "Reached bottom" << std::endl;
+            // std::cout << "Reached bottom" << std::endl;
             peel_wait_time[0] = peel_wait_time[1];
             peel_runtime[0] = peel_runtime[1];
             real_runtime[0] = real_runtime[1];
             candidate_end_level++;
         }
         if (giant) {
-            std::cout << "RETURNING GIANT" << std::endl;
+            // std::cout << "RETURNING GIANT" << std::endl;
             // return whole thing
             // going to run static algo if partial dag = DAG, so makespan and wait don't matter
             return std::make_tuple(0, 0, end_level);
         } else {
-            std::cout << "SPLITTING, END LEVEL=" << candidate_end_level << std::endl;
-            std::cout << "WAIT: " << peel_wait_time[1] << std::endl;
-            std::cout << "RUN: " << peel_runtime[1] << std::endl;
+            // std::cout << "SPLITTING, END LEVEL=" << candidate_end_level << std::endl;
+            // std::cout << "WAIT: " << peel_wait_time[1] << std::endl;
+            // std::cout << "RUN: " << peel_runtime[1] << std::endl;
             // return partial dag
             return std::make_tuple(peel_wait_time[1], peel_runtime[1], candidate_end_level);
         }
