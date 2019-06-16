@@ -141,9 +141,11 @@ namespace wrench {
         double requested_execution_time = std::get<1>(entire_workflow);
         double best_total_time = estimated_wait_time + requested_execution_time;
 
-        std::cerr << "Entire Workflow Stats " << "Start: " << start_level << " End: " << end_level << std::endl;
-        std::cerr << "NODES: " << requested_parallelism << " Wait: " << estimated_wait_time << " Runtime: "
-                  << requested_execution_time << std::endl;
+        // std::cerr << "Entire Workflow Stats " << "Start: " << start_level << " End: " << end_level << std::endl;
+        // std::cerr << "NODES: " << requested_parallelism << " Wait: " << estimated_wait_time << " Runtime: "
+                 // << requested_execution_time << std::endl;
+
+        unsigned long partial_dag_end_level = end_level;
 
         // Apply henri's grouping heuristic
         for (int i = (int) start_level; i < (int) num_levels - 1; i++) {
@@ -169,17 +171,17 @@ namespace wrench {
 
             // Only has to beat with beat_bound if the best grouping is still one_job-0
             double adjusted_time;
-            if (end_level == num_levels - 1) {
+            if (partial_dag_end_level == end_level) {
                 adjusted_time = total_time + (total_time * beat_bound);
             } else {
                 adjusted_time = total_time;
             }
 
             if (adjusted_time < best_total_time) {
-                std::cout << "NEW TIME: " << total_time << std::endl;
-                std::cout << "ADJUSTED TIME: " << adjusted_time << std::endl;
-                std::cout << "BEST TOTAL: " << best_total_time << std::endl;
-                end_level = (unsigned long) i;
+                // std::cout << "NEW TIME: " << total_time << std::endl;
+                // std::cout << "ADJUSTED TIME: " << adjusted_time << std::endl;
+                // std::cout << "BEST TOTAL: " << best_total_time << std::endl;
+                partial_dag_end_level = (unsigned long) i;
                 best_total_time = total_time;
                 requested_execution_time = run_one;
                 requested_parallelism = std::get<2>(start_to_split);
@@ -187,34 +189,31 @@ namespace wrench {
             }
         }
 
-        // Let's just never default to individual_mode for now
-        // TODO - what if previous levels have not finished yet?
-        if (end_level == this->getWorkflow()->getNumLevels() - 1) {
+        if (partial_dag_end_level == end_level) {
             if (estimated_wait_time > requested_execution_time * 2.0) {
                 this->individual_mode = true;
                 std::cout << "INDIVIDUAL MODE" << std::endl;
             }
+        } else {
+            std::cout << "Splitting @ end level = " << partial_dag_end_level << std::endl;
+            this->number_of_splits++;
         }
 
         if (not this->individual_mode) {
-            std::cerr << "Picking START LEVEL: " << start_level << " END LEVEL: " << end_level << " NODES: "
-                      << requested_parallelism << std::endl;
-
-            if (end_level != this->getWorkflow()->getNumLevels() - 1) {
-                this->number_of_splits++;
-            }
+            // std::cerr << "Picking START LEVEL: " << start_level << " END LEVEL: " << partial_dag_end_level << " NODES: "
+            std::cout << "Nodes: " << requested_parallelism << std::endl;
         }
 
         if (this->individual_mode) {
             WRENCH_INFO("GROUPING: INDIVIDUAL");
         } else {
             WRENCH_INFO("GROUPING: %ld-%ld",
-                        start_level, end_level);
+                        start_level, partial_dag_end_level);
         }
 
 //        std::cout << this->individual_mode << std::endl;
         if (not individual_mode) {
-//            std::cout << "here " << start_level << " " << end_level << std::endl;
+//            std::cout << "here " << start_level << " " << partial_dag_end_level << std::endl;
             // Add leeway
             if (parent_runtime > estimated_wait_time) {
 //                std::cout << "ADDING LEEWAY: " << (parent_runtime - estimated_wait_time) << std::endl;
@@ -224,7 +223,7 @@ namespace wrench {
                     requested_execution_time,
                     requested_parallelism,
                     start_level,
-                    end_level);
+                    partial_dag_end_level);
         } else {
             WRENCH_INFO("Switching to individual mode!");
             // Submit all READY tasks as individual jobs
@@ -257,9 +256,9 @@ namespace wrench {
             unsigned long requested_parallelism,
             unsigned long start_level,
             unsigned long end_level) {
-        std::cout << "REQUESTING: " << requested_execution_time << " " << requested_parallelism << " " << start_level
-                  << " " << end_level
-                  << std::endl;
+//        std::cout << "REQUESTING: " << requested_execution_time << " " << requested_parallelism << " " << start_level
+//                  << " " << end_level
+//                  << std::endl;
         requested_execution_time = requested_execution_time * EXECUTION_TIME_FUDGE_FACTOR;
         parent_runtime = requested_execution_time;
 

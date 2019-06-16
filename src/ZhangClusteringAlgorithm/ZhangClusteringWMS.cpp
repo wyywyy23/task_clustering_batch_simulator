@@ -122,6 +122,7 @@ namespace wrench {
                 // submit remaining dag as 1 job
             }
         } else {
+            std::cout << "Splitting @ end level = " << partial_dag_end_level << std::endl;
             number_of_splits++;
         }
 
