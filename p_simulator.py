@@ -5,9 +5,12 @@ import urllib.parse
 from datetime import datetime
 from threading import Thread
 from threading import Lock
-import time
+
+import sys
 
 lock = Lock()
+save_to_mongo = False
+coll_name = 'default_coll'
 commands = []
 
 def simulator_command():
@@ -22,6 +25,7 @@ def simulator_command():
     log = '--wrench-no-log'
     return [executable, num_compute_nodes, job_trace_file, max_sys_jobs, workflow_specification, start_time, algorithm, batch_algorithm, log]
 
+# Generates dictionary for mongo storage
 def simulation_dict(command):
     dict = {}
     dict['executable'] = command[0]
@@ -67,7 +71,7 @@ def write_to_mongo(obj):
     password = urllib.parse.quote_plus('password')
     myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
     mydb = myclient["simulations"]
-    mycol = mydb["benchmark-31"]
+    mycol = mydb[coll_name]
     mycol.insert_one(obj)
 
 def run_simulator(command):
@@ -76,11 +80,11 @@ def run_simulator(command):
     end = start
     try:
         # Timeout throws exception, this is okay i guess
-        res = subprocess.check_output(command, timeout=3600, stderr=subprocess.STDOUT)
+        res = subprocess.check_output(command, timeout=600, stderr=subprocess.STDOUT)
         end = time.time()
         res = print_process_output(command, res, end - start)
         obj['success'] = True
-        if "test" in command[6]:
+        if "test" in command[6] or "evan" in command[6] or "zhang" in command[6]:
             obj['num_splits'] = int((res[len(res) - 7]).split("=")[1])
         else:
             obj['num_splits'] = 0
@@ -105,8 +109,10 @@ def run_simulator(command):
 
     lock.acquire()
     try:
-        write_to_mongo(obj)
-        # pass
+        if save_to_mongo:
+            write_to_mongo(obj)
+        else:
+            pass
     except Exception as e:
         print("Mongo failure")
         print(obj)
@@ -163,31 +169,38 @@ def create_fork_join(num_levels, tasks_per_level, task_time):
     return workflow
 
 def main():
-    # trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json', './kth_sp2.swf']
-    trace_files = ['../batch_logs/swf_traces_json/gaia.json']
+    trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json']
+    # trace_files = ['../batch_logs/swf_traces_json/gaia.json']
     # trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json', '../batch_logs/swf_traces_json/sdsc_sp2.json', '../batch_logs/swf_traces_json/gaia.json', '../batch_logs/swf_traces_json/ricc.json']
     # workflows = ['dax:../m_workflows/m_montage_100.dax', 'dax:../m_workflows/m_epigenomics_100.dax', 'dax:../m_workflows/m_floodplain.dax', 'dax:../m_workflows/m_sipht_100.dax', 'dax:../m_workflows/m_psmerge_small.dax']
 
-    # workflows = [create_fork_join(1, 10, 2), create_fork_join(1, 20, 2), create_fork_join(1, 50, 2), create_fork_join(3, 10, 2), create_fork_join(3, 20, 2), create_fork_join(3, 50, 2), create_fork_join(5, 10, 2), create_fork_join(5, 20, 2), create_fork_join(5, 50, 2), create_fork_join(1, 10, 5), create_fork_join(1, 20, 5), create_fork_join(1, 50, 5), create_fork_join(3, 10, 5), create_fork_join(3, 20, 5), create_fork_join(3, 50, 5), create_fork_join(5, 10, 5), create_fork_join(5, 20, 5), create_fork_join(5, 50, 5), create_fork_join(1, 10, 10), create_fork_join(1, 20, 10), create_fork_join(1, 50, 10), create_fork_join(3, 10, 10), create_fork_join(3, 20, 10), create_fork_join(3, 50, 10), create_fork_join(5, 10, 10), create_fork_join(5, 20, 10), create_fork_join(5, 50, 10)]
+    workflows = [create_fork_join(1, 10, 2), create_fork_join(1, 20, 2), create_fork_join(1, 50, 2), create_fork_join(3, 10, 2), create_fork_join(3, 20, 2), create_fork_join(3, 50, 2), create_fork_join(5, 10, 2), create_fork_join(5, 20, 2), create_fork_join(5, 50, 2), create_fork_join(1, 10, 5), create_fork_join(1, 20, 5), create_fork_join(1, 50, 5), create_fork_join(3, 10, 5), create_fork_join(3, 20, 5), create_fork_join(3, 50, 5), create_fork_join(5, 10, 5), create_fork_join(5, 20, 5), create_fork_join(5, 50, 5), create_fork_join(1, 10, 10), create_fork_join(1, 20, 10), create_fork_join(1, 50, 10), create_fork_join(3, 10, 10), create_fork_join(3, 20, 10), create_fork_join(3, 50, 10), create_fork_join(5, 10, 10), create_fork_join(5, 20, 10), create_fork_join(5, 50, 10)]
     
-    workflows = []
-    for level in [1, 3, 5]:
-        for length in [2, 5, 10]:
-            workflows.append(create_fork_join(level, 50, length))
+    # workflows = []
+    # for level in [1, 3, 5]:
+    #     for length in [2, 5, 10]:
+    #         workflows.append(create_fork_join(level, 50, length))
  
     # Take out one_job_max
     algorithms = ['static:one_job-0-1', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'test:1:0', 'evan:overlap:pnolimit:1']
     # algorithms = ['test:1:0']
     # num_nodes = [str(x * 10) for x in range(5, 16)]
-    num_nodes = ['2004']
-    # start_times = [str(x * 21600) for x in range(4, 121)]
-    start_times = [str(x * 3600) for x in range(100, 200)]
+    num_nodes = ['100']
+    start_times = [str(x * 21600) for x in range(4, 121)]
+    # start_times = [str(x * 3600) for x in range(100, 200)]
     # workflows = ['levels:666:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600']
+
+    print('Trace files: ', trace_files)
+    print('Number of nodes: ', num_nodes)
+    print('Start times: ', start_times)
+    print('Workflows: ', workflows)
+    print('Algorithms: ', algorithms)
+    print('')
 
     for trace in trace_files:
         for nodes in num_nodes:
-            for workflow in workflows:
-                for start_time in start_times:
+            for start_time in start_times:
+                for workflow in workflows:
                     for algorithm in algorithms:
                         command = simulator_command()
                         command[1] = nodes
@@ -211,8 +224,6 @@ def main():
     cores = 10
 
     for i in range(cores):
-        # if i > 0:
-        #    time.sleep(15)
         thread = Thread(target=execute)
         thread.start()
         threads.append(thread)
@@ -220,7 +231,15 @@ def main():
     for thread in threads:
         thread.join()
 
-
-
+# Only save to mongo if a collection name is provided
 if __name__ == '__main__':
+    if len(sys.argv) == 1:
+        print("Not saving to mongo")
+    elif len(sys.argv) == 2:
+        print("Saving results to %s" % sys.argv[1])
+        save_to_mongo = True
+        coll_name = sys.argv[2]
+    else:
+        print("invalid number of arguments")
+        exit()
     main()
