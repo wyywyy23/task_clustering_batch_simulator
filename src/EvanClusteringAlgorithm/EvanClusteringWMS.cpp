@@ -27,7 +27,7 @@ namespace wrench {
     static int sequence = 0;
 
     EvanClusteringWMS::EvanClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit,
-                                         double waste_bound, BatchService *batch_service) :
+                                         double waste_bound, std::shared_ptr<BatchComputeService> batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
         this->simulator = simulator;
         this->overlap = overlap;
@@ -206,7 +206,7 @@ namespace wrench {
     }
 
 
-    void EvanClusteringWMS::processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) {
+    void EvanClusteringWMS::processEventPilotJobStart(std::shared_ptr<PilotJobStartedEvent> e) {
 
         // Update queue waiting time
         this->simulator->total_queue_wait_time +=
@@ -252,7 +252,7 @@ namespace wrench {
 
     }
 
-    void EvanClusteringWMS::processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) {
+    void EvanClusteringWMS::processEventPilotJobExpiration(std::shared_ptr<PilotJobExpiredEvent> e) {
         std::cout << "JOB EXPIRATION!!!" << std::endl;
 
         // Find the placeholder job
@@ -346,7 +346,7 @@ namespace wrench {
 
     }
 
-    void EvanClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
+    void EvanClusteringWMS::processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent> e) {
 
         WorkflowTask *completed_task = e->standard_job->tasks[0]; // only one task per job
 
@@ -447,7 +447,7 @@ namespace wrench {
 
     }
 
-    void EvanClusteringWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
+    void EvanClusteringWMS::processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) {
         WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS",
                     e->standard_job->tasks[0]->getID().c_str());
     }

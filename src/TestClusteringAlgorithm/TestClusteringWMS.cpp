@@ -26,7 +26,7 @@ namespace wrench {
     static double parent_runtime = 0;
 
     TestClusteringWMS::TestClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit,
-                                         double waste_bound, double beat_bound, BatchService *batch_service) :
+                                         double waste_bound, double beat_bound, std::shared_ptr<BatchComputeService> batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
         this->simulator = simulator;
         this->overlap = overlap;
@@ -307,7 +307,7 @@ namespace wrench {
     }
 
 
-    void TestClusteringWMS::processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) {
+    void TestClusteringWMS::processEventPilotJobStart(std::shared_ptr<PilotJobStartedEvent> e) {
 
         // Update queue waiting time
         this->simulator->total_queue_wait_time +=
@@ -357,7 +357,7 @@ namespace wrench {
 
     }
 
-    void TestClusteringWMS::processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) {
+    void TestClusteringWMS::processEventPilotJobExpiration(std::shared_ptr<PilotJobExpiredEvent> e) {
         std::cout << "GOT EXPIRATION" << std::endl;
         // Find the placeholder job
         TestPlaceHolderJob *placeholder_job = nullptr;
@@ -452,7 +452,7 @@ namespace wrench {
 
     }
 
-    void TestClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
+    void TestClusteringWMS::processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent> e) {
 
         WorkflowTask *completed_task = e->standard_job->tasks[0]; // only one task per job
 
@@ -560,7 +560,7 @@ namespace wrench {
 
     }
 
-    void TestClusteringWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
+    void TestClusteringWMS::processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) {
         WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS",
                     e->standard_job->tasks[0]->getID().c_str());
     }
@@ -633,7 +633,9 @@ namespace wrench {
         double makespan = WorkflowUtil::estimateMakespan(
                 this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
                 num_hosts, this->core_speed);
+        WRENCH_INFO("ESTIMATING WAIT TIME");
         double wait_time = TestClusteringWMS::estimateWaitTime(num_hosts, makespan, &sequence);
+        WRENCH_INFO("ESTIMATED WAIT TIME");
         return std::make_tuple(makespan, wait_time);
     }
 

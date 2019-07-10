@@ -1,7 +1,7 @@
 
 #include <iostream>
 #include <wrench-dev.h>
-#include <services/compute/batch/BatchServiceProperty.h>
+#include <services/compute/batch/BatchComputeServiceProperty.h>
 #include <LevelByLevelAlgorithm/LevelByLevelWMS.h>
 #include "Simulator.h"
 #include "Util/WorkflowUtil.h"
@@ -230,12 +230,12 @@ int Simulator::main(int argc, char **argv) {
     // Setup the simulation platform
     setupSimulationPlatform(simulation, num_compute_nodes);
 
-    // Create a BatchService
+    // Create a BatchComputeService
     std::vector<std::string> compute_nodes;
     for (unsigned int i = 0; i < num_compute_nodes; i++) {
         compute_nodes.push_back(std::string("ComputeNode_") + std::to_string(i));
     }
-    wrench::BatchService *batch_service = nullptr;
+    std::shared_ptr<wrench::BatchComputeService> batch_service = nullptr;
     std::string login_hostname = "Login";
 
     std::string csv_batch_log = "/tmp/batch_log.csv";
@@ -243,25 +243,26 @@ int Simulator::main(int argc, char **argv) {
         csv_batch_log = std::string(argv[8]);
     }
 
+    wrench::BatchComputeService *tmp_batch_service = nullptr;
     try {
-        batch_service = new BatchService(login_hostname, compute_nodes, 0,
-                                         {{BatchServiceProperty::OUTPUT_CSV_JOB_LOG, csv_batch_log},
-                                          {BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM, std::string(argv[7])},
-                                          {BatchServiceProperty::TASK_SELECTION_ALGORITHM, "maximum_flops"},
-                                          {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])},
-                                          {BatchServiceProperty::SIMULATE_COMPUTATION_AS_SLEEP, "true"},
-                                          {BatchServiceProperty::BATSCHED_CONTIGUOUS_ALLOCATION, "true"},
-                                          {BatchServiceProperty::BATSCHED_LOGGING_MUTED, "true"},
-                                          {BatchServiceProperty::USE_REAL_RUNTIMES_AS_REQUESTED_RUNTIMES, "true"}
+        tmp_batch_service = new BatchComputeService(login_hostname, compute_nodes, 0,
+                                         {{BatchComputeServiceProperty::OUTPUT_CSV_JOB_LOG, csv_batch_log},
+                                          {BatchComputeServiceProperty::BATCH_SCHEDULING_ALGORITHM, std::string(argv[7])},
+                                          {BatchComputeServiceProperty::TASK_SELECTION_ALGORITHM, "maximum_flops"},
+                                          {BatchComputeServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])},
+                                          {BatchComputeServiceProperty::SIMULATE_COMPUTATION_AS_SLEEP, "true"},
+                                          {BatchComputeServiceProperty::BATSCHED_CONTIGUOUS_ALLOCATION, "true"},
+                                          {BatchComputeServiceProperty::BATSCHED_LOGGING_MUTED, "true"},
+                                          {BatchComputeServiceProperty::USE_REAL_RUNTIMES_AS_REQUESTED_RUNTIMES_IN_WORKLOAD_TRACE_FILE, "true"}
                                          }, {});
     } catch (std::invalid_argument &e) {
 
         WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
         WRENCH_INFO("Trying the non-BATSCHED version with FCFS...");
         try {
-            batch_service = new BatchService(login_hostname, compute_nodes, 0,
-                                             {{BatchServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
-                                              {BatchServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(
+            tmp_batch_service = new BatchComputeService(login_hostname, compute_nodes, 0,
+                                             {{BatchComputeServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
+                                              {BatchComputeServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(
                                                       argv[2])}
                                              }, {});
         } catch (std::invalid_argument &e) {
@@ -270,7 +271,7 @@ int Simulator::main(int argc, char **argv) {
         }
     }
 
-    simulation->add(batch_service);
+    batch_service = simulation->add(tmp_batch_service);
 
     // Create the WMS
     WMS *wms = nullptr;
@@ -544,7 +545,7 @@ Workflow *Simulator::createDAXWorkflow(std::vector<std::string> spec_tokens) {
 
 
 WMS *Simulator::createWMS(std::string hostname,
-                          BatchService *batch_service,
+                          std::shared_ptr<BatchComputeService> batch_service,
                           unsigned long max_num_jobs,
                           std::string scheduler_spec) {
 

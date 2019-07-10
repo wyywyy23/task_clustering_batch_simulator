@@ -25,7 +25,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(level_by_level_clustering_wms, "Log category for Le
 namespace wrench {
 
     LevelByLevelWMS::LevelByLevelWMS(Simulator *simulator, std::string hostname, bool overlap, std::string clustering_spec,
-                                     BatchService *batch_service) :
+                                     std::shared_ptr<BatchComputeService> batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
       this->simulator = simulator;
       this->overlap = overlap;
@@ -318,7 +318,7 @@ namespace wrench {
 
 
 
-    void LevelByLevelWMS::processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) {
+    void LevelByLevelWMS::processEventPilotJobStart(std::shared_ptr<PilotJobStartedEvent> e) {
       // Just for kicks, check it was the pending one
       WRENCH_INFO("Got a Pilot Job Start event: %s", e->pilot_job->getName().c_str());
 
@@ -366,7 +366,7 @@ namespace wrench {
     }
 
 
-    void LevelByLevelWMS::processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) {
+    void LevelByLevelWMS::processEventPilotJobExpiration(std::shared_ptr<PilotJobExpiredEvent> e) {
 
       // Find the placeholder job
       // Find the placeholder job in the pending list
@@ -471,7 +471,7 @@ namespace wrench {
     }
 
 
-    void LevelByLevelWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
+    void LevelByLevelWMS::processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent> e) {
 
       WorkflowTask *completed_task = e->standard_job->tasks[0]; // only one task per job
 
@@ -564,7 +564,7 @@ namespace wrench {
 
     }
 
-    void LevelByLevelWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
+    void LevelByLevelWMS::processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) {
       WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS (the pilot job expiration event will handle these issues)", e->standard_job->tasks[0]->getID().c_str());
     }
 

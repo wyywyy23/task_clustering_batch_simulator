@@ -82,7 +82,7 @@ namespace wrench {
 
     unsigned long
     ClusteredJob::computeBestNumNodesBasedOnQueueWaitTimePredictions(unsigned long max_num_nodes, double core_speed,
-                                                                     BatchService *batch_service) {
+                                                                     std::shared_ptr<BatchComputeService> batch_service) {
 
         // Build job configurations
         unsigned long real_max_num_nodes = std::min(this->getNumTasks(), max_num_nodes);

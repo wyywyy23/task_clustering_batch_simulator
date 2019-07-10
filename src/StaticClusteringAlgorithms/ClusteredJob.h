@@ -39,7 +39,7 @@ namespace wrench {
         unsigned long getMaxParallelism();
 
         unsigned long computeBestNumNodesBasedOnQueueWaitTimePredictions(unsigned long max_num_nodes, double core_speed,
-                                                                         BatchService *batch_service);
+                                                                         std::shared_ptr<BatchComputeService> batch_service);
 
         bool isNumNodesBasedOnQueueWaitTimePrediction();
 

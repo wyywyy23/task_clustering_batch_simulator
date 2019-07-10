@@ -34,7 +34,7 @@ namespace wrench {
         wrench::Workflow *createDAXWorkflow(std::vector<std::string> spec_tokens);
 
         wrench::WMS *
-        createWMS(std::string scheduler_spec, wrench::BatchService *batch_service, unsigned long max_num_jobs,
+        createWMS(std::string scheduler_spec, std::shared_ptr<wrench::BatchComputeService> batch_service, unsigned long max_num_jobs,
                   std::string algorithm_name);
 
 
