@@ -238,7 +238,7 @@ if __name__ == '__main__':
     elif len(sys.argv) == 2:
         print("Saving results to %s" % sys.argv[1])
         save_to_mongo = True
-        coll_name = sys.argv[2]
+        coll_name = sys.argv[1]
     else:
         print("invalid number of arguments")
         exit()
