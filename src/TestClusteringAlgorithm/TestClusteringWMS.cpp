@@ -191,8 +191,8 @@ namespace wrench {
 
         if (partial_dag_end_level == end_level) {
             if (estimated_wait_time > requested_execution_time * 2.0) {
-                this->individual_mode = true;
-                std::cout << "INDIVIDUAL MODE" << std::endl;
+                // this->individual_mode = true;
+                // std::cout << "INDIVIDUAL MODE" << std::endl;
             }
         } else {
             std::cout << "Splitting @ end level = " << partial_dag_end_level << std::endl;
