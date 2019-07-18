@@ -12,14 +12,14 @@ class StaticClusteringWMS : public WMS {
 
 public:
 
-    StaticClusteringWMS(Simulator *simulator, std::string hostname, BatchService *batch_service,
+    StaticClusteringWMS(Simulator *simulator, std::string hostname, std::shared_ptr<BatchComputeService> batch_service,
                         unsigned long max_num_jobs, std::string algorithm_spec);
 
     int main() override;
 
-    void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent>) override;
+    void processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent>) override;
 
-    void processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent>) override;
+    void processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent>) override;
 
     static std::set<ClusteredJob *>
     createHCJobs(std::string vc, unsigned long num_tasks_per_cluster, unsigned long num_nodes_per_cluster,
@@ -60,7 +60,7 @@ private:
 
     Simulator *simulator;
 
-    BatchService *batch_service;
+    std::shared_ptr<BatchComputeService> batch_service;
     unsigned long number_of_nodes;
 
     unsigned long max_num_jobs;

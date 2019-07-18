@@ -13,7 +13,7 @@
 
 
 #include <wms/WMS.h>
-#include <services/compute/batch/BatchService.h>
+#include <services/compute/batch/BatchComputeService.h>
 
 
 namespace wrench {
@@ -27,11 +27,11 @@ namespace wrench {
     public:
 
         TestClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit, double waste_bound,
-                          double beat_bound, BatchService *batch_service);
+                          double beat_bound, std::shared_ptr<BatchComputeService> batch_service);
 
     private:
 
-        BatchService *batch_service;
+        std::shared_ptr<BatchComputeService> batch_service;
 
         int main() override;
 
@@ -42,13 +42,13 @@ namespace wrench {
                                            unsigned long start_level,
                                            unsigned long end_level);
 
-        void processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) override;
+        void processEventPilotJobStart(std::shared_ptr<PilotJobStartedEvent> e) override;
 
-        void processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) override;
+        void processEventPilotJobExpiration(std::shared_ptr<PilotJobExpiredEvent> e) override;
 
-        void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) override;
+        void processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent> e) override;
 
-        void processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) override;
+        void processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) override;
 
         double
         estimateWaitTime(long parallelism, double makespan, int *sequence);

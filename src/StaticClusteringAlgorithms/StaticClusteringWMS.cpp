@@ -11,7 +11,7 @@ using namespace wrench;
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(static_clustering_wms, "Log category for Static Clustering WMS");
 
-StaticClusteringWMS::StaticClusteringWMS(Simulator *simulator, std::string hostname, BatchService *batch_service,
+StaticClusteringWMS::StaticClusteringWMS(Simulator *simulator, std::string hostname, std::shared_ptr<BatchComputeService> batch_service,
                                          unsigned long max_num_jobs, std::string algorithm_spec) :
         WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "static_clustering_wms") {
     this->simulator = simulator;
@@ -21,7 +21,7 @@ StaticClusteringWMS::StaticClusteringWMS(Simulator *simulator, std::string hostn
 }
 
 
-void StaticClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
+void StaticClusteringWMS::processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent> e) {
     StandardJob *job = e->standard_job;
     WRENCH_INFO("Job %s has completed", job->getName().c_str());
 
@@ -48,7 +48,7 @@ void StaticClusteringWMS::processEventStandardJobCompletion(std::unique_ptr<Stan
 }
 
 
-void StaticClusteringWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
+void StaticClusteringWMS::processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) {
     throw std::runtime_error("A job has failed, which shouldn't happen");
 }
 

@@ -8,7 +8,6 @@
  */
 
 
-#include <workflow/Workflow.h>
 #include <cfloat>
 #include <xbt/base.h>
 #include <xbt/log.h>
