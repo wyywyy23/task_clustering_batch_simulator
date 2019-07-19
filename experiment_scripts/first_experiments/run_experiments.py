@@ -109,17 +109,18 @@ if __name__ == '__main__':
     #for i in xrange(1, num_tasks_per_level+1):
     #    algorithm_list.append("static:one_job-"+str(i))
 
+    algorithm_list.append("static:one_job-10")
     algorithm_list.append("static:one_job-0")
     #algorithm_list.append("levelbylevel:overlap:hc-5-0")
     #algorithm_list.append("levelbylevel:overlap:hc-10-0")
     #algorithm_list.append("levelbylevel:overlap:hc-50-0")
     #algorithm_list.append("static:one_job_per_task")
-    algorithm_list.append("zhang:overlap:pnolimit")
+    #algorithm_list.append("zhang:overlap:pnolimit")
     #algorithm_list.append("zhang:nooverlap:pnolimit")
 
 
 
-    for workflow_start_time in xrange(1*24*3600, 4*24*3600, 1*600):
+    for workflow_start_time in xrange(1*24*3600, 2*24*3600, 1*600):
         for algorithm in algorithm_list:
         	command_line = "../../simulator " + str(num_compute_nodes) + " " + workload_trace_file + " " + str(max_num_jobs) + " " + workflow_config + " " +  str(workflow_start_time) + " " + algorithm + " conservative_bf --wrench-no-log"
                 f = open(output_file_name,"a")

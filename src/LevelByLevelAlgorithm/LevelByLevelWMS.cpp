@@ -25,7 +25,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(level_by_level_clustering_wms, "Log category for Le
 namespace wrench {
 
     LevelByLevelWMS::LevelByLevelWMS(Simulator *simulator, std::string hostname, bool overlap, std::string clustering_spec,
-                                     BatchService *batch_service) :
+                                     std::shared_ptr<BatchComputeService> batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
       this->simulator = simulator;
       this->overlap = overlap;
@@ -41,7 +41,7 @@ namespace wrench {
       this->checkDeferredStart();
 
       // Find out core speed on the batch service
-      this->core_speed = *(this->batch_service->getCoreFlopRate().begin());
+      this->core_speed = (*(this->batch_service->getCoreFlopRate().begin())).second;
       // Find out #hosts on the batch service
       this->number_of_nodes = this->batch_service->getNumHosts();
 
@@ -129,16 +129,14 @@ namespace wrench {
         // Create the pilot job
         double makespan = ph->clustered_job->estimateMakespan(this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
         // Create the pilot job
-        ph->pilot_job = this->job_manager->createPilotJob(
-                ph->clustered_job->getNumNodes(),
-                1, 0, makespan);
+        ph->pilot_job = this->job_manager->createPilotJob();
 
 
         // submit the corresponding pilot job
         std::map<std::string, std::string> service_specific_args;
-        service_specific_args["-N"] = std::to_string(ph->pilot_job->getNumHosts());
-        service_specific_args["-c"] = std::to_string(ph->pilot_job->getNumCoresPerHost());
-        service_specific_args["-t"] = std::to_string(1 + ((unsigned long) (ph->pilot_job->getDuration())) / 60);
+        service_specific_args["-N"] = std::to_string(ph->clustered_job->getNumNodes());
+        service_specific_args["-c"] = std::to_string(1);
+        service_specific_args["-t"] = std::to_string(1 + ((unsigned long) (makespan) / 60));
         this->job_manager->submitJob(ph->pilot_job, this->batch_service,
                                      service_specific_args);
         WRENCH_INFO("Submitted a Pilot Job (%s hosts, %s min) for workflow level %lu (%s)",
@@ -320,7 +318,7 @@ namespace wrench {
 
 
 
-    void LevelByLevelWMS::processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) {
+    void LevelByLevelWMS::processEventPilotJobStart(std::shared_ptr<PilotJobStartedEvent> e) {
       // Just for kicks, check it was the pending one
       WRENCH_INFO("Got a Pilot Job Start event: %s", e->pilot_job->getName().c_str());
 
@@ -368,7 +366,7 @@ namespace wrench {
     }
 
 
-    void LevelByLevelWMS::processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) {
+    void LevelByLevelWMS::processEventPilotJobExpiration(std::shared_ptr<PilotJobExpiredEvent> e) {
 
       // Find the placeholder job
       // Find the placeholder job in the pending list
@@ -402,7 +400,13 @@ namespace wrench {
         }
       }
 
-      double wasted_node_seconds = e->pilot_job->getNumHosts() * e->pilot_job->getDuration();
+//      double wasted_node_seconds = e->pilot_job->getNumHosts() * e->pilot_job->getDuration();
+      unsigned long num_used_nodes;
+      sscanf(e->pilot_job->getServiceSpecificArguments()["-N"].c_str(),"%lu", &num_used_nodes);
+      unsigned long num_used_minutes;
+      sscanf(e->pilot_job->getServiceSpecificArguments()["-t"].c_str(),"%lu", &num_used_minutes);
+      double wasted_node_seconds = 60.0 * num_used_minutes * num_used_nodes;
+
       for (auto t : placeholder_job->clustered_job->getTasks()) {
         if (t->getState() == WorkflowTask::COMPLETED) {
           wasted_node_seconds -= t->getFlops() / this->core_speed;
@@ -439,7 +443,7 @@ namespace wrench {
       double makespan = cj->estimateMakespan(this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
 
       // Create the pilot job
-      PilotJob *pj = this->job_manager->createPilotJob(cj->getNumNodes(), 1, 0, makespan);
+      PilotJob *pj = this->job_manager->createPilotJob();
 
       PlaceHolderJob *replacement_placeholder_job =
               new PlaceHolderJob(pj, cj,
@@ -449,9 +453,9 @@ namespace wrench {
       ongoing_level->pending_placeholder_jobs.insert(replacement_placeholder_job);
       // submit the corresponding pilot job
       std::map<std::string, std::string> service_specific_args;
-      service_specific_args["-N"] = std::to_string(replacement_placeholder_job->pilot_job->getNumHosts());
-      service_specific_args["-c"] = std::to_string(replacement_placeholder_job->pilot_job->getNumCoresPerHost());
-      service_specific_args["-t"] = std::to_string(1 + ((unsigned long) (replacement_placeholder_job->pilot_job->getDuration())) / 60);
+      service_specific_args["-N"] = std::to_string(cj->getNumNodes());
+      service_specific_args["-c"] = std::to_string(1);
+      service_specific_args["-t"] = std::to_string(1 + ((unsigned long) (makespan)) / 60);
       this->job_manager->submitJob(replacement_placeholder_job->pilot_job, this->batch_service,
                                    service_specific_args);
       WRENCH_INFO("Submitted a Pilot Job (%s hosts, %s min) for workflow level %lu (%s)",
@@ -467,7 +471,7 @@ namespace wrench {
     }
 
 
-    void LevelByLevelWMS::processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) {
+    void LevelByLevelWMS::processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent> e) {
 
       WorkflowTask *completed_task = e->standard_job->tasks[0]; // only one task per job
 
@@ -506,7 +510,13 @@ namespace wrench {
       if (all_tasks_done) {
 
         // Update the wasted no seconds metric
-        double wasted_node_seconds = placeholder_job->pilot_job->getNumHosts() * placeholder_job->pilot_job->getDuration();
+//        double wasted_node_seconds = placeholder_job->pilot_job->getNumHosts() * placeholder_job->pilot_job->getDuration();
+        unsigned long num_used_nodes;
+        sscanf(placeholder_job->pilot_job->getServiceSpecificArguments()["-N"].c_str(),"%lu", &num_used_nodes);
+        unsigned long num_used_minutes;
+        sscanf(placeholder_job->pilot_job->getServiceSpecificArguments()["-t"].c_str(),"%lu", &num_used_minutes);
+        double wasted_node_seconds = 60.0 * num_used_minutes * num_used_nodes;
+
         for (auto t : placeholder_job->clustered_job->getTasks()) {
           if (t->getState() == WorkflowTask::COMPLETED) {
             wasted_node_seconds -= t->getFlops() / this->core_speed;
@@ -554,7 +564,7 @@ namespace wrench {
 
     }
 
-    void LevelByLevelWMS::processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) {
+    void LevelByLevelWMS::processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) {
       WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS (the pilot job expiration event will handle these issues)", e->standard_job->tasks[0]->getID().c_str());
     }
 

@@ -11,7 +11,7 @@
 #define TASK_CLUSTERING_BATCH_SIMULATOR_LEVELBYLEVELWMS_H
 
 
-#include <services/compute/batch/BatchService.h>
+#include <services/compute/batch/BatchComputeService.h>
 
 namespace wrench {
 
@@ -24,16 +24,17 @@ namespace wrench {
 
     public:
 
-        LevelByLevelWMS(Simulator *simulator, std::string hostname, bool overlap, std::string clustering_spec, BatchService *batch_service);
+        LevelByLevelWMS(Simulator *simulator, std::string hostname, bool overlap,
+                std::string clustering_spec, std::shared_ptr<BatchComputeService> batch_service);
 
 
     private:
 
         int main() override;
-        void processEventPilotJobStart(std::unique_ptr<PilotJobStartedEvent> e) override;
-        void processEventPilotJobExpiration(std::unique_ptr<PilotJobExpiredEvent> e) override;
-        void processEventStandardJobCompletion(std::unique_ptr<StandardJobCompletedEvent> e) override;
-        void processEventStandardJobFailure(std::unique_ptr<StandardJobFailedEvent> e) override;
+        void processEventPilotJobStart(std::shared_ptr<PilotJobStartedEvent> e) override;
+        void processEventPilotJobExpiration(std::shared_ptr<PilotJobExpiredEvent> e) override;
+        void processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent> e) override;
+        void processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) override;
 
         void submitPilotJobsForNextLevel();
 
@@ -45,7 +46,7 @@ namespace wrench {
 
         bool overlap;
         std::string clustering_spec;
-        BatchService *batch_service;
+        std::shared_ptr<BatchComputeService> batch_service;
 
 
         double core_speed;
