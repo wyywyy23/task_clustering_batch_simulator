@@ -36,6 +36,7 @@ set(SOURCE_FILES
 
 # wrench library and dependencies
 find_library(WRENCH_LIBRARY NAMES wrench)
+find_library(WRENCH_PEGASUS_TOOL_LIBRARY NAMES wrenchpegasusworkflowparser)
 find_library(SIMGRID_LIBRARY NAMES simgrid)
 find_library(PUGIXML_LIBRARY NAMES pugixml)
 find_library(LEMON_LIBRARY NAMES emon)
@@ -46,6 +47,7 @@ add_executable(simulator ${SOURCE_FILES})
 
 target_link_libraries(simulator
         ${WRENCH_LIBRARY}
+        ${WRENCH_PEGASUS_TOOL_LIBRARY}
         ${SIMGRID_LIBRARY}
         ${PUGIXML_LIBRARY}
         ${LEMON_LIBRARY}

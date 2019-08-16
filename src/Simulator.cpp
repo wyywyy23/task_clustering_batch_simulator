@@ -253,6 +253,7 @@ int Simulator::main(int argc, char **argv) {
                                           {BatchComputeServiceProperty::SIMULATE_COMPUTATION_AS_SLEEP, "true"},
                                           {BatchComputeServiceProperty::BATSCHED_CONTIGUOUS_ALLOCATION, "true"},
                                           {BatchComputeServiceProperty::BATSCHED_LOGGING_MUTED, "true"},
+                                          {BatchComputeServiceProperty::IGNORE_INVALID_JOBS_IN_WORLOAD_TRACE_FILE, "true"},
                                           {BatchComputeServiceProperty::USE_REAL_RUNTIMES_AS_REQUESTED_RUNTIMES_IN_WORKLOAD_TRACE_FILE, "true"}
                                          }, {});
     } catch (std::invalid_argument &e) {
@@ -506,9 +507,9 @@ Workflow *Simulator::createLevelsWorkflow(std::vector<std::string> spec_tokens) 
 Workflow *Simulator::createDAXWorkflow(std::vector<std::string> spec_tokens) {
     std::string filename = spec_tokens[1];
 
-    auto original_workflow = new Workflow();
+    Workflow *original_workflow = nullptr;
     try {
-        original_workflow->loadFromDAXorJSON(filename, "1");
+        original_workflow = PegasusWorkflowParser::createWorkflowFromJSON(filename, "1");
     } catch (std::invalid_argument &e) {
         throw std::runtime_error("Cannot import workflow from DAX");
     }
