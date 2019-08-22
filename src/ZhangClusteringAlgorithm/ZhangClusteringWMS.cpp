@@ -94,6 +94,7 @@ namespace wrench {
         double runtime_all, wait_time_all;
         double peel_runtime[2], peel_wait_time[2];
 
+        // maximum parallelism, but never more than total number of nodes
         unsigned long max_parallelism = maxParallelism(start_level, end_level);
 
         // calculate the runtime of entire DAG
@@ -585,6 +586,17 @@ namespace wrench {
                 }
             }
             // What the heck is this doing??
+            // this is likely broken:
+            //    When checking if aggregating one level is a good idea, we compare to
+            //      what would happen if running the whole remainder of the DAG
+            //    But afterwards we compare to what would happen with the previous "one less
+            //      level" solution.
+            //    So the "greedy search" is weird, because the first step of it is
+            //    very different from the second step.  It seems that a better approach
+            //    would be to use "1 level" as the baseline, and then see when "i levels"
+            //    outperforms it. As opposed to perhaps picking "1 level" right away because
+            //    it happens to be better than "the whole remainder of the DAG"!
+
             // std::cout << "Reached bottom" << std::endl;
             peel_wait_time[0] = peel_wait_time[1];
             peel_runtime[0] = peel_runtime[1];
