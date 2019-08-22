@@ -509,7 +509,7 @@ Workflow *Simulator::createDAXWorkflow(std::vector<std::string> spec_tokens) {
 
     Workflow *original_workflow = nullptr;
     try {
-        original_workflow = PegasusWorkflowParser::createWorkflowFromJSON(filename, "1");
+        original_workflow = PegasusWorkflowParser::createWorkflowFromDAX(filename, "1");
     } catch (std::invalid_argument &e) {
         throw std::runtime_error("Cannot import workflow from DAX");
     }
