@@ -6,7 +6,8 @@
 #include "Simulator.h"
 #include "Util/WorkflowUtil.h"
 #include "StaticClusteringAlgorithms/StaticClusteringWMS.h"
-#include "ZhangClusteringAlgorithm/ZhangClusteringWMS.h"
+#include "ZhangClusteringAlgorithms/ZhangClusteringWMS.h"
+#include "ZhangClusteringAlgorithms/ZhangFixedWMS.h"
 #include "EvanClusteringAlgorithm/EvanClusteringWMS.h"
 #include "TestClusteringAlgorithm/TestClusteringWMS.h"
 
@@ -148,6 +149,9 @@ int Simulator::main(int argc, char **argv) {
         std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts"
                   << "\n";
         std::cerr << "        to pack that tasks into a job" << "\n";
+        std::cerr << "    * \e[1mzhang_fixed:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
+        std::cerr << "      - Improvements to Zhang et al. algorithm" << "\n";
+        std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
         std::cerr << "    * \e[1mevan:[overlap|nooverlap]:[plimit|pnolimit]:waste_bound\e[0m" << "\n";
         std::cerr << "      - Improvements to Zhang et al. algorithm" << "\n";
         std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
@@ -589,6 +593,29 @@ WMS *Simulator::createWMS(std::string hostname,
             throw std::invalid_argument("createWMS(): Invalid zhang specification");
         }
         return new ZhangClusteringWMS(this, hostname, overlap, plimit, batch_service);
+
+    } else if (tokens[0] == "zhang_fixed") {
+
+        if (tokens.size() != 3) {
+            throw std::invalid_argument("createWMS(): Invalid zhang_fixed specification");
+        }
+        bool overlap;
+        if (tokens[1] == "overlap") {
+            overlap = true;
+        } else if (tokens[1] == "nooverlap") {
+            overlap = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid zhang_fixed specification");
+        }
+        bool plimit;
+        if (tokens[2] == "plimit") {
+            plimit = true;
+        } else if (tokens[2] == "pnolimit") {
+            plimit = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid zhang_fixed specification");
+        }
+        return new ZhangFixedWMS(this, hostname, overlap, plimit, batch_service);
 
     } else if (tokens[0] == "evan") {
 
