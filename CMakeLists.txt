@@ -14,14 +14,19 @@ set(SOURCE_FILES
         src/Simulator.h
         src/Util/WorkflowUtil.cpp
         src/Util/WorkflowUtil.h
+        src/Util/ProxyWMS.cpp
+        src/Util/ProxyWMS.h
+        src/Util/PlaceHolderJob.h
         src/LevelByLevelAlgorithm/OngoingLevel.cpp
         src/LevelByLevelAlgorithm/OngoingLevel.h
         src/LevelByLevelAlgorithm/LevelByLevelWMS.cpp
         src/LevelByLevelAlgorithm/LevelByLevelWMS.h
         src/LevelByLevelAlgorithm/PlaceHolderJob.h
-        src/ZhangClusteringAlgorithm/ZhangClusteringWMS.cpp
-        src/ZhangClusteringAlgorithm/ZhangClusteringWMS.h
-        src/ZhangClusteringAlgorithm/ZhangPlaceHolderJob.h
+        src/ZhangClusteringAlgorithms/ZhangClusteringWMS.cpp
+        src/ZhangClusteringAlgorithms/ZhangClusteringWMS.h
+        src/ZhangClusteringAlgorithms/ZhangFixedWMS.cpp
+        src/ZhangClusteringAlgorithms/ZhangFixedWMS.h
+        src/ZhangClusteringAlgorithms/ZhangPlaceHolderJob.h
         src/EvanClusteringAlgorithm/EvanClusteringWMS.cpp
         src/EvanClusteringAlgorithm/EvanClusteringWMS.h
         src/EvanClusteringAlgorithm/EvanPlaceHolderJob.h
