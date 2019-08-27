@@ -471,9 +471,9 @@ namespace wrench {
                 max_parallelism, this->core_speed);
         double wait_time_all = estimateWaitTime(max_parallelism, runtime_all, &sequence);
 
-        double prev_real_runtime, curr_real_runtime = DBL_MAX;
-        double prev_peel_runtime, curr_peel_runtime = DBL_MAX;
-        double prev_peel_wait_time, curr_peel_wait_time = DBL_MAX;
+        double prev_real_runtime = DBL_MAX, curr_real_runtime = DBL_MAX;
+        double prev_peel_runtime = DBL_MAX, curr_peel_runtime = DBL_MAX;
+        double prev_peel_wait_time = DBL_MAX, curr_peel_wait_time = DBL_MAX;
 
         // Start with first level as baseline for ratio comparison
         prev_real_runtime = WorkflowUtil::estimateMakespan(
@@ -484,6 +484,7 @@ namespace wrench {
 
         // Start comparing from 2nd level
         unsigned long candidate_end_level = start_level + 1;
+
         while (candidate_end_level < end_level) {
             unsigned long num_nodes = maxParallelism(start_level, candidate_end_level);
             curr_peel_runtime = WorkflowUtil::estimateMakespan(
@@ -522,9 +523,9 @@ namespace wrench {
             }
             giant = false;
             if (curr_peel_wait_time - parent_runtime > 0) {
-                if (curr_peel_wait_time / curr_real_runtime > prev_peel_wait_time / prev_real_runtime) {
+                if (curr_peel_wait_time / curr_real_runtime < prev_peel_wait_time / prev_real_runtime) {
                     break;
-                } else if (curr_peel_wait_time / curr_real_runtime > wait_time_all / runtime_all) {
+                } else if (curr_peel_wait_time / curr_real_runtime < wait_time_all / runtime_all) {
                     break;
                 }
             }
