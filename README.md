@@ -17,7 +17,9 @@ a batch scheduled service.
 
 ### "Zhang" Algorithms
 
-- zhang: based on the paper with "fixes":
+- zhang (our original implementation): DEPRECATED
+
+- zhang (called as zhang_fixed by simulator): based on the paper with "fixes":
   - fix #1: if workflow is too wide, don't abort, just pack tasks in an allocation that maxes out machine capacity
   - fix #2: fix the potentially infinite "leeway" loop (Fig.5, line 11)
   - fix #3: Fix the comparison in the grouping loop:

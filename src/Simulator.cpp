@@ -135,6 +135,7 @@ int Simulator::main(int argc, char **argv) {
         std::cerr << "      - Cluster tasks with single-parent-single-child depepdencies" << "\n";
         std::cerr << "    * \e[1mzhang:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
         std::cerr << "      - The algorithm by Zhang, Koelbel, and Cooper" << "\n";
+        std::cerr << "      - **DEPRECATED, use zhang_fixed**" << "\n";
         std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING - WE DEFAULT TO NEVER FAIL**" << "\n";
         std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
         std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
@@ -572,6 +573,8 @@ WMS *Simulator::createWMS(std::string hostname,
         return wms;
 
     } else if (tokens[0] == "zhang") {
+
+        throw std::invalid_argument("createWMS(): \"zhang\" DEPRECATED, use \"zhang_fixed\"");
 
         if (tokens.size() != 3) {
             throw std::invalid_argument("createWMS(): Invalid zhang specification");
