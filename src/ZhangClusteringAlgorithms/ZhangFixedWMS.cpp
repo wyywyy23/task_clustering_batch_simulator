@@ -523,11 +523,12 @@ namespace wrench {
             }
             giant = false;
             if (curr_peel_wait_time - parent_runtime > 0) {
-                if (curr_peel_wait_time / curr_real_runtime < prev_peel_wait_time / prev_real_runtime) {
-                    break;
-                } else if (curr_peel_wait_time / curr_real_runtime < wait_time_all / runtime_all) {
+                if (curr_peel_wait_time / curr_real_runtime > prev_peel_wait_time / prev_real_runtime) {
                     break;
                 }
+//                else if (curr_peel_wait_time / curr_real_runtime < wait_time_all / runtime_all) {
+//                    break;
+//                }
             }
 
             // this is likely broken:
@@ -553,7 +554,7 @@ namespace wrench {
             return std::make_tuple(-1, -1, end_level);
         } else {
             // return partial dag
-            return std::make_tuple(curr_peel_wait_time, curr_peel_runtime, candidate_end_level);
+            return std::make_tuple(prev_peel_wait_time, prev_peel_runtime, candidate_end_level-1);
         }
     }
 
