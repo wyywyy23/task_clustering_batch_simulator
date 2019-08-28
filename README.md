@@ -20,15 +20,14 @@ a batch scheduled service.
 - zhang: based on the paper with "fixes":
   - fix #1: if workflow is too wide, don't abort, just pack tasks in an allocation that maxes out machine capacity
   - fix #2: fix the potentially infinite "leeway" loop (Fig.5, line 11)
+  - fix #3: Fix the comparison in the grouping loop:
+        - do not compare "1 level" to "all" as the baseline in the first iteration of Fig 5., line 8 (instead use "1 level" as the baseline)
+        - never compare to "all" in fact
 
-- zhang_fixed: Zhang with the following two other fixes
-  - potential fix #3: reverse the obviously broken '<' (Fig 5., lines 28 and 31) (contradicts the text in the paper)
-  - potential fix #4: do not compare "1 level" to "all" as the baseline in the first iteration of Fig 5., line 8 (instead use "1 level" as the baseline)
-
-- zhang_fixed_global: Zhang_fixed + this feature
+- zhang_global: zhang + this feature
     - pick the globally best ratio in the search (not as "greedy" as Zhang)
 
-- zhang_fixed_global_prediction: Zhang_fixed_global + this feature
+- zhang_global_prediction: zhang_global + this feature
     - use of prediction to pick the best number of nodes for the by-level grouping
 
 - test: A new cool idea!
