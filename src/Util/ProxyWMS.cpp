@@ -8,6 +8,9 @@
 #include "ProxyWMS.h"
 #include "PlaceHolderJob.h"
 
+XBT_LOG_NEW_DEFAULT_CATEGORY(proxy_wms,"Log category for Proxy WMS");
+
+
 namespace wrench {
 
     ProxyWMS::ProxyWMS(Workflow *workflow, std::shared_ptr<JobManager> job_manager,
