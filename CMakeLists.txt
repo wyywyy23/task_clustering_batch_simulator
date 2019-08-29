@@ -16,6 +16,7 @@ set(SOURCE_FILES
         src/Util/WorkflowUtil.h
         src/Util/ProxyWMS.cpp
         src/Util/ProxyWMS.h
+        src/Util/PlaceHolderJob.cpp
         src/Util/PlaceHolderJob.h
         src/LevelByLevelAlgorithm/OngoingLevel.cpp
         src/LevelByLevelAlgorithm/OngoingLevel.h
