@@ -47,8 +47,6 @@ namespace wrench {
 
         void processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) override;
 
-        double estimateWaitTime(long parallelism, double makespan, int *sequence);
-
         unsigned long getStartLevel();
 
         unsigned long maxParallelism(unsigned long start_level, unsigned long end_level);

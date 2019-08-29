@@ -13,6 +13,7 @@
 #include "ZhangFixedWMS.h"
 #include <Util/ProxyWMS.h>
 #include <Util/PlaceHolderJob.h>
+#include <assert.h>
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(zhang_fixed_wms,
                              "Log category for Zhang Fixed WMS");
@@ -23,7 +24,6 @@ namespace wrench {
 
     class Simulator;
 
-    static double parent_runtime = 0;
     static int sequence = 0;
 
     ZhangFixedWMS::ZhangFixedWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit,
@@ -61,7 +61,9 @@ namespace wrench {
             this->waitForAndProcessNextEvent();
 
         }
+
         std::cout << "#SPLITS=" << this->number_of_splits << "\n";
+
         return 0;
     }
 
@@ -93,20 +95,6 @@ namespace wrench {
         }
 
         // peelLevel() (Fig. 4 in the paper)
-        double wait_time_all, runtime_all;
-        // double peel_runtime[2], peel_wait_time[2];
-
-        // maximum parallelism, but never more than total number of nodes
-        unsigned long max_parallelism = maxParallelism(start_level, end_level);
-
-        // calculate the runtime of entire DAG
-        runtime_all = WorkflowUtil::estimateMakespan(
-                this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
-                max_parallelism, this->core_speed);
-        wait_time_all = estimateWaitTime(max_parallelism, runtime_all, &sequence);
-
-        // peel_runtime[0] = runtime_all;
-        // peel_wait_time[0] = wait_time_all;
 
         // See if we can do better by grouping (Fig. 5 in the paper)
         // return params: wait_time, makespan, end_level
@@ -115,7 +103,18 @@ namespace wrench {
         double partial_dag_makespan = std::get<1>(partial_dag);
         unsigned long partial_dag_end_level = std::get<2>(partial_dag);
 
-        if (partial_dag_end_level >= end_level) {
+        // calculate the runtime of entire DAG
+        // maximum parallelism, but never more than total number of nodes
+        unsigned long max_parallelism = maxParallelism(start_level, end_level);
+        double runtime_all = WorkflowUtil::estimateMakespan(
+                this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
+                max_parallelism, this->core_speed);
+        double wait_time_all = this->proxyWMS->estimateWaitTime(max_parallelism, runtime_all,
+                                                                this->simulation->getCurrentSimulatedDate(), &sequence);
+
+        assert(partial_dag_end_level <= end_level);
+
+        if (partial_dag_end_level == end_level) {
             if (wait_time_all > runtime_all * 2.0) {
                 // submit remaining dag as 1 job per task
                 this->individual_mode = true;
@@ -137,28 +136,15 @@ namespace wrench {
             // recalculate parallelism for partial dag
             unsigned long parallelism = maxParallelism(start_level, partial_dag_end_level);
             std::cout << "Nodes: " << parallelism << std::endl;
+            // TODO this is not right, makespan needs to be recalculated
             this->pending_placeholder_job = this->proxyWMS->createAndSubmitPlaceholderJob(
                     partial_dag_makespan,
                     parallelism,
                     start_level,
                     partial_dag_end_level);
-            parent_runtime = this->pending_placeholder_job->requested_execution_time;
         } else { WRENCH_INFO("Switching to individual mode!");
             // Submit all READY tasks as individual jobs
-            for (auto task : this->getWorkflow()->getTasks()) {
-                if (task->getState() == WorkflowTask::State::READY) {
-                    StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
-                    std::map<std::string, std::string> service_specific_args;
-                    unsigned long requested_execution_time =
-                            (task->getFlops() / this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
-                    service_specific_args["-N"] = "1";
-                    service_specific_args["-c"] = "1";
-                    service_specific_args["-t"] = std::to_string(
-                            1 + ((unsigned long) requested_execution_time) / 60);WRENCH_INFO(
-                            "Submitting task %s individually!", task->getID().c_str());
-                    this->job_manager->submitJob(standard_job, this->batch_service, service_specific_args);
-                }
-            }
+            this->proxyWMS->submitAllOneJobPerTask(this->core_speed);
         }
 
     }
@@ -407,21 +393,6 @@ namespace wrench {
                     e->standard_job->tasks[0]->getID().c_str());
     }
 
-    double ZhangFixedWMS::estimateWaitTime(long parallelism, double makespan, int *sequence) {
-        std::set<std::tuple<std::string, unsigned int, unsigned int, double>> job_config;
-        std::string config_key = "config_XXXX_" + std::to_string((*sequence)++); // need to make it unique for BATSCHED
-        job_config.insert(std::make_tuple(config_key, (unsigned int) parallelism, 1, makespan));
-        std::map<std::string, double> estimates = this->batch_service->getStartTimeEstimates(job_config);
-
-        if (estimates[config_key] < 0) {
-            throw std::runtime_error("Could not obtain start time estimate... aborting");
-        }
-
-        double wait_time_estimate = std::max<double>(0, estimates[config_key] -
-                                                        this->simulation->getCurrentSimulatedDate());
-        return wait_time_estimate;
-    }
-
     // Compute my start level first as the first level that's not fully completed
     unsigned long ZhangFixedWMS::getStartLevel() {
         unsigned long start_level = 0;
@@ -464,28 +435,51 @@ namespace wrench {
     std::tuple<double, double, unsigned long>
     ZhangFixedWMS::groupLevels(unsigned long start_level, unsigned long end_level) {
 
+        // runtime of currently running job
+        double parent_runtime = ProxyWMS::findMaxDuration(this->running_placeholder_jobs);
+
         // Calculate the wait and run for the entire DAG
         unsigned long max_parallelism = maxParallelism(start_level, end_level);
         double runtime_all = WorkflowUtil::estimateMakespan(
                 this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
                 max_parallelism, this->core_speed);
-        double wait_time_all = estimateWaitTime(max_parallelism, runtime_all, &sequence);
+        double wait_time_all = this->proxyWMS->estimateWaitTime(max_parallelism, runtime_all,
+                                                                this->simulation->getCurrentSimulatedDate(), &sequence);
 
         double prev_real_runtime = DBL_MAX, curr_real_runtime = DBL_MAX;
         double prev_peel_runtime = DBL_MAX, curr_peel_runtime = DBL_MAX;
         double prev_peel_wait_time = DBL_MAX, curr_peel_wait_time = DBL_MAX;
 
         // Start with first level as baseline for ratio comparison
+        // TODO lets follow zhang's original for now
+        /**
         prev_real_runtime = WorkflowUtil::estimateMakespan(
                 this->getWorkflow()->getTasksInTopLevelRange(start_level, start_level),
                 maxParallelism(start_level, start_level), this->core_speed);
+        prev_peel_runtime = prev_real_runtime;
+        prev_peel_wait_time = this->proxyWMS->estimateWaitTime(maxParallelism(start_level, start_level),
+                                                               prev_real_runtime,
+                                                               this->simulation->getCurrentSimulatedDate(),
+                                                               &sequence);
+        */
+
+        // Zhang original - using entire DAG as baseline
+        prev_real_runtime = runtime_all;
+        prev_peel_runtime = runtime_all;
+        prev_peel_wait_time = wait_time_all;
 
         bool giant = true;
 
         // Start comparing from 2nd level
-        unsigned long candidate_end_level = start_level + 1;
+        // unsigned long candidate_end_level = start_level + 1;
+        unsigned long candidate_end_level = start_level;
 
+        // Switch to "<=" if not using entire DAG as 1st comparison
         while (candidate_end_level < end_level) {
+
+            std::cout << "CANDIDATE END LEVEL: " << candidate_end_level << std::endl;
+
+            // Calculate the # nodes and runtime of the current grouping
             unsigned long num_nodes = maxParallelism(start_level, candidate_end_level);
             curr_peel_runtime = WorkflowUtil::estimateMakespan(
                     this->getWorkflow()->getTasksInTopLevelRange(start_level, candidate_end_level),
@@ -494,20 +488,36 @@ namespace wrench {
 
             double leeway = 0;
             do {
-                double new_runtime = curr_peel_runtime + leeway / 2;
-                double new_wait_time = estimateWaitTime(num_nodes, new_runtime, &sequence);
-                double new_leeway = parent_runtime + curr_real_runtime - new_wait_time;
+                curr_peel_runtime = curr_peel_runtime + (leeway / 2.0);
+                curr_peel_wait_time = this->proxyWMS->estimateWaitTime(num_nodes, curr_peel_runtime,
+                                                                       this->simulation->getCurrentSimulatedDate(),
+                                                                       &sequence);
+
+                // TODO - i dont really understand this calculation, also does the leeway need a fudge factor?
+                // TODO - this seems really bogus actually...
+                // double new_leeway = parent_runtime + curr_real_runtime - curr_peel_wait_time;
+                double new_leeway = std::max<double>(0, parent_runtime - curr_peel_wait_time);
+
+                std::cout << "OLD: " << leeway << " NEW: " << new_leeway << std::endl;
+
+                // Make sure leeway has changed to avoid looping forever
                 if ((int) new_leeway == (int) leeway) {
-                    // leeway has not changed, we should stop iterating
+                    // Leeway has not changed after increasing runtime request i.e. wait time did not increase
+                    // Set runtime and wait time back to previous iteration
+                    curr_peel_runtime = curr_peel_runtime - (leeway / 2.0);
+                    curr_peel_wait_time = this->proxyWMS->estimateWaitTime(num_nodes,
+                                                                           curr_peel_runtime,
+                                                                           this->simulation->getCurrentSimulatedDate(),
+                                                                           &sequence);
                     break;
                 } else {
-                    curr_peel_runtime = new_runtime;
-                    curr_peel_wait_time = new_wait_time;
+                    // paranoid check
+                    assert(new_leeway < leeway);
+                    // Yay, leeway decreased, let's continue to add to runtime in the hopes of increasing our wait time
                     leeway = new_leeway;
                 }
             } while (leeway > 600);
             if (leeway > 0) {
-                // we should recalculate the wait time here?
                 curr_peel_runtime = curr_peel_runtime + leeway;
             }
             double real_wait_time = curr_peel_wait_time - parent_runtime;
@@ -515,20 +525,29 @@ namespace wrench {
                 real_wait_time = curr_peel_wait_time;
             }
 
+            std::cout << "curr_peel_wait_time: " << curr_peel_wait_time << std::endl;
+            std::cout << "curr_real_runtime: " << curr_real_runtime << std::endl;
+            std::cout << "prev_peel_wait_time: " << prev_peel_wait_time << std::endl;
+            std::cout << "prev_real_runtime: " << prev_real_runtime << std::endl;
+
             if (giant) {
+                // zhang deems this grouping as invalid, so we pretend we didn't see it...
+                // TODO - I wonder if this is why they use all as original check, since what if the first level doesn't
+                // meet this standard. we can still default to whole DAG rather than keep first level as baseline
                 if (real_wait_time > curr_real_runtime) {
                     candidate_end_level++;
                     continue;
                 }
             }
             giant = false;
+
             if (curr_peel_wait_time - parent_runtime > 0) {
                 if (curr_peel_wait_time / curr_real_runtime > prev_peel_wait_time / prev_real_runtime) {
                     break;
                 }
-//                else if (curr_peel_wait_time / curr_real_runtime < wait_time_all / runtime_all) {
-//                    break;
-//                }
+                if (curr_peel_wait_time / curr_real_runtime > wait_time_all / runtime_all) {
+                    break;
+                }
             }
 
             // this is likely broken:
@@ -542,19 +561,21 @@ namespace wrench {
             //    outperforms it. As opposed to perhaps picking "1 level" right away because
             //    it happens to be better than "the whole remainder of the DAG"!
 
-            // std::cout << "Reached bottom" << std::endl;
             prev_peel_wait_time = curr_peel_wait_time;
             prev_peel_runtime = curr_peel_runtime;
             prev_real_runtime = curr_real_runtime;
             candidate_end_level++;
         }
         if (giant) {
-            // return whole thing
-            // going to run static algo if partial dag = DAG, so makespan and wait don't matter
-            return std::make_tuple(-1, -1, end_level);
+            // Recalculate leeway needed for entire dag
+            double leeway = std::max<double>(0, parent_runtime - wait_time_all);
+            double new_wait_time = this->proxyWMS->estimateWaitTime(max_parallelism, (runtime_all + leeway),
+                                                                    this->simulation->getCurrentSimulatedDate(),
+                                                                    &sequence);
+            return std::make_tuple(new_wait_time, (runtime_all + leeway), end_level);
         } else {
             // return partial dag
-            return std::make_tuple(prev_peel_wait_time, prev_peel_runtime, candidate_end_level-1);
+            return std::make_tuple(prev_peel_wait_time, prev_peel_runtime, candidate_end_level - 1);
         }
     }
 
