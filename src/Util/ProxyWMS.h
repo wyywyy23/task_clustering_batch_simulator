@@ -23,6 +23,12 @@ namespace wrench {
                                                       unsigned long start_level,
                                                       unsigned long end_level);
 
+        void submitAllOneJobPerTask(double core_speed);
+
+        static double findMaxDuration(std::set<PlaceHolderJob *> jobs);
+
+        double estimateWaitTime(long parallelism, double makespan, double simulation_date, int *sequence);
+
     private:
 
         Workflow *workflow;
