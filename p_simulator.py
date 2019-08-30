@@ -17,7 +17,7 @@ def simulator_command():
     executable = './build/simulator'
     num_compute_nodes = '100'
     job_trace_file = '../batch_logs/swf_traces_json/kth_sp2.json'
-    max_sys_jobs = '2004'
+    max_sys_jobs = '100'
     workflow_specification = 'levels:666:50:3600:3600:50:3600:3600:50:3600:3600:50:3600:3600'
     start_time = '100000'
     algorithm = 'evan:overlap:pnolimit'
@@ -174,19 +174,21 @@ def main():
     # trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json', '../batch_logs/swf_traces_json/sdsc_sp2.json', '../batch_logs/swf_traces_json/gaia.json', '../batch_logs/swf_traces_json/ricc.json']
     # workflows = ['dax:../m_workflows/m_montage_100.dax', 'dax:../m_workflows/m_epigenomics_100.dax', 'dax:../m_workflows/m_floodplain.dax', 'dax:../m_workflows/m_sipht_100.dax', 'dax:../m_workflows/m_psmerge_small.dax']
 
-    workflows = [create_fork_join(1, 10, 2), create_fork_join(1, 20, 2), create_fork_join(1, 50, 2), create_fork_join(3, 10, 2), create_fork_join(3, 20, 2), create_fork_join(3, 50, 2), create_fork_join(5, 10, 2), create_fork_join(5, 20, 2), create_fork_join(5, 50, 2), create_fork_join(1, 10, 5), create_fork_join(1, 20, 5), create_fork_join(1, 50, 5), create_fork_join(3, 10, 5), create_fork_join(3, 20, 5), create_fork_join(3, 50, 5), create_fork_join(5, 10, 5), create_fork_join(5, 20, 5), create_fork_join(5, 50, 5), create_fork_join(1, 10, 10), create_fork_join(1, 20, 10), create_fork_join(1, 50, 10), create_fork_join(3, 10, 10), create_fork_join(3, 20, 10), create_fork_join(3, 50, 10), create_fork_join(5, 10, 10), create_fork_join(5, 20, 10), create_fork_join(5, 50, 10)]
+    # workflows = [create_fork_join(1, 10, 2), create_fork_join(1, 20, 2), create_fork_join(1, 50, 2), create_fork_join(3, 10, 2), create_fork_join(3, 20, 2), create_fork_join(3, 50, 2), create_fork_join(5, 10, 2), create_fork_join(5, 20, 2), create_fork_join(5, 50, 2), create_fork_join(1, 10, 5), create_fork_join(1, 20, 5), create_fork_join(1, 50, 5), create_fork_join(3, 10, 5), create_fork_join(3, 20, 5), create_fork_join(3, 50, 5), create_fork_join(5, 10, 5), create_fork_join(5, 20, 5), create_fork_join(5, 50, 5), create_fork_join(1, 10, 10), create_fork_join(1, 20, 10), create_fork_join(1, 50, 10), create_fork_join(3, 10, 10), create_fork_join(3, 20, 10), create_fork_join(3, 50, 10), create_fork_join(5, 10, 10), create_fork_join(5, 20, 10), create_fork_join(5, 50, 10)]
     
+    workflows = [create_fork_join(3, 10, 5), create_fork_join(5, 50, 10)]
     # workflows = []
     # for level in [1, 3, 5]:
     #     for length in [2, 5, 10]:
     #         workflows.append(create_fork_join(level, 50, length))
  
     # Take out one_job_max
-    algorithms = ['static:one_job-0-1', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'test:1:0', 'evan:overlap:pnolimit:1']
+    # algorithms = ['static:one_job-0-1', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'test:1:0', 'evan:overlap:pnolimit:1']
     # algorithms = ['test:1:0']
+    algorithms = ['zhang_fixed:overlap:pnolimit', 'test:1:0']
     # num_nodes = [str(x * 10) for x in range(5, 16)]
     num_nodes = ['100']
-    start_times = [str(x * 21600) for x in range(4, 121)]
+    start_times = [str(x * 1800) for x in range(48, 100)]
     # start_times = [str(x * 3600) for x in range(100, 200)]
     # workflows = ['levels:666:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600']
 
@@ -205,6 +207,8 @@ def main():
                         command = simulator_command()
                         command[1] = nodes
                         command[2] = trace
+                        # set max_sys_jobs to number of nodes on machine
+                        command[3] = command[1]
                         command[4] = workflow
                         command[5] = start_time
                         command[6] = get_algorithm(algorithm, workflow)
