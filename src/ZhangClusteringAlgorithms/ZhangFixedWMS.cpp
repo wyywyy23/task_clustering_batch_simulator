@@ -440,41 +440,15 @@ namespace wrench {
 
         std::cout << "PARENT RUNTIME: " << parent_runtime << std::endl;
 
-        // Calculate the wait and run for the entire DAG
-        unsigned long max_parallelism = maxParallelism(start_level, end_level);
-        double runtime_all = WorkflowUtil::estimateMakespan(
-                this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
-                max_parallelism, this->core_speed);
-        double wait_time_all = this->proxyWMS->estimateWaitTime(max_parallelism, runtime_all,
-                                                                this->simulation->getCurrentSimulatedDate(), &sequence);
-
-        double prev_real_runtime = DBL_MAX, curr_real_runtime = DBL_MAX;
-        double prev_peel_runtime = DBL_MAX, curr_peel_runtime = DBL_MAX;
-        double prev_peel_wait_time = DBL_MAX, curr_peel_wait_time = DBL_MAX;
-
-        // Start with first level as baseline for ratio comparison
-        // TODO lets follow zhang's original for now
-        /**
-        prev_real_runtime = WorkflowUtil::estimateMakespan(
-                this->getWorkflow()->getTasksInTopLevelRange(start_level, start_level),
-                maxParallelism(start_level, start_level), this->core_speed);
-        prev_peel_runtime = prev_real_runtime;
-        prev_peel_wait_time = this->proxyWMS->estimateWaitTime(maxParallelism(start_level, start_level),
-                                                               prev_real_runtime,
-                                                               this->simulation->getCurrentSimulatedDate(),
-                                                               &sequence);
-        */
-
-        // Zhang original - using entire DAG as baseline
-        prev_real_runtime = runtime_all;
-        prev_peel_runtime = runtime_all;
-        prev_peel_wait_time = wait_time_all;
-
         bool giant = true;
 
         // Start comparing from 2nd level
         // unsigned long candidate_end_level = start_level + 1;
         unsigned long candidate_end_level = start_level;
+
+        double best_so_far_wait_time = DBL_MAX;
+        double best_so_far_run_time = 0;
+        double best_so_far_leeway = 0;
 
         // Switch to "<=" if not using entire DAG as 1st comparison
         while (candidate_end_level < end_level) {
@@ -483,105 +457,73 @@ namespace wrench {
 
             // Calculate the # nodes and runtime of the current grouping
             unsigned long num_nodes = maxParallelism(start_level, candidate_end_level);
-            curr_peel_runtime = WorkflowUtil::estimateMakespan(
+
+            double run_time =  WorkflowUtil::estimateMakespan(
                     this->getWorkflow()->getTasksInTopLevelRange(start_level, candidate_end_level),
                     num_nodes, this->core_speed);
-            curr_real_runtime = curr_peel_runtime;
-
+            double wait_time = this->proxyWMS->estimateWaitTime(num_nodes, run_time,
+                                                                   this->simulation->getCurrentSimulatedDate(),
+                                                                   &sequence);
             double leeway = 0;
-            do {
-                curr_peel_runtime = curr_peel_runtime + (leeway / 2.0);
-                curr_peel_wait_time = this->proxyWMS->estimateWaitTime(num_nodes, curr_peel_runtime,
-                                                                       this->simulation->getCurrentSimulatedDate(),
-                                                                       &sequence);
-
-                // TODO - i dont really understand this calculation, also does the leeway need a fudge factor?
-                // TODO - this seems really bogus actually...
-                // double new_leeway = parent_runtime + curr_real_runtime - curr_peel_wait_time;
-                double new_leeway = std::max<double>(0, parent_runtime - curr_peel_wait_time);
-
-                std::cout << "OLD: " << leeway << " NEW: " << new_leeway << std::endl;
-
-                // Make sure leeway has changed to avoid looping forever
-                if ((int) new_leeway == (int) leeway) {
-                    // Leeway has not changed after increasing runtime request i.e. wait time did not increase
-                    // Set runtime and wait time back to previous iteration
-                    curr_peel_runtime = curr_peel_runtime - (leeway / 2.0);
-                    curr_peel_wait_time = this->proxyWMS->estimateWaitTime(num_nodes,
-                                                                           curr_peel_runtime,
-                                                                           this->simulation->getCurrentSimulatedDate(),
-                                                                           &sequence);
-                    break;
-                } else {
-                    // paranoid check
-                    assert((leeway == 0) || (new_leeway < leeway));
-                    // Yay, leeway decreased, let's continue to add to runtime in the hopes of increasing our wait time
-                    leeway = new_leeway;
+            if (wait_time < parent_runtime) {  // We need a non-zero leeway
+                leeway = parent_runtime - wait_time;
+                while ((leeway > 1) and
+                       ((wait_time = this->proxyWMS->estimateWaitTime(num_nodes, run_time + leeway / 2,
+                                                                         this->simulation->getCurrentSimulatedDate(),
+                                                                         &sequence)) > parent_runtime)) {
+                    leeway /= 2.0;
                 }
-            } while (leeway > 600);
-            if (leeway > 0) {
-                curr_peel_runtime = curr_peel_runtime + leeway;
-            }
-            double real_wait_time = curr_peel_wait_time - parent_runtime;
-            if (real_wait_time < 0) {
-                real_wait_time = curr_peel_wait_time;
             }
 
-            std::cout << "curr_peel_wait_time: " << curr_peel_wait_time << std::endl;
-            std::cout << "curr_real_runtime: " << curr_real_runtime << std::endl;
-            std::cout << "prev_peel_wait_time: " << prev_peel_wait_time << std::endl;
-            std::cout << "prev_real_runtime: " << prev_real_runtime << std::endl;
+            std::cout << "runtime: " << run_time << std::endl;
+            std::cout << "leeway: " << leeway << std::endl;
+            std::cout << "wait_time: " << wait_time << std::endl;
 
             if (giant) {
                 // zhang deems this grouping as invalid, so we pretend we didn't see it...
                 // TODO - I wonder if this is why they use all as original check, since what if the first level doesn't
                 // meet this standard. we can still default to whole DAG rather than keep first level as baseline
-                if (real_wait_time > curr_real_runtime) {
+                if (wait_time > run_time) {
                     candidate_end_level++;
                     continue;
                 }
             }
             giant = false;
 
-            if (curr_peel_wait_time - parent_runtime > 0) {
-                if (curr_peel_wait_time / curr_real_runtime > prev_peel_wait_time / prev_real_runtime) {
-                    std::cout << "GOT WORSE\n";
-                    break;
-                }
-                if (curr_peel_wait_time / curr_real_runtime > wait_time_all / runtime_all) {
-                    std::cout << "GOT WORSE COMPARED TO ALL\n";
-                    break;
-                }
+            if ((wait_time / run_time) > (best_so_far_wait_time / best_so_far_run_time)) {
+                std::cout << "GOT WORSE\n";
+                break;
             }
 
-            // this is likely broken:
-            //    When checking if aggregating one level is a good idea, we compare to
-            //      what would happen if running the whole remainder of the DAG
-            //    But afterwards we compare to what would happen with the previous "oneprocessEventPilotJobStart less
-            //      level" solution.
-            //    So the "greedy search" is weird, because the first step of it is
-            //    very different from the second step.  It seems that a better approach
-            //    would be to use "1 level" as the baseline, and then see when "i levels"
-            //    outperforms it. As opposed to perhaps picking "1 level" right away because
-            //    it happens to be better than "the whole remainder of the DAG"!
+            best_so_far_wait_time = wait_time;
+            best_so_far_run_time = run_time;
+            best_so_far_leeway = leeway;
 
-            prev_peel_wait_time = curr_peel_wait_time;
-            prev_peel_runtime = curr_peel_runtime;
-            prev_real_runtime = curr_real_runtime;
             candidate_end_level++;
         }
+
         // What if breaks from loop on first level check??
         if (giant || (candidate_end_level == start_level)) {
             // Recalculate leeway needed for entire dag
-            double leeway = std::max<double>(0, parent_runtime - wait_time_all);
-            double new_wait_time = this->proxyWMS->estimateWaitTime(max_parallelism, (runtime_all + leeway),
-                                                                    this->simulation->getCurrentSimulatedDate(),
-                                                                    &sequence);
-            return std::make_tuple(new_wait_time, (runtime_all + leeway), end_level);
-        } else {
-            // return partial dag
-            return std::make_tuple(prev_peel_wait_time, prev_peel_runtime, candidate_end_level - 1);
+            unsigned long max_parallelism = maxParallelism(start_level, end_level);
+            double runtime_all = WorkflowUtil::estimateMakespan(
+                    this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
+                    max_parallelism, this->core_speed);
+            double wait_time_all = this->proxyWMS->estimateWaitTime(max_parallelism, runtime_all,
+                                                                     this->simulation->getCurrentSimulatedDate(),
+                                                                     &sequence);
+            double leeway_all = std::max<double>(0, parent_runtime - wait_time_all);
+
+            best_so_far_run_time = runtime_all;
+            best_so_far_wait_time = wait_time_all;
+            best_so_far_leeway = leeway_all;
+            candidate_end_level = end_level + 1;
         }
+
+        // return partial dag
+        return std::make_tuple(best_so_far_wait_time,
+                               (best_so_far_run_time + best_so_far_leeway),
+                               candidate_end_level - 1);
     }
 
 };
