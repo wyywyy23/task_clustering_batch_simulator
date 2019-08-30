@@ -111,7 +111,7 @@ namespace wrench {
                 max_parallelism, this->core_speed);
         double wait_time_all = this->proxyWMS->estimateWaitTime(max_parallelism, runtime_all,
                                                                 this->simulation->getCurrentSimulatedDate(), &sequence);
-
+        std::cout << "PARTIAL END LEVEL: " << partial_dag_end_level << " END LEVEL: " << end_level << std::endl;
         assert(partial_dag_end_level <= end_level);
 
         if (partial_dag_end_level == end_level) {
@@ -438,6 +438,8 @@ namespace wrench {
         // runtime of currently running job
         double parent_runtime = ProxyWMS::findMaxDuration(this->running_placeholder_jobs);
 
+        std::cout << "PARENT RUNTIME: " << parent_runtime << std::endl;
+
         // Calculate the wait and run for the entire DAG
         unsigned long max_parallelism = maxParallelism(start_level, end_level);
         double runtime_all = WorkflowUtil::estimateMakespan(
@@ -512,7 +514,7 @@ namespace wrench {
                     break;
                 } else {
                     // paranoid check
-                    assert(new_leeway < leeway);
+                    assert((leeway == 0) || (new_leeway < leeway));
                     // Yay, leeway decreased, let's continue to add to runtime in the hopes of increasing our wait time
                     leeway = new_leeway;
                 }
@@ -543,9 +545,11 @@ namespace wrench {
 
             if (curr_peel_wait_time - parent_runtime > 0) {
                 if (curr_peel_wait_time / curr_real_runtime > prev_peel_wait_time / prev_real_runtime) {
+                    std::cout << "GOT WORSE\n";
                     break;
                 }
                 if (curr_peel_wait_time / curr_real_runtime > wait_time_all / runtime_all) {
+                    std::cout << "GOT WORSE COMPARED TO ALL\n";
                     break;
                 }
             }
@@ -566,7 +570,8 @@ namespace wrench {
             prev_real_runtime = curr_real_runtime;
             candidate_end_level++;
         }
-        if (giant) {
+        // What if breaks from loop on first level check??
+        if (giant || (candidate_end_level == start_level)) {
             // Recalculate leeway needed for entire dag
             double leeway = std::max<double>(0, parent_runtime - wait_time_all);
             double new_wait_time = this->proxyWMS->estimateWaitTime(max_parallelism, (runtime_all + leeway),
