@@ -483,6 +483,7 @@ namespace wrench {
 
             // Calculate the # nodes and runtime of the current grouping
             unsigned long num_nodes = maxParallelism(start_level, candidate_end_level);
+
             curr_peel_runtime = WorkflowUtil::estimateMakespan(
                     this->getWorkflow()->getTasksInTopLevelRange(start_level, candidate_end_level),
                     num_nodes, this->core_speed);
@@ -519,9 +520,10 @@ namespace wrench {
                     leeway = new_leeway;
                 }
             } while (leeway > 600);
-            if (leeway > 0) {
-                curr_peel_runtime = curr_peel_runtime + leeway;
-            }
+
+
+            curr_peel_runtime = curr_peel_runtime + leeway;
+
             double real_wait_time = curr_peel_wait_time - parent_runtime;
             if (real_wait_time < 0) {
                 real_wait_time = curr_peel_wait_time;
