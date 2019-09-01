@@ -8,6 +8,7 @@
 #include "StaticClusteringAlgorithms/StaticClusteringWMS.h"
 #include "ZhangClusteringAlgorithms/ZhangClusteringWMS.h"
 #include "ZhangClusteringAlgorithms/ZhangFixedWMS.h"
+#include "ZhangClusteringAlgorithms/ZhangFixedGlobalWMS.h"
 #include "EvanClusteringAlgorithm/EvanClusteringWMS.h"
 #include "TestClusteringAlgorithm/TestClusteringWMS.h"
 
@@ -153,6 +154,9 @@ int Simulator::main(int argc, char **argv) {
         std::cerr << "    * \e[1mzhang_fixed:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
         std::cerr << "      - Improvements to Zhang et al. algorithm" << "\n";
         std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
+        std::cerr << "    * \e[1mzhang_fixed_global:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
+        std::cerr << "      - Improvements to zhang_fixed algorithm" << "\n";
+        std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
         std::cerr << "    * \e[1mevan:[overlap|nooverlap]:[plimit|pnolimit]:waste_bound\e[0m" << "\n";
         std::cerr << "      - Improvements to Zhang et al. algorithm" << "\n";
         std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
@@ -160,7 +164,9 @@ int Simulator::main(int argc, char **argv) {
         std::cerr << "    * \e[1mtest:waste_bound:beat_bound\e[0m" << "\n";
         std::cerr << "      - Testing a new algorithm" << "\n";
         std::cerr << "      - waste_bound: maximum percentage of wasted node time e.g. 0.2" << "\n";
-        std::cerr << "      - beat_bound: percentage splitting time must beat non-splitting time by to be viable e.g. 0.1" << "\n";
+        std::cerr
+                << "      - beat_bound: percentage splitting time must beat non-splitting time by to be viable e.g. 0.1"
+                << "\n";
         std::cerr << "    * \e[1mlevelbylevel:[overlap|nooverlap]:levelclustering\e[0m" << "\n";
         std::cerr << "        - A level-by-level-with overlap algorithm that clusters tasks in each level." << "\n";
         std::cerr << "          Tasks in level n+1 are submitted to the batch queue as soon as all tasks in level n"
@@ -251,26 +257,28 @@ int Simulator::main(int argc, char **argv) {
     wrench::BatchComputeService *tmp_batch_service = nullptr;
     try {
         tmp_batch_service = new BatchComputeService(login_hostname, compute_nodes, 0,
-                                         {{BatchComputeServiceProperty::OUTPUT_CSV_JOB_LOG, csv_batch_log},
-                                          {BatchComputeServiceProperty::BATCH_SCHEDULING_ALGORITHM, std::string(argv[7])},
-                                          {BatchComputeServiceProperty::TASK_SELECTION_ALGORITHM, "maximum_flops"},
-                                          {BatchComputeServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(argv[2])},
-                                          {BatchComputeServiceProperty::SIMULATE_COMPUTATION_AS_SLEEP, "true"},
-                                          {BatchComputeServiceProperty::BATSCHED_CONTIGUOUS_ALLOCATION, "true"},
-                                          {BatchComputeServiceProperty::BATSCHED_LOGGING_MUTED, "true"},
-                                          {BatchComputeServiceProperty::IGNORE_INVALID_JOBS_IN_WORLOAD_TRACE_FILE, "true"},
-                                          {BatchComputeServiceProperty::USE_REAL_RUNTIMES_AS_REQUESTED_RUNTIMES_IN_WORKLOAD_TRACE_FILE, "true"}
-                                         }, {});
+                                                    {{BatchComputeServiceProperty::OUTPUT_CSV_JOB_LOG,                                             csv_batch_log},
+                                                     {BatchComputeServiceProperty::BATCH_SCHEDULING_ALGORITHM,                                     std::string(
+                                                             argv[7])},
+                                                     {BatchComputeServiceProperty::TASK_SELECTION_ALGORITHM,                                       "maximum_flops"},
+                                                     {BatchComputeServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE,                                  std::string(
+                                                             argv[2])},
+                                                     {BatchComputeServiceProperty::SIMULATE_COMPUTATION_AS_SLEEP,                                  "true"},
+                                                     {BatchComputeServiceProperty::BATSCHED_CONTIGUOUS_ALLOCATION,                                 "true"},
+                                                     {BatchComputeServiceProperty::BATSCHED_LOGGING_MUTED,                                         "true"},
+                                                     {BatchComputeServiceProperty::IGNORE_INVALID_JOBS_IN_WORLOAD_TRACE_FILE,                      "true"},
+                                                     {BatchComputeServiceProperty::USE_REAL_RUNTIMES_AS_REQUESTED_RUNTIMES_IN_WORKLOAD_TRACE_FILE, "true"}
+                                                    }, {});
     } catch (std::invalid_argument &e) {
 
-        WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
-        WRENCH_INFO("Trying the non-BATSCHED version with FCFS...");
+        WRENCH_INFO("Cannot instantiate batch service: %s", e.what());WRENCH_INFO(
+                "Trying the non-BATSCHED version with FCFS...");
         try {
             tmp_batch_service = new BatchComputeService(login_hostname, compute_nodes, 0,
-                                             {{BatchComputeServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
-                                              {BatchComputeServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(
-                                                      argv[2])}
-                                             }, {});
+                                                        {{BatchComputeServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
+                                                         {BatchComputeServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(
+                                                                 argv[2])}
+                                                        }, {});
         } catch (std::invalid_argument &e) {
             std::cerr << "Giving up as I cannot instantiate the Batch Service: " << e.what() << "\n";
             exit(1);
@@ -307,14 +315,12 @@ int Simulator::main(int argc, char **argv) {
     wms->addWorkflow(workflow, workflow_start_time);
 
     // Launch the simulation
-    try {
-        WRENCH_INFO("Launching simulation!");
+    try { WRENCH_INFO("Launching simulation!");
         simulation->launch();
     } catch (std::runtime_error &e) {
         std::cerr << "Simulation failed: " << e.what() << "\n";
         exit(1);
-    }
-    WRENCH_INFO("Simulation done!");
+    }WRENCH_INFO("Simulation done!");
 
     WorkflowUtil::printRAM();
 
@@ -619,6 +625,29 @@ WMS *Simulator::createWMS(std::string hostname,
             throw std::invalid_argument("createWMS(): Invalid zhang_fixed specification");
         }
         return new ZhangFixedWMS(this, hostname, overlap, plimit, batch_service);
+
+    } else if (tokens[0] == "zhang_fixed_global") {
+
+        if (tokens.size() != 3) {
+            throw std::invalid_argument("createWMS(): Invalid zhang_fixed specification");
+        }
+        bool overlap;
+        if (tokens[1] == "overlap") {
+            overlap = true;
+        } else if (tokens[1] == "nooverlap") {
+            overlap = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid zhang_fixed specification");
+        }
+        bool plimit;
+        if (tokens[2] == "plimit") {
+            plimit = true;
+        } else if (tokens[2] == "pnolimit") {
+            plimit = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid zhang_fixed_global specification");
+        }
+        return new ZhangFixedGlobalWMS(this, hostname, overlap, plimit, batch_service);
 
     } else if (tokens[0] == "evan") {
 
