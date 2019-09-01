@@ -155,9 +155,8 @@ int Simulator::main(int argc, char **argv) {
         std::cerr << "    * \e[1mzhang_fixed:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
         std::cerr << "      - Improvements to Zhang et al. algorithm" << "\n";
         std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
-        std::cerr << "    * \e[1mzhang_fixed_global:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
+        std::cerr << "    * \e[1mzhang_fixed_global\e[0m" << "\n";
         std::cerr << "      - Improvements to zhang_fixed algorithm" << "\n";
-        std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
         std::cerr << "    * \e[1mzhang_fixed_global_prediction\e[0m" << "\n";
         std::cerr << "      - Improvements to zhang_fixed_global algorithm" << "\n";
         std::cerr << "    * \e[1mevan:[overlap|nooverlap]:[plimit|pnolimit]:waste_bound\e[0m" << "\n";
@@ -631,26 +630,11 @@ WMS *Simulator::createWMS(std::string hostname,
 
     } else if (tokens[0] == "zhang_fixed_global") {
 
-        if (tokens.size() != 3) {
-            throw std::invalid_argument("createWMS(): Invalid zhang_fixed specification");
-        }
-        bool overlap;
-        if (tokens[1] == "overlap") {
-            overlap = true;
-        } else if (tokens[1] == "nooverlap") {
-            overlap = false;
-        } else {
+        if (tokens.size() != 1) {
             throw std::invalid_argument("createWMS(): Invalid zhang_fixed_global specification");
         }
-        bool plimit;
-        if (tokens[2] == "plimit") {
-            plimit = true;
-        } else if (tokens[2] == "pnolimit") {
-            plimit = false;
-        } else {
-            throw std::invalid_argument("createWMS(): Invalid zhang_fixed_global specification");
-        }
-        return new ZhangFixedGlobalWMS(this, hostname, overlap, plimit, batch_service);
+
+        return new ZhangFixedGlobalWMS(this, hostname, batch_service);
 
     } else if (tokens[0] == "zhang_fixed_global_prediction") {
 

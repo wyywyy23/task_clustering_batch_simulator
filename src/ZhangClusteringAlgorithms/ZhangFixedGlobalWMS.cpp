@@ -26,12 +26,9 @@ namespace wrench {
 
     static int sequence = 0;
 
-    ZhangFixedGlobalWMS::ZhangFixedGlobalWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit,
-                                             std::shared_ptr<BatchComputeService> batch_service) :
+    ZhangFixedGlobalWMS::ZhangFixedGlobalWMS(Simulator *simulator, std::string hostname, std::shared_ptr<BatchComputeService> batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
         this->simulator = simulator;
-        this->overlap = overlap;
-        this->plimit = plimit;
         this->batch_service = batch_service;
         this->pending_placeholder_job = nullptr;
         this->individual_mode = false;
@@ -78,11 +75,6 @@ namespace wrench {
 
         // Don't schedule a pilot job if we're in individual mode
         if (this->individual_mode) {
-            return;
-        }
-
-        // Don't schedule a pilot job is overlap = false and anything is running
-        if ((not this->overlap) and (not this->running_placeholder_jobs.empty())) {
             return;
         }
 
@@ -410,9 +402,6 @@ namespace wrench {
     // Zhang is supposed to fail automatically if number of tasks > number of hosts
     // Just return max hosts to avoid failure for now
     unsigned long ZhangFixedGlobalWMS::maxParallelism(unsigned long start_level, unsigned long end_level) {
-        if (this->plimit) {
-            // Implement strict zhang application here...
-        }
         unsigned long parallelism = 0;
         for (unsigned long i = start_level; i <= end_level; i++) {
             unsigned long num_tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(i, i).size();

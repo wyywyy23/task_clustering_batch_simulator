@@ -28,8 +28,7 @@ namespace wrench {
 
     public:
 
-        ZhangFixedGlobalWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit,
-                      std::shared_ptr<BatchComputeService> batch_service);
+        ZhangFixedGlobalWMS(Simulator *simulator, std::string hostname, std::shared_ptr<BatchComputeService> batch_service);
 
     private:
 
@@ -55,8 +54,6 @@ namespace wrench {
 
         Simulator *simulator;
         bool individual_mode;
-        bool overlap;
-        bool plimit;
 
         std::set<PlaceHolderJob *> running_placeholder_jobs;
         PlaceHolderJob *pending_placeholder_job;
