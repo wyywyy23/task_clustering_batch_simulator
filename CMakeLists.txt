@@ -29,6 +29,8 @@ set(SOURCE_FILES
         src/ZhangClusteringAlgorithms/ZhangFixedWMS.h
         src/ZhangClusteringAlgorithms/ZhangFixedGlobalWMS.cpp
         src/ZhangClusteringAlgorithms/ZhangFixedGlobalWMS.h
+        src/ZhangClusteringAlgorithms/ZhangFixedGlobalPredictionWMS.cpp
+        src/ZhangClusteringAlgorithms/ZhangFixedGlobalPredictionWMS.h
         src/ZhangClusteringAlgorithms/ZhangPlaceHolderJob.h
         src/EvanClusteringAlgorithm/EvanClusteringWMS.cpp
         src/EvanClusteringAlgorithm/EvanClusteringWMS.h
