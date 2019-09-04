@@ -84,6 +84,7 @@ namespace wrench {
         // Don't schedule a pilot job is overlap = false and anything is running
         if ((not this->overlap) and (not this->running_placeholder_jobs.empty())) {
             return;
+            return;
         }
 
         unsigned long start_level = getStartLevel();
@@ -115,11 +116,13 @@ namespace wrench {
         assert(partial_dag_end_level <= end_level);
 
         if (partial_dag_end_level == end_level) {
+            std::cout << "INDIVIDUAL MODE?  WAITTIME = " << wait_time_all<< " AND RUNTIME_ALL = " << runtime_all << "\n";
             if (wait_time_all > runtime_all * 2.0) {
                 // submit remaining dag as 1 job per task
                 this->individual_mode = true;
                 std::cout << "Switching to individual mode!" << std::endl;
             } else {
+                std::cout << "NOT GOING TO INDIVIDUAL\n";
                 // submit remaining dag as 1 job
             }
         } else {
@@ -451,7 +454,7 @@ namespace wrench {
         double best_so_far_leeway = 0;
 
         // Switch to "<=" if not using entire DAG as 1st comparison
-        while (candidate_end_level < end_level) {
+        while (candidate_end_level <= end_level) {
 
             std::cout << "CANDIDATE END LEVEL: " << candidate_end_level << std::endl;
 
@@ -501,6 +504,8 @@ namespace wrench {
 
             candidate_end_level++;
         }
+
+        std::cout << "OUT OF THE LOOP\n";
 
         // What if breaks from loop on first level check??
         if (giant || (candidate_end_level == start_level)) {
