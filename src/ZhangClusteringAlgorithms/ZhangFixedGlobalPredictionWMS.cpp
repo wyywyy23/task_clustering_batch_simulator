@@ -99,12 +99,28 @@ namespace wrench {
 
         assert(partial_dag_end_level <= end_level);
 
+        WRENCH_INFO("HERE");
         if (partial_dag_end_level == end_level) {
-            if (partial_dag_wait_time > partial_dag_makespan * 2.0) {
+            std::cout << "INDIVIDUAL MODE?  WAITTIME = " << partial_dag_wait_time<< " AND RUNTIME_ALL = " << partial_dag_makespan << "\n";
+
+            // TODO: RECALCULATE WAIT TIME AND MAKESPAN ASSUMING MAX PARALELLISM
+            // TODO: TO PRESERVE THE SAME INDIVIDUAL MODE SWITCHING BEHAVIOR AS ORIGINAL ZHANG
+            // TODO: DO IT IN GLOBAL AS WELL
+            // calculate the runtime of entire DAG
+            // maximum parallelism, but never more than total number of nodes
+            unsigned long max_parallelism = maxParallelism(start_level, end_level);
+            double runtime_all = WorkflowUtil::estimateMakespan(
+                    this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
+                    max_parallelism, this->core_speed);
+            double wait_time_all = this->proxyWMS->estimateWaitTime(max_parallelism, runtime_all,
+                                                                    this->simulation->getCurrentSimulatedDate(), &sequence);
+
+            if (wait_time_all > runtime_all * 2.0) {
                 // submit remaining dag as 1 job per task
                 this->individual_mode = true;
                 std::cout << "Switching to individual mode!" << std::endl;
             } else {
+                std::cout << "NOT INDIVIDUAL\n";
                 // submit remaining dag as 1 job
             }
         } else {
