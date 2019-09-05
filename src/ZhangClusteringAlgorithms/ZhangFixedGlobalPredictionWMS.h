@@ -48,6 +48,8 @@ namespace wrench {
 
         unsigned long getStartLevel();
 
+        unsigned long maxParallelism(unsigned long start_level, unsigned long end_level);
+
         unsigned long bestParallelism(unsigned long start_level, unsigned long end_level);
 
         std::tuple<double, double, unsigned long, unsigned long> groupLevels(unsigned long start_level, unsigned long end_level);

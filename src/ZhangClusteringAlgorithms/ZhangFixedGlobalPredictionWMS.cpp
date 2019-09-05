@@ -101,19 +101,18 @@ namespace wrench {
 
         WRENCH_INFO("HERE");
         if (partial_dag_end_level == end_level) {
-            std::cout << "INDIVIDUAL MODE?  WAITTIME = " << partial_dag_wait_time<< " AND RUNTIME_ALL = " << partial_dag_makespan << "\n";
+            std::cout << "INDIVIDUAL MODE?  WAITTIME = " << partial_dag_wait_time << " AND RUNTIME_ALL = "
+                      << partial_dag_makespan << "\n";
 
-            // TODO: RECALCULATE WAIT TIME AND MAKESPAN ASSUMING MAX PARALELLISM
-            // TODO: TO PRESERVE THE SAME INDIVIDUAL MODE SWITCHING BEHAVIOR AS ORIGINAL ZHANG
-            // TODO: DO IT IN GLOBAL AS WELL
+            // TO PRESERVE THE SAME INDIVIDUAL MODE SWITCHING BEHAVIOR AS ORIGINAL ZHANG
             // calculate the runtime of entire DAG
-            // maximum parallelism, but never more than total number of nodes
             unsigned long max_parallelism = maxParallelism(start_level, end_level);
             double runtime_all = WorkflowUtil::estimateMakespan(
                     this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
                     max_parallelism, this->core_speed);
             double wait_time_all = this->proxyWMS->estimateWaitTime(max_parallelism, runtime_all,
-                                                                    this->simulation->getCurrentSimulatedDate(), &sequence);
+                                                                    this->simulation->getCurrentSimulatedDate(),
+                                                                    &sequence);
 
             if (wait_time_all > runtime_all * 2.0) {
                 // submit remaining dag as 1 job per task
@@ -416,6 +415,16 @@ namespace wrench {
         return start_level;
     }
 
+    unsigned long ZhangFixedGlobalPredictionWMS::maxParallelism(unsigned long start_level, unsigned long end_level) {
+        unsigned long parallelism = 0;
+        for (unsigned long i = start_level; i <= end_level; i++) {
+            unsigned long num_tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(i, i).size();
+            parallelism = std::max<unsigned long>(parallelism, num_tasks_in_level);
+        }
+
+        return std::min<unsigned long>(parallelism, this->number_of_hosts);
+    }
+
     unsigned long ZhangFixedGlobalPredictionWMS::bestParallelism(unsigned long start_level, unsigned long end_level) {
         unsigned long max_parallelism = 0;
         for (unsigned long i = start_level; i <= end_level; i++) {
@@ -518,9 +527,7 @@ namespace wrench {
             candidate_end_level++;
         }
 
-        // TODO - there is a disconnect between using runtime/waitime ratios without leeway for heuristic here
-        // TODO - however, calling code has no knowledge of leeway, but uses the values  w/ leeway added to make one_job decision
-        // TODO - this returned wait_time does not consider the added leeway
+        // NOTE - this returned wait_time does not consider the added leeway
         return std::make_tuple(best_so_far_wait_time,
                                (best_so_far_run_time + best_so_far_leeway),
                                best_so_far_end_level, num_nodes_for_best_grouping);

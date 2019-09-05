@@ -26,7 +26,8 @@ namespace wrench {
 
     static int sequence = 0;
 
-    ZhangFixedGlobalWMS::ZhangFixedGlobalWMS(Simulator *simulator, std::string hostname, std::shared_ptr<BatchComputeService> batch_service) :
+    ZhangFixedGlobalWMS::ZhangFixedGlobalWMS(Simulator *simulator, std::string hostname,
+                                             std::shared_ptr<BatchComputeService> batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
         this->simulator = simulator;
         this->batch_service = batch_service;
@@ -98,6 +99,19 @@ namespace wrench {
         assert(partial_dag_end_level <= end_level);
 
         if (partial_dag_end_level == end_level) {
+            std::cout << "INDIVIDUAL MODE?  WAITTIME = " << partial_dag_wait_time << " AND RUNTIME_ALL = "
+                      << partial_dag_makespan << "\n";
+
+            // TO PRESERVE THE SAME INDIVIDUAL MODE SWITCHING BEHAVIOR AS ORIGINAL ZHANG
+            // calculate the runtime of entire DAG
+            unsigned long max_parallelism = maxParallelism(start_level, end_level);
+            double runtime_all = WorkflowUtil::estimateMakespan(
+                    this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
+                    max_parallelism, this->core_speed);
+            double wait_time_all = this->proxyWMS->estimateWaitTime(max_parallelism, runtime_all,
+                                                                    this->simulation->getCurrentSimulatedDate(),
+                                                                    &sequence);
+
             if (partial_dag_wait_time > partial_dag_makespan * 2.0) {
                 // submit remaining dag as 1 job per task
                 this->individual_mode = true;
@@ -467,13 +481,10 @@ namespace wrench {
                 continue;
             }
 
-            if ((candidate_end_level != end_level) && (best_so_far_end_level != ULONG_MAX)) {
-
-            }
-
             // Did we find a better ratio?
             if ((wait_time / run_time) < (best_so_far_wait_time / best_so_far_run_time)) {
-                std::cout << "ratio: " << (wait_time / run_time) << ", found a better split @ level = " << candidate_end_level << std::endl;
+                std::cout << "ratio: " << (wait_time / run_time) << ", found a better split @ level = "
+                          << candidate_end_level << std::endl;
                 best_so_far_wait_time = wait_time;
                 best_so_far_run_time = run_time;
                 best_so_far_leeway = leeway;
@@ -483,9 +494,7 @@ namespace wrench {
             candidate_end_level++;
         }
 
-        // TODO - there is a disconnect between using runtime/waitime ratios without leeway for heuristic here
-        // TODO - however, calling code has no knowledge of leeway, but uses the values  w/ leeway added to make one_job decision
-        // TODO - this returned wait_time does not consider the added leeway
+        // NOTE - this returned wait_time does not consider the added leeway
         return std::make_tuple(best_so_far_wait_time,
                                (best_so_far_run_time + best_so_far_leeway),
                                best_so_far_end_level);
