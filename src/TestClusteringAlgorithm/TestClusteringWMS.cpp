@@ -26,7 +26,8 @@ namespace wrench {
     static double parent_runtime = 0;
 
     TestClusteringWMS::TestClusteringWMS(Simulator *simulator, std::string hostname, bool overlap, bool plimit,
-                                         double waste_bound, double beat_bound, std::shared_ptr<BatchComputeService> batch_service) :
+                                         double waste_bound, double beat_bound,
+                                         std::shared_ptr<BatchComputeService> batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
         this->simulator = simulator;
         this->overlap = overlap;
@@ -107,8 +108,8 @@ namespace wrench {
 
 
         WRENCH_INFO("NUM RUNNING PLACE_HOLDER JOBS = %ld", this->running_placeholder_jobs.size());
-        for (auto ph : this->running_placeholder_jobs) {
-            WRENCH_INFO("RUNNING PLACEHOLDER JOB: %lu-%lu", ph->start_level, ph->end_level);
+        for (auto ph : this->running_placeholder_jobs) { WRENCH_INFO("RUNNING PLACEHOLDER JOB: %lu-%lu",
+                                                                     ph->start_level, ph->end_level);
             start_level = 1 + std::max<unsigned long>(start_level, ph->end_level);
         }
 
@@ -117,9 +118,6 @@ namespace wrench {
         if (start_level >= this->getWorkflow()->getNumLevels()) {
             return;
         }
-
-        //      WRENCH_INFO("START LEVEL = %ld", start_level);
-
 
         unsigned long num_levels = this->getWorkflow()->getNumLevels();
         unsigned long end_level = num_levels - 1;
@@ -143,7 +141,7 @@ namespace wrench {
 
         // std::cerr << "Entire Workflow Stats " << "Start: " << start_level << " End: " << end_level << std::endl;
         // std::cerr << "NODES: " << requested_parallelism << " Wait: " << estimated_wait_time << " Runtime: "
-                 // << requested_execution_time << std::endl;
+        // << requested_execution_time << std::endl;
 
         unsigned long partial_dag_end_level = end_level;
 
@@ -155,6 +153,10 @@ namespace wrench {
             double run_one = std::get<1>(start_to_split);
             double wait_two = std::get<0>(rest);
             double run_two = std::get<1>(rest);
+
+            // TODO - implement binary search for leeway
+            // TODO - use generic placeholder && fix parent_runtime stuff
+            // TODO - add proxywms
 
             // Check if leeway is needed
             double leeway = run_one - wait_two;
@@ -189,6 +191,7 @@ namespace wrench {
             }
         }
 
+        // TODO add assert here
         if (partial_dag_end_level == end_level) {
             if (estimated_wait_time > requested_execution_time * 2.0) {
                 // this->individual_mode = true;
@@ -204,11 +207,9 @@ namespace wrench {
             std::cout << "Nodes: " << requested_parallelism << std::endl;
         }
 
-        if (this->individual_mode) {
-            WRENCH_INFO("GROUPING: INDIVIDUAL");
-        } else {
-            WRENCH_INFO("GROUPING: %ld-%ld",
-                        start_level, partial_dag_end_level);
+        if (this->individual_mode) { WRENCH_INFO("GROUPING: INDIVIDUAL");
+        } else { WRENCH_INFO("GROUPING: %ld-%ld",
+                             start_level, partial_dag_end_level);
         }
 
 //        std::cout << this->individual_mode << std::endl;
@@ -224,8 +225,7 @@ namespace wrench {
                     requested_parallelism,
                     start_level,
                     partial_dag_end_level);
-        } else {
-            WRENCH_INFO("Switching to individual mode!");
+        } else { WRENCH_INFO("Switching to individual mode!");
             // Submit all READY tasks as individual jobs
             for (auto task : this->getWorkflow()->getTasks()) {
                 if (task->getState() == WorkflowTask::State::READY) {
@@ -234,8 +234,9 @@ namespace wrench {
                     requested_execution_time = (task->getFlops() / this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
                     service_specific_args["-N"] = "1";
                     service_specific_args["-c"] = "1";
-                    service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
-                    WRENCH_INFO("Submitting task %s individually!", task->getID().c_str());
+                    service_specific_args["-t"] = std::to_string(
+                            1 + ((unsigned long) requested_execution_time) / 60);WRENCH_INFO(
+                            "Submitting task %s individually!", task->getID().c_str());
                     this->job_manager->submitJob(standard_job, this->batch_service, service_specific_args);
                 }
             }
@@ -294,10 +295,9 @@ namespace wrench {
 
         WRENCH_INFO("Submitting a Pilot Job (%ld hosts, %.2lf sec) for workflow levels %ld-%ld (%s)",
                     requested_parallelism, requested_execution_time, start_level, end_level,
-                    this->pending_placeholder_job->pilot_job->getName().c_str());
-        WRENCH_INFO("This pilot job has these tasks:");
-        for (auto t : this->pending_placeholder_job->tasks) {
-            WRENCH_INFO("     - %s", t->getID().c_str());
+                    this->pending_placeholder_job->pilot_job->getName().c_str());WRENCH_INFO(
+                "This pilot job has these tasks:");
+        for (auto t : this->pending_placeholder_job->tasks) { WRENCH_INFO("     - %s", t->getID().c_str());
         }
 
         // submit the corresponding pilot job
@@ -337,8 +337,8 @@ namespace wrench {
 
         // Submit all ready tasks to it each in its standard job, within node capacity
         std::string output_string = "";
-        for (auto task : placeholder_job->tasks) {
-            WRENCH_INFO("TASK %s:  READY=%d", task->getID().c_str(), (task->getState() == WorkflowTask::READY));
+        for (auto task : placeholder_job->tasks) { WRENCH_INFO("TASK %s:  READY=%d", task->getID().c_str(),
+                                                               (task->getState() == WorkflowTask::READY));
             if ((task->getState() == WorkflowTask::READY) and
                 (placeholder_job->num_currently_running_tasks < placeholder_job->num_nodes)) {
                 StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
@@ -347,8 +347,8 @@ namespace wrench {
                 WRENCH_INFO("Submitting task %s as part of placeholder job %ld-%ld",
                             task->getID().c_str(), placeholder_job->start_level, placeholder_job->end_level);
                 this->job_manager->submitJob(standard_job, placeholder_job->pilot_job->getComputeService());
-                placeholder_job->num_currently_running_tasks++;
-                WRENCH_INFO("NOW(2):  CURRENTLY  RUNNING: %lu", placeholder_job->num_currently_running_tasks);
+                placeholder_job->num_currently_running_tasks++;WRENCH_INFO("NOW(2):  CURRENTLY  RUNNING: %lu",
+                                                                           placeholder_job->num_currently_running_tasks);
             }
         }
 
@@ -411,11 +411,11 @@ namespace wrench {
         WRENCH_INFO("This placeholder job has unprocessed tasks");
 
         // Cancel pending pilot job if any
-        if (this->pending_placeholder_job) {
-            WRENCH_INFO("Canceling pending placeholder job (placeholder=%ld,  pilot_job=%ld / %s",
-                        (unsigned long) this->pending_placeholder_job,
-                        (unsigned long) this->pending_placeholder_job->pilot_job,
-                        this->pending_placeholder_job->pilot_job->getName().c_str());
+        if (this->pending_placeholder_job) { WRENCH_INFO(
+                    "Canceling pending placeholder job (placeholder=%ld,  pilot_job=%ld / %s",
+                    (unsigned long) this->pending_placeholder_job,
+                    (unsigned long) this->pending_placeholder_job->pilot_job,
+                    this->pending_placeholder_job->pilot_job->getName().c_str());
             this->job_manager->terminateJob(this->pending_placeholder_job->pilot_job);
             this->pending_placeholder_job = nullptr;
         }
@@ -430,10 +430,9 @@ namespace wrench {
                     started = true;
                 }
             }
-            if (not started) {
-                WRENCH_INFO("Canceling running placeholder job that handled levels %ld-%ld because none"
-                            "of its tasks has started (%s)", ph->start_level, ph->end_level,
-                            ph->pilot_job->getName().c_str());
+            if (not started) { WRENCH_INFO("Canceling running placeholder job that handled levels %ld-%ld because none"
+                                           "of its tasks has started (%s)", ph->start_level, ph->end_level,
+                                           ph->pilot_job->getName().c_str());
                 try {
                     this->job_manager->terminateJob(ph->pilot_job);
                 } catch (WorkflowExecutionException &e) {
@@ -508,8 +507,7 @@ namespace wrench {
 
                 WRENCH_INFO("All tasks are completed in this placeholder job, so I am terminating it (%s)",
                             placeholder_job->pilot_job->getName().c_str());
-                try {
-                    WRENCH_INFO("TERMINATING A PILOT JOB");
+                try { WRENCH_INFO("TERMINATING A PILOT JOB");
                     this->job_manager->terminateJob(placeholder_job->pilot_job);
                 } catch (WorkflowExecutionException &e) {
                     // ignore
@@ -530,12 +528,12 @@ namespace wrench {
                         (task->getState() == WorkflowTask::READY) and
                         (ph->num_currently_running_tasks < ph->num_nodes)
                         ) {
-                    StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
-                    WRENCH_INFO("Submitting task %s  as part of placeholder job %ld-%ld",
-                                task->getID().c_str(), ph->start_level, ph->end_level);
+                    StandardJob *standard_job = this->job_manager->createStandardJob(task, {});WRENCH_INFO(
+                            "Submitting task %s  as part of placeholder job %ld-%ld",
+                            task->getID().c_str(), ph->start_level, ph->end_level);
                     this->job_manager->submitJob(standard_job, ph->pilot_job->getComputeService());
-                    ph->num_currently_running_tasks++;
-                    WRENCH_INFO("NOW: CURRETNLY RUNNING: %lu", ph->num_currently_running_tasks);
+                    ph->num_currently_running_tasks++;WRENCH_INFO("NOW: CURRETNLY RUNNING: %lu",
+                                                                  ph->num_currently_running_tasks);
                 }
             }
         }
@@ -543,9 +541,9 @@ namespace wrench {
         if (this->individual_mode) {
             for (auto task : this->getWorkflow()->getTasks()) {
                 if (task->getState() == WorkflowTask::State::READY) {
-                    StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
-                    WRENCH_INFO("Submitting task %s individually!",
-                                task->getID().c_str());
+                    StandardJob *standard_job = this->job_manager->createStandardJob(task, {});WRENCH_INFO(
+                            "Submitting task %s individually!",
+                            task->getID().c_str());
                     std::map<std::string, std::string> service_specific_args;
                     double requested_execution_time =
                             (task->getFlops() / this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
@@ -632,10 +630,9 @@ namespace wrench {
         static int sequence = 0;
         double makespan = WorkflowUtil::estimateMakespan(
                 this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
-                num_hosts, this->core_speed);
-        WRENCH_INFO("ESTIMATING WAIT TIME");
-        double wait_time = TestClusteringWMS::estimateWaitTime(num_hosts, makespan, &sequence);
-        WRENCH_INFO("ESTIMATED WAIT TIME");
+                num_hosts, this->core_speed);WRENCH_INFO("ESTIMATING WAIT TIME");
+        double wait_time = TestClusteringWMS::estimateWaitTime(num_hosts, makespan, &sequence);WRENCH_INFO(
+                "ESTIMATED WAIT TIME");
         return std::make_tuple(makespan, wait_time);
     }
 
