@@ -29,6 +29,8 @@ namespace wrench {
 
         double estimateWaitTime(long parallelism, double makespan, double simulation_date, int *sequence);
 
+        unsigned long getStartLevel(std::set<PlaceHolderJob *> running_placeholder_jobs);
+
     private:
 
         Workflow *workflow;

@@ -72,7 +72,7 @@ namespace wrench {
                 service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
 
                 WRENCH_INFO("Submitting task %s individually!", task->getID().c_str());
-
+                // std::cout << "Submitting task " << task->getID().c_str() << " individually!\n";
                 this->job_manager->submitJob(standard_job, this->batch_service, service_specific_args);
             }
         }
@@ -87,7 +87,6 @@ namespace wrench {
         return max_duration;
     }
 
-    // TODO check if this works then replace
     double ProxyWMS::estimateWaitTime(long parallelism, double makespan, double simulation_date, int *sequence) {
         std::set<std::tuple<std::string, unsigned int, unsigned int, double>> job_config;
         std::string config_key = "config_XXXX_" + std::to_string((*sequence)++); // need to make it unique for BATSCHED
@@ -103,5 +102,25 @@ namespace wrench {
         return wait_time_estimate;
     }
 
-    // TODO - implement getStartLevel() in here??
+    unsigned long ProxyWMS::getStartLevel(std::set<PlaceHolderJob *> running_placeholder_jobs) {
+        unsigned long start_level = 0;
+        for (unsigned long i = 0; i < this->workflow->getNumLevels(); i++) {
+            std::vector<WorkflowTask *> tasks_in_level = this->workflow->getTasksInTopLevelRange(i, i);
+            bool all_completed = true;
+            for (auto task : tasks_in_level) {
+                if (task->getState() != WorkflowTask::State::COMPLETED) {
+                    all_completed = false;
+                }
+            }
+            if (all_completed) {
+                start_level = i + 1;
+            }
+        }
+
+        for (auto ph : running_placeholder_jobs) {
+            start_level = 1 + std::max<unsigned long>(start_level, ph->end_level);
+        }
+
+        return start_level;
+    }
 }
