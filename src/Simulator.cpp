@@ -6,11 +6,7 @@
 #include "Simulator.h"
 #include "Util/WorkflowUtil.h"
 #include "StaticClusteringAlgorithms/StaticClusteringWMS.h"
-#include "ZhangClusteringAlgorithms/ZhangClusteringWMS.h"
-#include "ZhangClusteringAlgorithms/ZhangFixedWMS.h"
-#include "ZhangClusteringAlgorithms/ZhangFixedGlobalWMS.h"
-#include "ZhangClusteringAlgorithms/ZhangFixedGlobalPredictionWMS.h"
-#include "EvanClusteringAlgorithm/EvanClusteringWMS.h"
+#include "ZhangClusteringAlgorithms/ZhangWMS.h"
 #include "TestClusteringAlgorithm/TestClusteringWMS.h"
 
 #include <sys/types.h>
@@ -135,34 +131,14 @@ int Simulator::main(int argc, char **argv) {
                 << "      - The VC algorithm in \"Using Imbalance Metrics to Optimize Task Clustering in Scientific Workflow Executions\" by Chen at al."
                 << "\n";
         std::cerr << "      - Cluster tasks with single-parent-single-child depepdencies" << "\n";
-        std::cerr << "    * \e[1mzhang:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
-        std::cerr << "      - The algorithm by Zhang, Koelbel, and Cooper" << "\n";
-        std::cerr << "      - **DEPRECATED, use zhang_fixed**" << "\n";
-        std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING - WE DEFAULT TO NEVER FAIL**" << "\n";
-        std::cerr << "      - [overlap|nooverlap]: use the default 'overlap' behavior by which a pilot job" << "\n";
-        std::cerr << "        is always queued while another is running. Specify 'nooverlap' disables this," << "\n";
-        std::cerr << "        which is useful for quantifying how much overlapping helps" << "\n";
-        std::cerr << "      - [plimit|pnolimit]: plimit is the original algorithm that will complain if the workflow"
-                  << "\n";
-        std::cerr << "        parallelism is larger than the number of hosts. pnolimit is an extension that will not"
-                  << "\n";
+        std::cerr << "    * \e[1mzhang:[global|noglobal]:[bsearch|nobsearch]:[prediction|noprediction]\e[0m" << "\n";
+        std::cerr << "      - The algorithm by Zhang, Koelbel, and Cooper + our improvements" << "\n";
+        std::cerr << "      - [global|noglobal]: pick the globally best ratio; otherwise, greedily pick" << "\n";
         std::cerr
-                << "        complain and just fold a level, useful to use the zhang algorithm for more cases, although"
+                << "      - [bsearch|nobsearch]: find leeway with a binary search; otherwise, use zhangs one-way search"
                 << "\n";
-        std::cerr << "        not intended by its authors. Also, pnolimit uses the smallest, best number of hosts"
+        std::cerr << "      - [prediction|noprediction]: pick parallelism based on makespan+wait predictions"
                   << "\n";
-        std::cerr << "        to pack that tasks into a job" << "\n";
-        std::cerr << "    * \e[1mzhang_fixed:[overlap|nooverlap]:[plimit|pnolimit]\e[0m" << "\n";
-        std::cerr << "      - Improvements to Zhang et al. algorithm" << "\n";
-        std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
-        std::cerr << "    * \e[1mzhang_fixed_global\e[0m" << "\n";
-        std::cerr << "      - Improvements to zhang_fixed algorithm" << "\n";
-        std::cerr << "    * \e[1mzhang_fixed_global_prediction\e[0m" << "\n";
-        std::cerr << "      - Improvements to zhang_fixed_global algorithm" << "\n";
-        std::cerr << "    * \e[1mevan:[overlap|nooverlap]:[plimit|pnolimit]:waste_bound\e[0m" << "\n";
-        std::cerr << "      - Improvements to Zhang et al. algorithm" << "\n";
-        std::cerr << "      - ** OVERLAP/LIMIT CURRENTLY DO NOTHING **" << "\n";
-        std::cerr << "      - waste_bound: maximum percentage of wasted node time e.g. 0.2" << "\n";
         std::cerr << "    * \e[1mtest:waste_bound:beat_bound\e[0m" << "\n";
         std::cerr << "      - Testing a new algorithm" << "\n";
         std::cerr << "      - waste_bound: maximum percentage of wasted node time e.g. 0.2" << "\n";
@@ -582,93 +558,37 @@ WMS *Simulator::createWMS(std::string hostname,
 
     } else if (tokens[0] == "zhang") {
 
-        throw std::invalid_argument("createWMS(): \"zhang\" DEPRECATED, use \"zhang_fixed\"");
-
-        if (tokens.size() != 3) {
-            throw std::invalid_argument("createWMS(): Invalid zhang specification");
-        }
-        bool overlap;
-        if (tokens[1] == "overlap") {
-            overlap = true;
-        } else if (tokens[1] == "nooverlap") {
-            overlap = false;
-        } else {
-            throw std::invalid_argument("createWMS(): Invalid zhang specification");
-        }
-        bool plimit;
-        if (tokens[2] == "plimit") {
-            plimit = true;
-        } else if (tokens[2] == "pnolimit") {
-            plimit = false;
-        } else {
-            throw std::invalid_argument("createWMS(): Invalid zhang specification");
-        }
-        return new ZhangClusteringWMS(this, hostname, overlap, plimit, batch_service);
-
-    } else if (tokens[0] == "zhang_fixed") {
-
-        if (tokens.size() != 3) {
-            throw std::invalid_argument("createWMS(): Invalid zhang_fixed specification");
-        }
-        bool overlap;
-        if (tokens[1] == "overlap") {
-            overlap = true;
-        } else if (tokens[1] == "nooverlap") {
-            overlap = false;
-        } else {
-            throw std::invalid_argument("createWMS(): Invalid zhang_fixed specification");
-        }
-        bool plimit;
-        if (tokens[2] == "plimit") {
-            plimit = true;
-        } else if (tokens[2] == "pnolimit") {
-            plimit = false;
-        } else {
-            throw std::invalid_argument("createWMS(): Invalid zhang_fixed specification");
-        }
-        return new ZhangFixedWMS(this, hostname, overlap, plimit, batch_service);
-
-    } else if (tokens[0] == "zhang_fixed_global") {
-
-        if (tokens.size() != 1) {
-            throw std::invalid_argument("createWMS(): Invalid zhang_fixed_global specification");
-        }
-
-        return new ZhangFixedGlobalWMS(this, hostname, batch_service);
-
-    } else if (tokens[0] == "zhang_fixed_global_prediction") {
-
-        if (tokens.size() != 1) {
-            throw std::invalid_argument("createWMS(): Invalid zhang_fixed_global_prediction specification");
-        }
-
-        return new ZhangFixedGlobalPredictionWMS(this, hostname, batch_service);
-
-    } else if (tokens[0] == "evan") {
-
         if (tokens.size() != 4) {
-            throw std::invalid_argument("createWMS(): Invalid evan specification");
-        }
-        bool overlap;
-        if (tokens[1] == "overlap") {
-            overlap = true;
-        } else if (tokens[1] == "nooverlap") {
-            overlap = false;
-        } else {
-            throw std::invalid_argument("createWMS(): Invalid evan specification");
-        }
-        bool plimit;
-        if (tokens[2] == "plimit") {
-            plimit = true;
-        } else if (tokens[2] == "pnolimit") {
-            plimit = false;
-        } else {
-            throw std::invalid_argument("createWMS(): Invalid evan specification");
+            throw std::invalid_argument("createWMS(): Invalid zhang specification");
         }
 
-        double waste_bound = std::stod(tokens[3]);
+        bool global, bsearch, prediction;
 
-        return new EvanClusteringWMS(this, hostname, overlap, plimit, waste_bound, batch_service);
+        if (tokens[1] == "global") {
+            global = true;
+        } else if (tokens[1] == "noglobal") {
+            global = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid zhang specification");
+        }
+
+        if (tokens[2] == "bsearch") {
+            bsearch = true;
+        } else if (tokens[2] == "nobsearch") {
+            bsearch = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid zhang specification");
+        }
+
+        if (tokens[3] == "prediction") {
+            prediction = true;
+        } else if (tokens[3] == "noprediction") {
+            prediction = false;
+        } else {
+            throw std::invalid_argument("createWMS(): Invalid zhang specification");
+        }
+
+        return new ZhangWMS(this, hostname, batch_service, global, bsearch, prediction);
 
     } else if (tokens[0] == "test") {
 

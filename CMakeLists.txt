@@ -23,18 +23,8 @@ set(SOURCE_FILES
         src/LevelByLevelAlgorithm/LevelByLevelWMS.cpp
         src/LevelByLevelAlgorithm/LevelByLevelWMS.h
         src/LevelByLevelAlgorithm/PlaceHolderJob.h
-        src/ZhangClusteringAlgorithms/ZhangClusteringWMS.cpp
-        src/ZhangClusteringAlgorithms/ZhangClusteringWMS.h
-        src/ZhangClusteringAlgorithms/ZhangFixedWMS.cpp
-        src/ZhangClusteringAlgorithms/ZhangFixedWMS.h
-        src/ZhangClusteringAlgorithms/ZhangFixedGlobalWMS.cpp
-        src/ZhangClusteringAlgorithms/ZhangFixedGlobalWMS.h
-        src/ZhangClusteringAlgorithms/ZhangFixedGlobalPredictionWMS.cpp
-        src/ZhangClusteringAlgorithms/ZhangFixedGlobalPredictionWMS.h
-        src/ZhangClusteringAlgorithms/ZhangPlaceHolderJob.h
-        src/EvanClusteringAlgorithm/EvanClusteringWMS.cpp
-        src/EvanClusteringAlgorithm/EvanClusteringWMS.h
-        src/EvanClusteringAlgorithm/EvanPlaceHolderJob.h
+        src/ZhangClusteringAlgorithms/ZhangWMS.cpp
+        src/ZhangClusteringAlgorithms/ZhangWMS.h
         src/TestClusteringAlgorithm/TestClusteringWMS.cpp
         src/TestClusteringAlgorithm/TestClusteringWMS.h
         src/TestClusteringAlgorithm/TestPlaceHolderJob.h
