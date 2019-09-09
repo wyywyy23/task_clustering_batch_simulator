@@ -117,6 +117,7 @@ namespace wrench {
         }
 
         if (this->individual_mode) {
+            WRENCH_INFO("Submitting tasks individually after switching to individual mode!");
             this->proxyWMS->submitAllOneJobPerTask(this->core_speed);
         } else {
             this->pending_placeholder_job = this->proxyWMS->createAndSubmitPlaceholderJob(
@@ -187,6 +188,7 @@ namespace wrench {
                 break;
             }
 
+            // TODO - if we find the same ratio, should we pick the later split?
             if (not ratio_got_worse) {
                 std::cout << "Found a better split @ end level: " << candidate_end_level << std::endl;
                 best_wait_time = wait_time;
@@ -256,13 +258,13 @@ namespace wrench {
                                           double upper) {
         std::cout << "LOWER: " << lower << " UPPER: " << upper << " greater? " << (lower >= upper) << std::endl;
         assert(upper > 0 && lower >= 0);
+
         if ((upper - lower) < 600) {
             return upper;
         }
 
         double middle = floor((lower + upper) / 2.0);
 
-        assert(middle > 0);
         double new_wait_time = this->proxyWMS->estimateWaitTime(num_nodes, (runtime + middle),
                                                                 this->simulation->getCurrentSimulatedDate(), &sequence);
         std::cout << "NEW WAIT TIME: " << new_wait_time << std::endl;
@@ -275,7 +277,6 @@ namespace wrench {
             return calculateLeewayBinarySearch(runtime, num_nodes, parent_runtime, lower, middle - 1);
         }
 
-        assert(false);
         // middle added was enough to create full overlap + (some slack < 10 minutes)
         return middle;
     }
@@ -512,6 +513,7 @@ namespace wrench {
         if (this->individual_mode) {
             // TODO - why are we doing this?
             // Oh okay. submitAllOneJobPerTask only submits ready tasks, so we must rely on this to take care of rest.
+            WRENCH_INFO("Submitting tasks individually after job completion!");
             this->proxyWMS->submitAllOneJobPerTask(this->core_speed);
         }
     }
