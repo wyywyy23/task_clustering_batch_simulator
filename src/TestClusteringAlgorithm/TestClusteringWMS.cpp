@@ -162,7 +162,7 @@ namespace wrench {
             double leeway = run_one - wait_two;
             if (leeway > 0) {
                 if (leeway > (run_two * 0.10)) {
-                    // This much leeway is unaccpetable
+                    // This much leeway is unacceptable
                     continue;
                 }
             } else {
