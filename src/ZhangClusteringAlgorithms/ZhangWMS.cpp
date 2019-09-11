@@ -147,8 +147,7 @@ namespace wrench {
 
             std::cout << "Candidate end level: " << candidate_end_level << std::endl;
 
-            unsigned long num_nodes = bestParallelism(start_level, candidate_end_level,
-                                                      this->calculate_parallelism_based_on_predictions);
+            unsigned long num_nodes = bestParallelism(start_level, candidate_end_level, false);
             double runtime = WorkflowUtil::estimateMakespan(
                     this->getWorkflow()->getTasksInTopLevelRange(start_level, candidate_end_level),
                     num_nodes, this->core_speed);
@@ -163,6 +162,7 @@ namespace wrench {
             std::cout << "wait_time: " << wait_time << std::endl;
             std::cout << "runtime: " << runtime << std::endl;
             std::cout << "leeway: " << leeway << std::endl;
+            std::cout << "ratio: " << wait_time / (runtime) << std::endl;
 
             // If we are on the last level w/ no best end level yet, we should check the ratio anyways
             // so we don't need to recalculate stuff if we need to return entire DAG
@@ -181,7 +181,8 @@ namespace wrench {
             giant = false;
 
             // In the spirit of zhang, we check if it got "worse" instead of better
-            bool ratio_got_worse = (wait_time / runtime) > (best_wait_time / best_runtime);
+            bool ratio_got_worse = wait_time / ( runtime) > best_wait_time / ( best_runtime) ;
+
 
             if (ratio_got_worse && (not pick_globally_best_split)) {
                 std::cout << "Ratio got worse - breaking from loop\n";
@@ -204,6 +205,17 @@ namespace wrench {
         assert(not giant);
         assert(best_end_level != ULONG_MAX);
 
+        if (this->calculate_parallelism_based_on_predictions) {
+            num_nodes_for_best_grouping = bestParallelism(start_level, best_end_level, true);
+            best_runtime = WorkflowUtil::estimateMakespan(
+                    this->getWorkflow()->getTasksInTopLevelRange(start_level, best_end_level),
+                    num_nodes_for_best_grouping, this->core_speed);
+            best_wait_time = this->proxyWMS->estimateWaitTime(num_nodes_for_best_grouping, best_runtime,
+                                                                this->simulation->getCurrentSimulatedDate(),
+                                                                &sequence);
+            leeway_for_best_runtime = calculateLeeway(best_wait_time, best_runtime, num_nodes_for_best_grouping);
+        }
+
         return std::make_tuple(best_wait_time, best_runtime, leeway_for_best_runtime, best_end_level,
                                num_nodes_for_best_grouping);
     }
@@ -221,6 +233,8 @@ namespace wrench {
             return max_parallelism;
         }
 
+        double parent_runtime = this->proxyWMS->findMaxDuration(this->running_placeholder_jobs);
+
         unsigned long best_parallelism = 0;
         double best_total_time = DBL_MAX;
         for (unsigned long i = 1; i < max_parallelism + 1; i++) {
@@ -229,6 +243,11 @@ namespace wrench {
                     i, this->core_speed);
             double wait_time = this->proxyWMS->estimateWaitTime(i, makespan,
                                                                 this->simulation->getCurrentSimulatedDate(), &sequence);
+
+            if (wait_time < parent_runtime) { // We don't care if your wait time is smaller than the parent runtime!
+                wait_time = parent_runtime;
+            }
+
             double total_time = makespan + wait_time;
             if (total_time < best_total_time) {
                 best_total_time = total_time;
