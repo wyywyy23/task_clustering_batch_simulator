@@ -116,8 +116,7 @@ namespace wrench {
             this->number_of_splits++;
         }
 
-        if (this->individual_mode) {
-            WRENCH_INFO("Submitting tasks individually after switching to individual mode!");
+        if (this->individual_mode) { WRENCH_INFO("Submitting tasks individually after switching to individual mode!");
             this->proxyWMS->submitAllOneJobPerTask(this->core_speed);
         } else {
             this->pending_placeholder_job = this->proxyWMS->createAndSubmitPlaceholderJob(
@@ -125,13 +124,13 @@ namespace wrench {
         }
     }
 
-    // return params: (waitt_time, runtime, end_level, num_nodes)
+    // return params: (waitt_time, runtime, leeway, end_level, num_nodes)
     std::tuple<double, double, double, unsigned long, unsigned long>
     ZhangWMS::groupLevels(unsigned long start_level, unsigned long end_level) {
         double best_wait_time = DBL_MAX;
         double best_runtime = 0;
         double leeway_for_best_runtime = DBL_MAX;
-        double num_nodes_for_best_grouping = DBL_MAX;
+        unsigned long num_nodes_for_best_grouping = ULONG_MAX;
         unsigned long best_end_level = ULONG_MAX;
 
         double parent_runtime = this->proxyWMS->findMaxDuration(this->running_placeholder_jobs);
@@ -181,7 +180,7 @@ namespace wrench {
             giant = false;
 
             // In the spirit of zhang, we check if it got "worse" instead of better
-            bool ratio_got_worse = wait_time / ( runtime) > best_wait_time / ( best_runtime) ;
+            bool ratio_got_worse = (wait_time / runtime) > (best_wait_time / best_runtime);
 
 
             if (ratio_got_worse && (not pick_globally_best_split)) {
@@ -189,7 +188,6 @@ namespace wrench {
                 break;
             }
 
-            // TODO - if we find the same ratio, should we pick the later split?
             if (not ratio_got_worse) {
                 std::cout << "Found a better split @ end level: " << candidate_end_level << std::endl;
                 best_wait_time = wait_time;
@@ -204,6 +202,7 @@ namespace wrench {
 
         assert(not giant);
         assert(best_end_level != ULONG_MAX);
+        assert(num_nodes_for_best_grouping != ULONG_MAX);
 
         if (this->calculate_parallelism_based_on_predictions) {
             num_nodes_for_best_grouping = bestParallelism(start_level, best_end_level, true);
@@ -211,8 +210,8 @@ namespace wrench {
                     this->getWorkflow()->getTasksInTopLevelRange(start_level, best_end_level),
                     num_nodes_for_best_grouping, this->core_speed);
             best_wait_time = this->proxyWMS->estimateWaitTime(num_nodes_for_best_grouping, best_runtime,
-                                                                this->simulation->getCurrentSimulatedDate(),
-                                                                &sequence);
+                                                              this->simulation->getCurrentSimulatedDate(),
+                                                              &sequence);
             leeway_for_best_runtime = calculateLeeway(best_wait_time, best_runtime, num_nodes_for_best_grouping);
         }
 
