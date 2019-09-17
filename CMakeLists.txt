@@ -27,7 +27,6 @@ set(SOURCE_FILES
         src/ZhangClusteringAlgorithms/ZhangWMS.h
         src/TestClusteringAlgorithm/TestClusteringWMS.cpp
         src/TestClusteringAlgorithm/TestClusteringWMS.h
-        src/TestClusteringAlgorithm/TestPlaceHolderJob.h
         src/StaticClusteringAlgorithms/ClusteredJob.cpp
         src/StaticClusteringAlgorithms/ClusteredJob.h
         src/StaticClusteringAlgorithms/StaticClusteringWMS.cpp

@@ -599,11 +599,7 @@ WMS *Simulator::createWMS(std::string hostname,
         double waste_bound = std::stod(tokens[1]);
         double beat_bound = std::stod(tokens[2]);
 
-        /* Currently unused for this algorithm */
-        bool overlap = true;
-        bool plimit = false;
-
-        return new TestClusteringWMS(this, hostname, overlap, plimit, waste_bound, beat_bound, batch_service);
+        return new TestClusteringWMS(this, hostname, waste_bound, beat_bound, batch_service);
 
     } else if (tokens[0] == "levelbylevel") {
         if (tokens.size() != 3) {
