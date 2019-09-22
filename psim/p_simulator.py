@@ -7,6 +7,7 @@ from threading import Thread
 from threading import Lock
 
 import sys
+import json
 
 lock = Lock()
 save_to_mongo = False
@@ -169,69 +170,50 @@ def create_fork_join(num_levels, tasks_per_level, task_time):
     return workflow
 
 def main():
-    start = time.time()
-    trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json']
-    # trace_files = ['../batch_logs/swf_traces_json/gaia.json']
-    # trace_files = ['../batch_logs/swf_traces_json/kth_sp2.json', '../batch_logs/swf_traces_json/sdsc_sp2.json', '../batch_logs/swf_traces_json/gaia.json', '../batch_logs/swf_traces_json/ricc.json']
-    # workflows = ['dax:../m_workflows/m_montage_100.dax', 'dax:../m_workflows/m_epigenomics_100.dax', 'dax:../m_workflows/m_floodplain.dax', 'dax:../m_workflows/m_sipht_100.dax', 'dax:../m_workflows/m_psmerge_small.dax']
+    print("Reading in configurations from config.json")
 
-    # workflows = [create_fork_join(1, 10, 2), create_fork_join(1, 20, 2), create_fork_join(1, 50, 2), create_fork_join(3, 10, 2), create_fork_join(3, 20, 2), create_fork_join(3, 50, 2), create_fork_join(5, 10, 2), create_fork_join(5, 20, 2), create_fork_join(5, 50, 2), create_fork_join(1, 10, 5), create_fork_join(1, 20, 5), create_fork_join(1, 50, 5), create_fork_join(3, 10, 5), create_fork_join(3, 20, 5), create_fork_join(3, 50, 5), create_fork_join(5, 10, 5), create_fork_join(5, 20, 5), create_fork_join(5, 50, 5), create_fork_join(1, 10, 10), create_fork_join(1, 20, 10), create_fork_join(1, 50, 10), create_fork_join(3, 10, 10), create_fork_join(3, 20, 10), create_fork_join(3, 50, 10), create_fork_join(5, 10, 10), create_fork_join(5, 20, 10), create_fork_join(5, 50, 10)]
-    
-    # workflows = [create_fork_join(3, 10, 5), create_fork_join(5, 50, 10), create_fork_join(5, 15, 1)]
+    f = open('config.json', 'r')
+    config = json.load(f)
+    f.close()
 
-    workflows = ['dax:../workflows/mont_workflows/montage_50_3600.dax', 'dax:../workflows/mont_workflows/montage_50_18000.dax', 'dax:../workflows/mont_workflows/montage_50_36000.dax', 'dax:../workflows/mont_workflows/montage_100_3600.dax', 'dax:../workflows/mont_workflows/montage_100_18000.dax', 'dax:../workflows/mont_workflows/montage_100_36000.dax', 'dax:../workflows/mont_workflows/montage_250_3600.dax', 'dax:../workflows/mont_workflows/montage_250_18000.dax', 'dax:../workflows/mont_workflows/montage_250_36000.dax', 'dax:../workflows/mont_workflows/montage_500_3600.dax', 'dax:../workflows/mont_workflows/montage_500_18000.dax', 'dax:../workflows/mont_workflows/montage_500_36000.dax']
+    trace_files = [config['trace_file_dir'] + '/' + x[0] for x in config['trace_files']]
 
-    # workflows = []
-    # for level in [1, 3, 5]:
-    #     for length in [2, 5, 10]:
-    #         workflows.append(create_fork_join(level, 50, length))
- 
-    # Take out one_job_max
-    # algorithms = ['static:one_job-0-1', 'static:one_job_per_task', 'zhang:overlap:pnolimit', 'test:1:0', 'evan:overlap:pnolimit:1']
-    # algorithms = ['test:1:0']
-    algorithms = ['zhang_fixed:overlap:pnolimit', 'zhang_fixed_global', 'zhang_fixed_global_prediction', 'static:one_job-0-1', 'static:one_job_per_task', 'test:1:0']
-    # num_nodes = [str(x * 10) for x in range(5, 16)]
-    num_nodes = ['100']
-    start_times = [str(x * 1800) for x in range(48, 385)]
-    # start_times = [str(x * 3600) for x in range(100, 200)]
-    # workflows = ['levels:666:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600:10:3600:3600']
+    node_map = {(config['trace_file_dir'] + '/' + x[0]): x[1] for x in config['trace_files']}
+
+    workflows = [config['workflow_type'] + ':' + config['workflow_dir'] + '/' + x for x in config['workflows']]
+
+    algorithms = config['algorithms']
+
+    start_times = [str(x * 1800) for x in range(48, 285)]
 
     print('Trace files: ', trace_files)
-    print('Number of nodes: ', num_nodes)
+    print('Nodes: ', node_map)
     print('Start times: ', start_times)
     print('Workflows: ', workflows)
     print('Algorithms: ', algorithms)
     print('')
 
     for trace in trace_files:
-        for nodes in num_nodes:
-            for start_time in start_times:
-                for workflow in workflows:
-                    for algorithm in algorithms:
-                        command = simulator_command()
-                        command[1] = nodes
-                        command[2] = trace
-                        # set max_sys_jobs to number of nodes on machine
-                        command[3] = command[1]
-                        command[4] = workflow
-                        command[5] = start_time
-                        command[6] = get_algorithm(algorithm, workflow)
-                        commands.append(command)
-    '''
-    commands.clear()
-    fd = open('unfinished_b5.txt', 'r')
-    line = fd.readline()
-    while line:
-        com = line[2:-3].split("\', \'")
-        commands.append(com)
-        line = fd.readline()
-    '''
-    print("Total simulations to run: %d" % len(commands))
-    
+        for start_time in start_times:
+            for workflow in workflows:
+                for algorithm in algorithms:
+                    command = simulator_command()
+                    command[1] = node_map[trace]
+                    command[2] = trace
+                    # set max_sys_jobs to number of nodes on machine
+                    command[3] = node_map[trace]
+                    command[4] = workflow
+                    command[5] = start_time
+                    command[6] = get_algorithm(algorithm, workflow)
+                    commands.append(command)
+
+    start = time.time()
+    print("%s Simulations to run: %d" % (str(datetime.now()), len(commands)))
+
     threads = []
     cores = 10
 
-    for i in range(cores):
+    for _ in range(cores):
         thread = Thread(target=execute)
         thread.start()
         threads.append(thread)
@@ -239,7 +221,7 @@ def main():
     for thread in threads:
         thread.join()
 
-    print("\n\nSimulations took %d seconds" % (time.time() - start))
+    print("\n\n%s Simulations took %d seconds" % (str(datetime.now()), time.time() - start))
 
 # Only save to mongo if a collection name is provided
 if __name__ == '__main__':
@@ -253,3 +235,13 @@ if __name__ == '__main__':
         print("invalid number of arguments")
         exit()
     main()
+
+'''
+commands.clear()
+fd = open('unfinished_b5.txt', 'r')
+line = fd.readline()
+while line:
+    com = line[2:-3].split("\', \'")
+    commands.append(com)
+    line = fd.readline()
+'''
