@@ -101,6 +101,9 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
             throw std::invalid_argument("Invalid static:one_job-m specification");
         }
 
+        if (num_nodes == 100000) {
+            std::cout << "asdfasdfasdfsdff " << num_nodes << std::endl;
+        }
         double waste_bound = std::stod(tokens[2]);
 
         ClusteredJob *job = new ClusteredJob();
@@ -319,6 +322,13 @@ void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
                 std::min<unsigned long>(clustered_job->getMaxParallelism(), this->max_num_jobs), this->core_speed, this->batch_service);
     }
 
+    // For one_job-max
+    if (clustered_job->getNumNodes() == 100000) {
+        num_nodes = std::min<unsigned long>(clustered_job->getMaxParallelism(), this->max_num_jobs);
+    }
+
+    num_nodes = std::min<unsigned long>(num_nodes, this->max_num_jobs);
+    
     double makespan = WorkflowUtil::estimateMakespan(clustered_job->getTasks(), num_nodes, this->core_speed);
     // std::cout << "MAKESPAN ESTIMATE = " << makespan << "\n";
 
@@ -337,7 +347,7 @@ void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
     try {
         WRENCH_INFO("Submitting a batch job...");
         // std::cout << "REQUESTING " << (unsigned long) (1 + (makespan * EXECUTION_TIME_FUDGE_FACTOR)) << " " << num_nodes << "\n";
-
+        std::cout << "NUM NODES: " << num_nodes << std::endl;
         this->job_manager->submitJob(standard_job, batch_service, batch_job_args);
 //    this->job_map.insert(std::make_pair(standard_job, clustered_job));
     } catch (WorkflowExecutionException &e) {
