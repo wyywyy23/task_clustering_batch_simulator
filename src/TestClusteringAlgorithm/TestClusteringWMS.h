@@ -35,7 +35,7 @@ namespace wrench {
         void applyGroupingHeuristic();
 
         std::tuple<double, double, unsigned long>
-        estimateJob(unsigned long start_level, unsigned long end_level);
+        estimateJob(unsigned long start_level, unsigned long end_level, double delay);
 
         unsigned long findMaxParallelism(unsigned long start_level, unsigned long end_level);
 
@@ -57,8 +57,6 @@ namespace wrench {
         void processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) override;
 
         Simulator *simulator;
-
-        bool individual_mode;
 
         double waste_bound;
         double beat_bound;

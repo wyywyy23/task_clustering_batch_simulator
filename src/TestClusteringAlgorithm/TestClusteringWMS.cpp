@@ -24,7 +24,6 @@ namespace wrench {
         this->beat_bound = beat_bound;
         this->batch_service = batch_service;
         this->pending_placeholder_job = nullptr;
-        this->individual_mode = false;
         this->number_of_splits = 0;
     }
 
@@ -57,10 +56,6 @@ namespace wrench {
             return;
         }
 
-        if (this->individual_mode) {
-            return;
-        }
-
         // TODO - does running_placeholder_jobs need to be instantiated??
         unsigned long start_level = this->proxyWMS->getStartLevel(this->running_placeholder_jobs);
         unsigned long end_level = this->getWorkflow()->getNumLevels() - 1;
@@ -69,70 +64,111 @@ namespace wrench {
             return;
         }
 
-        // TODO - try test this on a 1 level workflow
         unsigned long num_levels = end_level + 1;
 
-        // Fill for start level to i and i to end level
-        // Tuple order: (wait time, runtime, num_hosts)
-        std::tuple<double, double, unsigned long> time_estimates[num_levels][2];
-        for (unsigned long i = start_level; i < num_levels; i++) {
-            time_estimates[i][0] = estimateJob(start_level, i);
-            time_estimates[i][1] = estimateJob(i, end_level);
-        }
+        double parent_runtime = this->proxyWMS->findMaxDuration(this->running_placeholder_jobs);
 
-        std::tuple<double, double, unsigned long> entire_workflow = time_estimates[start_level][1];
+        std::cout << "\nParent job runtime: " << parent_runtime << std::endl;
+
+        // Use these to keep track of the "best" grouping
+        std::tuple<double, double, unsigned long> entire_workflow = estimateJob(start_level, end_level, parent_runtime);
         double estimated_wait_time = std::get<0>(entire_workflow);
         double requested_execution_time = std::get<1>(entire_workflow);
         unsigned long requested_parallelism = std::get<2>(entire_workflow);
-        double best_makespan = estimated_wait_time + requested_execution_time;
-
-        unsigned long partial_dag_end_level = end_level;
-
-        double parent_runtime = this->proxyWMS->findMaxDuration(this->running_placeholder_jobs);
-        std::cout << "\nParent job runtime: " << parent_runtime << std::endl;
-
 
         std::cout << "entire dag num nodes: " << requested_parallelism << std::endl;
         std::cout << "entire dag wait_time: " << estimated_wait_time << std::endl;
         std::cout << "entire dag runtime: " << requested_execution_time << std::endl;
+
+        // Calculate leeway needed for entire dag vs. currently running parent
+        double max_leeway_entire_dag = std::max<double>(0, (parent_runtime - estimated_wait_time));
+        double best_leeway_entire_dag = calculateLeewayBinarySearch(requested_execution_time, requested_parallelism,
+                                                                    parent_runtime, 0, max_leeway_entire_dag);
+
+        // Adjust the run and wait times for leeway
+        if (best_leeway_entire_dag > 0) {
+            requested_execution_time += best_leeway_entire_dag;
+            estimated_wait_time = this->proxyWMS->estimateWaitTime(requested_parallelism, requested_execution_time,
+                                                        this->simulation->getCurrentSimulatedDate(), &sequence);
+            std::cout << "entire dag recalculated wait_time: " << estimated_wait_time << std::endl;
+            std::cout << "entire dag recalculated runtime: " << requested_execution_time << std::endl;
+        }
+
+        // TODO - should we overlap with parent?
+        double best_makespan = estimated_wait_time + requested_execution_time;
+
         std::cout << "entire dag makespan: " << (estimated_wait_time + requested_execution_time) << std::endl;
 
-        // Apply henri's grouping heuristic
+        unsigned long partial_dag_end_level = end_level;
+
+        // Find the best split
         for (unsigned long i = start_level; i < num_levels - 1; i++) {
-            std::tuple<double, double, unsigned long> start_to_split = time_estimates[i][0];
-            std::tuple<double, double, unsigned long> rest = time_estimates[i + 1][1];
+            std::cout << "\nCandidate end level: " << i << std::endl;
+
+            std::tuple<double, double, unsigned long> start_to_split = estimateJob(start_level, i, parent_runtime);
             double wait_one = std::get<0>(start_to_split);
             double run_one = std::get<1>(start_to_split);
-            double wait_two = std::get<0>(rest);
-            double run_two = std::get<1>(rest);
+            unsigned long nodes_one = std::get<2>(start_to_split);
 
-            std::cout << "\nCandidate end level: " << i << std::endl;
             std::cout << "1: num nodes: " << std::get<2>(start_to_split) << std::endl;
             std::cout << "1: wait_time: " << wait_one << std::endl;
             std::cout << "1: runtime: " << run_one << std::endl;
-            std::cout << "2: num nodes: " << std::get<2>(rest) << std::endl;
-            std::cout << "2: wait_time: " << wait_two << std::endl;
-            std::cout << "2: runtime: " << run_two << std::endl;
-            std::cout << "leeway needed: " << (run_one - wait_two) << std::endl;
 
-            // TODO - take a look at this again
-            // Check if leeway is needed
-            double leeway = run_one - wait_two;
-            if (leeway > 0 && leeway > (run_two * 0.10)) {
-                std::cout << "too much leeway requested, skipping split" << std::endl;
+            // Calculate leeway needed for first group vs. currently running parent
+            double max_leeway_one = std::max<double>(0, (parent_runtime - wait_one));
+            double best_leeway_one = calculateLeewayBinarySearch(run_one, nodes_one, parent_runtime, 0, max_leeway_one);
+
+            std::cout << "1: leeway needed: " << best_leeway_one << std::endl;
+
+            if (best_leeway_one > (run_one * .1)) {
+                std::cout << "Too much leeway needed - skipping group\n";
                 continue;
             }
 
-            if (wait_one < parent_runtime) {
-                std::cout << "wait time still less than parent run...making adjustment\n";
-                wait_one = parent_runtime;
+            // Adjust the run and wait times for leeway
+            if (best_leeway_one > 0) {
+                run_one += best_leeway_one;
+                wait_one = this->proxyWMS->estimateWaitTime(nodes_one, run_one,
+                                                            this->simulation->getCurrentSimulatedDate(), &sequence);
+                std::cout << "1: recalculated wait_time: " << wait_one << std::endl;
+                std::cout << "1: recalculated runtime: " << run_one << std::endl;
             }
 
-            double makespan = wait_one + std::max<double>(run_one, wait_two) + run_two + std::max<double>(0, leeway);
+            std::tuple<double, double, unsigned long> rest = estimateJob(i + 1, end_level, run_one);
+            double wait_two = std::get<0>(rest);
+            double run_two = std::get<1>(rest);
+            unsigned long nodes_two = std::get<2>(rest);
+
+            std::cout << "2: num nodes: " << nodes_two << std::endl;
+            std::cout << "2: wait_time: " << wait_two << std::endl;
+            std::cout << "2: runtime: " << run_two << std::endl;
+
+            // Calculate leeway needed for second group vs. first group ^
+            double max_leeway_two = std::max<double>(0, (run_one - wait_two));
+            double best_leeway_two = calculateLeewayBinarySearch(run_two, nodes_two, run_one, 0, max_leeway_two);
+
+            std::cout << "2: leeway needed: " << best_leeway_two << std::endl;
+
+            if (best_leeway_two > (run_two * .1)) {
+                std::cout << "Too much leeway needed for grouping\n";
+                continue;
+            }
+
+            // Adjust the run and wait times for leeway
+            if (best_leeway_two > 0) {
+                run_two += best_leeway_two;
+                wait_two = this->proxyWMS->estimateWaitTime(nodes_two, run_two,
+                                                            this->simulation->getCurrentSimulatedDate(), &sequence);
+                std::cout << "2: recalculated wait_time: " << wait_two << std::endl;
+                std::cout << "2: recalculated runtime: " << run_two << std::endl;
+            }
+
+            double makespan = wait_one + std::max<double>(run_one, wait_two) + run_two;
 
             std::cout << "makespan: " << makespan << std::endl;
 
-            // Make sure we beat one_job-0 when the beat bound is specified
+            // Make sure we only compare when one_job-0 is still the best grouping
+            // Although, i'm not entirely convinced this is still right...
             double adjusted_time = makespan;
             if (partial_dag_end_level == end_level) {
                 makespan += (makespan * beat_bound);
@@ -144,7 +180,7 @@ namespace wrench {
                 partial_dag_end_level = i;
                 best_makespan = makespan;
                 requested_execution_time = run_one;
-                requested_parallelism = std::get<2>(start_to_split);
+                requested_parallelism = nodes_one;
                 estimated_wait_time = wait_one;
             }
         }
@@ -156,18 +192,12 @@ namespace wrench {
 
         WRENCH_INFO("GROUPING: %ld-%ld", partial_dag_end_level);
 
-        double max_leeway = std::max<double>(0, parent_runtime - estimated_wait_time);
-        double adjusted_leeway = calculateLeewayBinarySearch(requested_execution_time, requested_parallelism,
-                                                             parent_runtime, 0, max_leeway);
-        requested_execution_time += adjusted_leeway;
-
         assert(partial_dag_end_level <= end_level);
 
         std::cout << "\n*Picked end level: " << partial_dag_end_level << std::endl;
-        std::cout << "Wait time before leeway adjustment: " << estimated_wait_time << std::endl;
+        std::cout << "Wait time: " << estimated_wait_time << std::endl;
         std::cout << "Runtime: " << requested_execution_time << std::endl;
         std::cout << "Parallelism: " << requested_parallelism << std::endl;
-        std::cout << "max leeway: " << max_leeway << " adjusted leeway: " << adjusted_leeway << std::endl;
 
         this->pending_placeholder_job = this->proxyWMS->createAndSubmitPlaceholderJob(
                 requested_execution_time, requested_parallelism, start_level, partial_dag_end_level);
@@ -175,12 +205,12 @@ namespace wrench {
 
     // Return params: (wait time, runtime, num_hosts)
     std::tuple<double, double, unsigned long>
-    TestClusteringWMS::estimateJob(unsigned long start_level, unsigned long end_level) {
+    TestClusteringWMS::estimateJob(unsigned long start_level, unsigned long end_level, double delay) {
+
         double runtime = DBL_MAX;
         double wait_time = DBL_MAX;
+        double best_makespan = DBL_MAX;
         unsigned long best_parallelism = 1;
-
-        double parent_runtime = this->proxyWMS->findMaxDuration(this->running_placeholder_jobs);
 
         unsigned long max_parallelism = findMaxParallelism(start_level, end_level);
 
@@ -193,26 +223,18 @@ namespace wrench {
                 continue;
             }
 
-            // We don't care if your wait time is smaller than the parent runtime!
-            if (curr_wait < parent_runtime) {
-                curr_wait = parent_runtime;
-            }
+            double curr_makespan = std::max<double>(delay, curr_wait) + curr_runtime;
 
-//            std:: cout << "curr wait: " << curr_wait << std::endl;
-//            std:: cout << "curr runtime: " << curr_runtime << std::endl;
-//
-//            std:: cout << "wait: " << wait_time << std::endl;
-//            std:: cout << "run: " << runtime << std::endl;
-
-            if ((curr_wait + curr_runtime) < (runtime + wait_time)) {
+            if (curr_makespan <= best_makespan) {
                 runtime = curr_runtime;
                 wait_time = curr_wait;
+                best_makespan = curr_makespan;
                 best_parallelism = i;
             }
         }
 
         assert(runtime != DBL_MAX && wait_time != DBL_MAX);
-//        std::cout << "***parallelism: " << best_parallelism << std::endl;
+
         return std::make_tuple(wait_time, runtime, best_parallelism);
     }
 
@@ -435,11 +457,6 @@ namespace wrench {
             }
         }
 
-        if ((placeholder_job == nullptr) and (not this->individual_mode)) {
-            throw std::runtime_error("Got a task completion, but couldn't find a placeholder for the task, "
-                                     "and we're not in individual mode");
-        }
-
         if (placeholder_job != nullptr) {
             // Terminate the pilot job in case all its tasks are done
             bool all_tasks_done = true;
@@ -480,7 +497,6 @@ namespace wrench {
         }
 
         // Start all newly ready tasks that depended on the completed task, IN ANY PLACEHOLDER
-        // This shouldn't happen in individual mode, but can't hurt
         std::vector<WorkflowTask *> children = this->getWorkflow()->getTaskChildren(completed_task);
         for (auto ph : this->running_placeholder_jobs) {
             for (auto task : ph->tasks) {
@@ -493,13 +509,6 @@ namespace wrench {
                     this->job_manager->submitJob(standard_job, ph->pilot_job->getComputeService());
                 }
             }
-        }
-
-        if (this->individual_mode) {
-            // TODO - why are we doing this?
-            // Oh okay. submitAllOneJobPerTask only submits ready tasks, so we must rely on this to take care of rest.
-            WRENCH_INFO("Submitting tasks individually after job completion!");
-            this->proxyWMS->submitAllOneJobPerTask(this->core_speed);
         }
     }
 
