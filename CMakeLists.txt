@@ -6,7 +6,7 @@ add_definitions("-Wall -Wno-unused-variable -Wno-unused-private-field")
 set(CMAKE_CXX_STANDARD 11)
 
 # include directories for dependencies and WRENCH libraries
-include_directories(src/ /usr/local/include /usr/local/include/wrench)
+include_directories(src/ /usr/local/include /usr/local/include/wrench /opt/local/include )
 # source files
 set(SOURCE_FILES
         src/main.cpp
@@ -14,20 +14,19 @@ set(SOURCE_FILES
         src/Simulator.h
         src/Util/WorkflowUtil.cpp
         src/Util/WorkflowUtil.h
+        src/Util/ProxyWMS.cpp
+        src/Util/ProxyWMS.h
+        src/Util/PlaceHolderJob.cpp
+        src/Util/PlaceHolderJob.h
         src/LevelByLevelAlgorithm/OngoingLevel.cpp
         src/LevelByLevelAlgorithm/OngoingLevel.h
         src/LevelByLevelAlgorithm/LevelByLevelWMS.cpp
         src/LevelByLevelAlgorithm/LevelByLevelWMS.h
         src/LevelByLevelAlgorithm/PlaceHolderJob.h
-        src/ZhangClusteringAlgorithm/ZhangClusteringWMS.cpp
-        src/ZhangClusteringAlgorithm/ZhangClusteringWMS.h
-        src/ZhangClusteringAlgorithm/ZhangPlaceHolderJob.h
-        src/EvanClusteringAlgorithm/EvanClusteringWMS.cpp
-        src/EvanClusteringAlgorithm/EvanClusteringWMS.h
-        src/EvanClusteringAlgorithm/EvanPlaceHolderJob.h
+        src/ZhangClusteringAlgorithms/ZhangWMS.cpp
+        src/ZhangClusteringAlgorithms/ZhangWMS.h
         src/TestClusteringAlgorithm/TestClusteringWMS.cpp
         src/TestClusteringAlgorithm/TestClusteringWMS.h
-        src/TestClusteringAlgorithm/TestPlaceHolderJob.h
         src/StaticClusteringAlgorithms/ClusteredJob.cpp
         src/StaticClusteringAlgorithms/ClusteredJob.h
         src/StaticClusteringAlgorithms/StaticClusteringWMS.cpp
