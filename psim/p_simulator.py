@@ -15,7 +15,7 @@ coll_name = 'default_coll'
 commands = []
 
 def simulator_command():
-    executable = './build/simulator'
+    executable = '../build/simulator'
     num_compute_nodes = '100'
     job_trace_file = '../batch_logs/swf_traces_json/kth_sp2.json'
     max_sys_jobs = '100'
@@ -81,7 +81,7 @@ def run_simulator(command):
     end = start
     try:
         # Timeout throws exception, this is okay i guess
-        res = subprocess.check_output(command, timeout=600, stderr=subprocess.STDOUT)
+        res = subprocess.check_output(command, timeout=1800, stderr=subprocess.STDOUT)
         end = time.time()
         res = print_process_output(command, res, end - start)
         obj['success'] = True

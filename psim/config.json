@@ -1,5 +1,5 @@
 {
-    "trace_file_dir": "../batch_logs/swf_traces_json",
+    "trace_file_dir": "../../batch_logs/swf_traces_json",
     "trace_files": [
         ["kth_sp2.json", "100"],
         ["sdsc_sp2.json", "128"]
