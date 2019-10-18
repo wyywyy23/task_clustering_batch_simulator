@@ -9,6 +9,8 @@
 #include "ZhangClusteringAlgorithms/ZhangWMS.h"
 #include "TestClusteringAlgorithm/TestClusteringWMS.h"
 
+#include <fstream>
+
 #include <sys/types.h>
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(task_clustering_simulator, "Log category for Task Clustering Simulator");
@@ -16,6 +18,8 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(task_clustering_simulator, "Log category for Task C
 using namespace wrench;
 
 unsigned long Simulator::sequence_number = 0;
+
+nlohmann::json sim_json;
 
 int Simulator::main(int argc, char **argv) {
 
@@ -26,7 +30,7 @@ int Simulator::main(int argc, char **argv) {
     // Parse command-line arguments
     if ((argc != 8) and (argc != 9)) {
         std::cerr << "\e[1;31mUsage: " << argv[0]
-                  << " <num_compute_nodes> <job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm> <batch algorithm> [csv batch log file]\e[0m"
+                  << " <num_compute_nodes> <job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm> <batch algorithm> [DISABLED: csv batch log file] [json result file]\e[0m"
                   << "\n";
         std::cerr << "  \e[1;32m### workflow specification options ###\e[0m" << "\n";
         std::cerr << "    *  \e[1mindep:s:n:t1:t2\e[0m " << "\n";
@@ -228,9 +232,10 @@ int Simulator::main(int argc, char **argv) {
     std::string login_hostname = "Login";
 
     std::string csv_batch_log = "/tmp/batch_log.csv";
-    if (argc == 9) {
-        csv_batch_log = std::string(argv[8]);
-    }
+    // disable custom batch_log file for now
+//    if (argc == 9) {
+//        csv_batch_log = std::string(argv[8]);
+//    }
 
 
     wrench::BatchComputeService *tmp_batch_service = nullptr;
@@ -309,6 +314,31 @@ int Simulator::main(int argc, char **argv) {
     std::cout << "USED NODE SECONDS=" << this->used_node_seconds << "\n";
     std::cout << "WASTED NODE SECONDS=" << this->wasted_node_seconds << "\n";
     std::cout << "CSV LOG FILE=" << csv_batch_log << "\n";
+
+    if (argc == 9) {
+        std::string json_file_name = std::string(argv[8]);
+
+        std::cout << json_file_name << std::endl;
+
+        sim_json["num_compute_nodes"] = argv[1];
+        sim_json["job_trace_file"] = argv[2];
+        sim_json["max_sys_jobs"] = argv[3];
+        sim_json["workflow_specification"] = argv[4];
+        sim_json["start_time"] = argv[5];
+        sim_json["algorithm"] = argv[6];
+        sim_json["batch_algorithm"] = argv[7];
+
+        sim_json["makespan"] = workflow->getCompletionDate() - workflow_start_time;
+        sim_json["num_p_job_exp"] = this->num_pilot_job_expirations_with_remaining_tasks_to_do;
+        sim_json["total_queue_wait"] = this->total_queue_wait_time;
+        sim_json["used_node_sec"] = this->used_node_seconds;
+        sim_json["wasted_node_seconds"] = this->wasted_node_seconds;
+
+        // TODO - how to handle runtime errors
+
+        std::ofstream out_json(json_file_name);
+        out_json << std::setw(4) << sim_json << std::endl;
+    }
 
     return 0;
 }
