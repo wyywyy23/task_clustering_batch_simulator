@@ -190,7 +190,7 @@ namespace wrench {
             this->number_of_splits++;
         }
 
-        WRENCH_INFO("GROUPING: %ld-%ld", partial_dag_end_level);
+        WRENCH_INFO("GROUPING: %ld-%ld", start_level, partial_dag_end_level);
 
         assert(partial_dag_end_level <= end_level);
 
@@ -515,6 +515,8 @@ namespace wrench {
     void TestClusteringWMS::processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) {
         WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS",
                     e->standard_job->tasks[0]->getID().c_str());
+//        e->failure_cause->toString();
     }
+
 
 };

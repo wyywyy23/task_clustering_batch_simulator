@@ -1,6 +1,9 @@
 
-#include <iostream>
 #include <wrench-dev.h>
+#include <nlohmann/json.hpp>
+#include <fstream>
+#include <iostream>
+
 #include <services/compute/batch/BatchComputeServiceProperty.h>
 #include <LevelByLevelAlgorithm/LevelByLevelWMS.h>
 #include "Simulator.h"
@@ -8,8 +11,7 @@
 #include "StaticClusteringAlgorithms/StaticClusteringWMS.h"
 #include "ZhangClusteringAlgorithms/ZhangWMS.h"
 #include "TestClusteringAlgorithm/TestClusteringWMS.h"
-
-#include <fstream>
+#include "Globals.h"
 
 #include <sys/types.h>
 
@@ -19,7 +21,7 @@ using namespace wrench;
 
 unsigned long Simulator::sequence_number = 0;
 
-nlohmann::json sim_json;
+nlohmann::json Globals::sim_json;
 
 int Simulator::main(int argc, char **argv) {
 
@@ -320,24 +322,24 @@ int Simulator::main(int argc, char **argv) {
 
         std::cout << json_file_name << std::endl;
 
-        sim_json["num_compute_nodes"] = argv[1];
-        sim_json["job_trace_file"] = argv[2];
-        sim_json["max_sys_jobs"] = argv[3];
-        sim_json["workflow_specification"] = argv[4];
-        sim_json["start_time"] = argv[5];
-        sim_json["algorithm"] = argv[6];
-        sim_json["batch_algorithm"] = argv[7];
+        Globals::sim_json["num_compute_nodes"] = argv[1];
+        Globals::sim_json["job_trace_file"] = argv[2];
+        Globals::sim_json["max_sys_jobs"] = argv[3];
+        Globals::sim_json["workflow_specification"] = argv[4];
+        Globals::sim_json["start_time"] = argv[5];
+        Globals::sim_json["algorithm"] = argv[6];
+        Globals::sim_json["batch_algorithm"] = argv[7];
 
-        sim_json["makespan"] = workflow->getCompletionDate() - workflow_start_time;
-        sim_json["num_p_job_exp"] = this->num_pilot_job_expirations_with_remaining_tasks_to_do;
-        sim_json["total_queue_wait"] = this->total_queue_wait_time;
-        sim_json["used_node_sec"] = this->used_node_seconds;
-        sim_json["wasted_node_seconds"] = this->wasted_node_seconds;
+        Globals::sim_json["makespan"] = workflow->getCompletionDate() - workflow_start_time;
+        Globals::sim_json["num_p_job_exp"] = this->num_pilot_job_expirations_with_remaining_tasks_to_do;
+        Globals::sim_json["total_queue_wait"] = this->total_queue_wait_time;
+        Globals::sim_json["used_node_sec"] = this->used_node_seconds;
+        Globals::sim_json["wasted_node_seconds"] = this->wasted_node_seconds;
 
         // TODO - how to handle runtime errors
 
         std::ofstream out_json(json_file_name);
-        out_json << std::setw(4) << sim_json << std::endl;
+        out_json << std::setw(4) << Globals::sim_json << std::endl;
     }
 
     return 0;
