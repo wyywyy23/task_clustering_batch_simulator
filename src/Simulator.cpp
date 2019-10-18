@@ -232,9 +232,10 @@ int Simulator::main(int argc, char **argv) {
         csv_batch_log = std::string(argv[8]);
     }
 
+
     wrench::BatchComputeService *tmp_batch_service = nullptr;
     try {
-        tmp_batch_service = new BatchComputeService(login_hostname, compute_nodes, 0,
+        tmp_batch_service = new BatchComputeService(login_hostname, compute_nodes, "",
                                                     {{BatchComputeServiceProperty::OUTPUT_CSV_JOB_LOG,                                             csv_batch_log},
                                                      {BatchComputeServiceProperty::BATCH_SCHEDULING_ALGORITHM,                                     std::string(
                                                              argv[7])},
