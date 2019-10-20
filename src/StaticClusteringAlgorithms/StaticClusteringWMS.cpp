@@ -100,10 +100,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
         if ((sscanf(tokens[1].c_str(), "%lu", &num_nodes) != 1)) {
             throw std::invalid_argument("Invalid static:one_job-m specification");
         }
-
-        if (num_nodes == 100000) {
-            std::cout << "asdfasdfasdfsdff " << num_nodes << std::endl;
-        }
+        
         double waste_bound = std::stod(tokens[2]);
 
         ClusteredJob *job = new ClusteredJob();
