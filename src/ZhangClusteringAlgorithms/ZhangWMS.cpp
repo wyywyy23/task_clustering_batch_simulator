@@ -10,12 +10,15 @@
 #include "ZhangWMS.h"
 #include <Util/WorkflowUtil.h>
 #include "assert.h"
+#include "Globals.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(zhang_wms, "Log category for Zhang WMS");
 
 namespace wrench {
 
     static int sequence = 0;
+
+    // nlohmann::json Globals::sim_json;
 
     ZhangWMS::ZhangWMS(Simulator *simulator,
                        std::string hostname,
@@ -54,7 +57,11 @@ namespace wrench {
             this->waitForAndProcessNextEvent();
         }
 
+        assert(this->num_jobs_in_system == 0);
+
         std::cout << "#SPLITS=" << this->number_of_splits << "\n";
+
+        Globals::sim_json["num_splits"] = this->number_of_splits;
 
         return 0;
     }
@@ -66,6 +73,7 @@ namespace wrench {
         }
 
         if (this->individual_mode) {
+            // TODO - do we need to call submitAllOJPT here?
             return;
         }
 
@@ -121,6 +129,7 @@ namespace wrench {
         if (this->individual_mode) { WRENCH_INFO("Submitting tasks individually after switching to individual mode!");
             this->proxyWMS->submitAllOneJobPerTask(this->core_speed, &(this->num_jobs_in_system), max_num_jobs);
         } else {
+            // TODO - should we check this?
             this->pending_placeholder_job = this->proxyWMS->createAndSubmitPlaceholderJob(
                     (partial_dag_makespan + partial_dag_leeway), num_nodes, start_level, partial_dag_end_level);
             this->num_jobs_in_system++;
@@ -352,8 +361,6 @@ namespace wrench {
                 WRENCH_INFO("Submitting task %s as part of placeholder job %ld-%ld",
                             task->getID().c_str(), placeholder_job->start_level, placeholder_job->end_level);
                 this->job_manager->submitJob(standard_job, placeholder_job->pilot_job->getComputeService());
-                // TODO - submitting as individual jobs withing the pilot job? Do these count as extra jobs in the system?
-                // this->num_jobs_in_system++;
             }
         }
 
@@ -457,7 +464,8 @@ namespace wrench {
     }
 
     void ZhangWMS::processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent> e) {
-        // std::cout << "GOT COMPLETION\n";
+        assert(this->num_jobs_in_system <= this->max_num_jobs);
+         // std::cout << "GOT COMPLETION\n";
 
         // only one task per job
         WorkflowTask *completed_task = e->standard_job->tasks[0];
@@ -481,6 +489,7 @@ namespace wrench {
             throw std::runtime_error("Got a task completion, but couldn't find a placeholder for the task, "
                                      "and we're not in individual mode");
         }
+
         if ((placeholder_job ==  nullptr) and (this->individual_mode)) {
             this->num_jobs_in_system--;
         }
@@ -521,10 +530,10 @@ namespace wrench {
                     // ignore
                 }
                 this->running_placeholder_jobs.erase(placeholder_job);
+                this->num_jobs_in_system--;
             }
         }
 
-        // TODO - ok not too sure what's going on here...
         // Start all newly ready tasks that depended on the completed task, IN ANY PLACEHOLDER
         // This shouldn't happen in individual mode, but can't hurt
         std::vector<WorkflowTask *> children = this->getWorkflow()->getTaskChildren(completed_task);
@@ -537,7 +546,6 @@ namespace wrench {
                     WRENCH_INFO("Submitting task %s  as part of placeholder job %ld-%ld",
                                 task->getID().c_str(), placeholder_job->start_level, placeholder_job->end_level);
                     this->job_manager->submitJob(standard_job, ph->pilot_job->getComputeService());
-                    // this->num_jobs_in_system++;
                 }
             }
         }

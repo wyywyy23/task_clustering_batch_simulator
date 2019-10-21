@@ -62,7 +62,7 @@ namespace wrench {
     void ProxyWMS::submitAllOneJobPerTask(double core_speed, unsigned long * num_jobs_in_system, unsigned long max_num_jobs) {
         for (auto task : this->workflow->getTasks()) {
             if (task->getState() == WorkflowTask::State::READY and (*num_jobs_in_system < max_num_jobs)) {
-                std::cout << "Submitting as ojpt, num jobs in system before submission: " << (*num_jobs_in_system) << std::endl;
+                // std::cout << "Submitting as ojpt, num jobs in system before submission: " << (*num_jobs_in_system) << std::endl;
                 StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
                 std::map<std::string, std::string> service_specific_args;
                 // TODO - this cast is horrible, but should be okay?
