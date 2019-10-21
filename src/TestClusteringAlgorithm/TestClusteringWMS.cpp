@@ -9,6 +9,7 @@
 
 #include "TestClusteringWMS.h"
 #include <Util/WorkflowUtil.h>
+#include "Globals.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(test_clustering_wms, "Log category for Test Clustering WMS");
 
@@ -44,6 +45,8 @@ namespace wrench {
         }
 
         std::cout << "#SPLITS=" << this->number_of_splits << "\n";
+
+        Globals::sim_json["num_splits"] = this->number_of_splits;
 
         return 0;
     }
