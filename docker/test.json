@@ -1,0 +1,14 @@
+{
+    "algorithm": "static:one_job-100000-1",
+    "batch_algorithm": "conservative_bf",
+    "job_trace_file": "/simulator/trace_files/kth_sp2.json",
+    "makespan": 135149.88168757872,
+    "max_sys_jobs": "10",
+    "num_compute_nodes": "100",
+    "num_p_job_exp": 0,
+    "start_time": "86400",
+    "total_queue_wait": 2120.0003924286866,
+    "used_node_sec": 352733.8441,
+    "wasted_node_seconds": 977564.9708242867,
+    "workflow_specification": "dax:/simulator/workflows/SIPHT_50_360000.dax"
+}

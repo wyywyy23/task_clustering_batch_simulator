@@ -321,7 +321,7 @@ int Simulator::main(int argc, char **argv) {
     if (argc == 9) {
         std::string json_file_name = std::string(argv[8]);
 
-        std::cout << json_file_name << std::endl;
+        // std::cout << json_file_name << std::endl;
 
         Globals::sim_json["num_compute_nodes"] = argv[1];
         Globals::sim_json["job_trace_file"] = argv[2];
