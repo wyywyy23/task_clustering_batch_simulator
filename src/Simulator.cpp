@@ -258,8 +258,8 @@ int Simulator::main(int argc, char **argv) {
                                                     }, {});
     } catch (std::invalid_argument &e) {
 
-        WRENCH_INFO("Cannot instantiate batch service: %s", e.what());WRENCH_INFO(
-                "Trying the non-BATSCHED version with FCFS...");
+        WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
+        WRENCH_INFO("Trying the non-BATSCHED version with FCFS...");
         try {
             tmp_batch_service = new BatchComputeService(login_hostname, compute_nodes, "",
                                                         {{BatchComputeServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
