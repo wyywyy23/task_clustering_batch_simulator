@@ -261,7 +261,7 @@ int Simulator::main(int argc, char **argv) {
         WRENCH_INFO("Cannot instantiate batch service: %s", e.what());WRENCH_INFO(
                 "Trying the non-BATSCHED version with FCFS...");
         try {
-            tmp_batch_service = new BatchComputeService(login_hostname, compute_nodes, 0,
+            tmp_batch_service = new BatchComputeService(login_hostname, compute_nodes, "",
                                                         {{BatchComputeServiceProperty::BATCH_SCHEDULING_ALGORITHM,    "FCFS"},
                                                          {BatchComputeServiceProperty::SIMULATED_WORKLOAD_TRACE_FILE, std::string(
                                                                  argv[2])}
@@ -622,7 +622,7 @@ WMS *Simulator::createWMS(std::string hostname,
             throw std::invalid_argument("createWMS(): Invalid zhang specification");
         }
 
-        return new ZhangWMS(this, hostname, batch_service, global, bsearch, prediction);
+        return new ZhangWMS(this, hostname, batch_service, max_num_jobs, global, bsearch, prediction);
 
     } else if (tokens[0] == "test") {
 

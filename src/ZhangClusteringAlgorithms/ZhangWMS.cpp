@@ -20,12 +20,14 @@ namespace wrench {
     ZhangWMS::ZhangWMS(Simulator *simulator,
                        std::string hostname,
                        std::shared_ptr<BatchComputeService> batch_service,
+                       unsigned long max_num_jobs,
                        bool pick_globally_best_split,
                        bool binary_search_for_leeway,
                        bool calculate_parallelism_based_on_predictions) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "zhang_wms") {
 
         this->simulator = simulator;
+        this->max_num_jobs = max_num_jobs;
         this->pick_globally_best_split = pick_globally_best_split;
         this->binary_search_for_leeway = binary_search_for_leeway;
         this->calculate_parallelism_based_on_predictions = calculate_parallelism_based_on_predictions;
@@ -43,6 +45,7 @@ namespace wrench {
 
         this->core_speed = this->batch_service->getCoreFlopRate().begin()->second;
         this->number_of_hosts = this->batch_service->getNumHosts();
+        this->num_jobs_in_system = 0;
         this->job_manager = this->createJobManager();
         this->proxyWMS = new ProxyWMS(this->getWorkflow(), this->job_manager, this->batch_service);
 
@@ -66,7 +69,6 @@ namespace wrench {
             return;
         }
 
-        // TODO - does running_placeholder_jobs need to be instantiated??
         unsigned long start_level = this->proxyWMS->getStartLevel(this->running_placeholder_jobs);
         unsigned long end_level = this->getWorkflow()->getNumLevels() - 1;
 
@@ -117,10 +119,11 @@ namespace wrench {
         }
 
         if (this->individual_mode) { WRENCH_INFO("Submitting tasks individually after switching to individual mode!");
-            this->proxyWMS->submitAllOneJobPerTask(this->core_speed);
+            this->proxyWMS->submitAllOneJobPerTask(this->core_speed, &(this->num_jobs_in_system), max_num_jobs);
         } else {
             this->pending_placeholder_job = this->proxyWMS->createAndSubmitPlaceholderJob(
                     (partial_dag_makespan + partial_dag_leeway), num_nodes, start_level, partial_dag_end_level);
+            this->num_jobs_in_system++;
         }
     }
 
@@ -349,6 +352,8 @@ namespace wrench {
                 WRENCH_INFO("Submitting task %s as part of placeholder job %ld-%ld",
                             task->getID().c_str(), placeholder_job->start_level, placeholder_job->end_level);
                 this->job_manager->submitJob(standard_job, placeholder_job->pilot_job->getComputeService());
+                // TODO - submitting as individual jobs withing the pilot job? Do these count as extra jobs in the system?
+                // this->num_jobs_in_system++;
             }
         }
 
@@ -356,6 +361,8 @@ namespace wrench {
     }
 
     void ZhangWMS::processEventPilotJobExpiration(std::shared_ptr<PilotJobExpiredEvent> e) {
+        this->num_jobs_in_system--;
+
         PlaceHolderJob *placeholder_job = nullptr;
         for (auto ph : this->running_placeholder_jobs) {
             if (ph->pilot_job == e->pilot_job) {
@@ -450,6 +457,10 @@ namespace wrench {
     }
 
     void ZhangWMS::processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent> e) {
+        // std::cout << "GOT COMPLETION\n";
+
+        this->num_jobs_in_system--;
+
         // only one task per job
         WorkflowTask *completed_task = e->standard_job->tasks[0];
 
@@ -512,6 +523,7 @@ namespace wrench {
             }
         }
 
+        // TODO - ok not too sure what's going on here...
         // Start all newly ready tasks that depended on the completed task, IN ANY PLACEHOLDER
         // This shouldn't happen in individual mode, but can't hurt
         std::vector<WorkflowTask *> children = this->getWorkflow()->getTaskChildren(completed_task);
@@ -524,21 +536,21 @@ namespace wrench {
                     WRENCH_INFO("Submitting task %s  as part of placeholder job %ld-%ld",
                                 task->getID().c_str(), placeholder_job->start_level, placeholder_job->end_level);
                     this->job_manager->submitJob(standard_job, ph->pilot_job->getComputeService());
+                    // this->num_jobs_in_system++;
                 }
             }
         }
 
         if (this->individual_mode) {
-            // TODO - why are we doing this?
-            // Oh okay. submitAllOneJobPerTask only submits ready tasks, so we must rely on this to take care of rest.
             WRENCH_INFO("Submitting tasks individually after job completion!");
-            this->proxyWMS->submitAllOneJobPerTask(this->core_speed);
+            this->proxyWMS->submitAllOneJobPerTask(this->core_speed, &(this->num_jobs_in_system), this->max_num_jobs);
         }
     }
 
     void ZhangWMS::processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) {
-        WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS",
-                    e->standard_job->tasks[0]->getID().c_str());
+//        WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS",
+//                    e->standard_job->tasks[0]->getID().c_str());
+        throw std::runtime_error("A job has failed, which shouldn't happen");
     }
 
 }

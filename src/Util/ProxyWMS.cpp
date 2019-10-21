@@ -59,9 +59,10 @@ namespace wrench {
         return pj;
     }
 
-    void ProxyWMS::submitAllOneJobPerTask(double core_speed) {
+    void ProxyWMS::submitAllOneJobPerTask(double core_speed, unsigned long * num_jobs_in_system, unsigned long max_num_jobs) {
         for (auto task : this->workflow->getTasks()) {
-            if (task->getState() == WorkflowTask::State::READY) {
+            if (task->getState() == WorkflowTask::State::READY and (*num_jobs_in_system < max_num_jobs)) {
+                std::cout << "Submitting as ojpt, num jobs in system before submission: " << (*num_jobs_in_system) << std::endl;
                 StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
                 std::map<std::string, std::string> service_specific_args;
                 // TODO - this cast is horrible, but should be okay?
@@ -74,6 +75,7 @@ namespace wrench {
                 WRENCH_INFO("Submitting task %s individually!", task->getID().c_str());
                 // std::cout << "Submitting task " << task->getID().c_str() << " individually!\n";
                 this->job_manager->submitJob(standard_job, this->batch_service, service_specific_args);
+                (*num_jobs_in_system)++;
             }
         }
     }
