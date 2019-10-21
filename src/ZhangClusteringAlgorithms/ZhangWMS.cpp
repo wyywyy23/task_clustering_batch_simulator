@@ -459,8 +459,6 @@ namespace wrench {
     void ZhangWMS::processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent> e) {
         // std::cout << "GOT COMPLETION\n";
 
-        this->num_jobs_in_system--;
-
         // only one task per job
         WorkflowTask *completed_task = e->standard_job->tasks[0];
 
@@ -482,6 +480,9 @@ namespace wrench {
         if ((placeholder_job == nullptr) and (not this->individual_mode)) {
             throw std::runtime_error("Got a task completion, but couldn't find a placeholder for the task, "
                                      "and we're not in individual mode");
+        }
+        if ((placeholder_job ==  nullptr) and (this->individual_mode)) {
+            this->num_jobs_in_system--;
         }
 
         if (placeholder_job != nullptr) {
