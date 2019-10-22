@@ -1,0 +1,15 @@
+{
+    "algorithm": "zhang:noglobal:bsearch:prediction",
+    "batch_algorithm": "conservative_bf",
+    "job_trace_file": "/simulator/trace_files/kth_sp2.json",
+    "makespan": 32645.103529933316,
+    "max_sys_jobs": "10",
+    "num_compute_nodes": "100",
+    "num_p_job_exp": 0,
+    "num_splits": 1,
+    "start_time": "86400",
+    "total_queue_wait": 2524.989457633681,
+    "used_node_sec": 359882.0100000001,
+    "wasted_node_seconds": 227781.27391627253,
+    "workflow_specification": "dax:/simulator/workflows/CYBERSHAKE_50_360000.dax"
+}

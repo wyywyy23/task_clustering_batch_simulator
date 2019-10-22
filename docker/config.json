@@ -11,7 +11,14 @@
         ]
     ],
     "max_sys_jobs": [
-
+        "2",
+        "4",
+        "8",
+        "16",
+        "32",
+        "64",
+        "128",
+        "256"
     ],
     "algorithms": [
         "zhang:noglobal:nobsearch:noprediction",
