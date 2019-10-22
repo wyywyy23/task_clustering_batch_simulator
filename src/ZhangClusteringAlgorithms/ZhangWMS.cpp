@@ -50,6 +50,7 @@ namespace wrench {
         this->job_manager = this->createJobManager();
         this->proxyWMS = new ProxyWMS(this->getWorkflow(), this->job_manager, this->batch_service);
 
+        Globals::sim_json["individual_mode"] = false;
         Globals::sim_json["end_levels"] = std::vector<unsigned long> ();
 
         while (not this->getWorkflow()->isDone()) {
@@ -121,7 +122,6 @@ namespace wrench {
             } else {
                 std::cout << "NOT INDIVIDUAL\n";
                 // submit remaining dag as 1 job
-                Globals::sim_json["individual_mode"] = false;
             }
         } else {
             this->number_of_splits++;

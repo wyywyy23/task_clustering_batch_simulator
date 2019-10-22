@@ -29,9 +29,6 @@
         "zhang:global:nobsearch:prediction",
         "zhang:noglobal:bsearch:prediction",
         "zhang:global:bsearch:prediction",
-        "test:1:0",
-        "static:one_job-100000-1",
-        "static:one_job-0-1",
         "static:one_job_per_task"
     ],
     "workflow_type": "dax:",
