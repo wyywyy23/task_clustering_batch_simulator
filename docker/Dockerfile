@@ -26,7 +26,7 @@ COPY build/trace_files/* /simulator/trace_files/
 
 WORKDIR /simulator/task_clustering_batch_simulator
 
-RUN sysctl -w vm_max_map_count=131072
+RUN sysctl -w vm.max_map_count=131072
 
 ENTRYPOINT ["./simulator"]
 
