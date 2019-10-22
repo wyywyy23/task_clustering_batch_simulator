@@ -7,6 +7,6 @@ mkdir -p build/trace_files
 cp -r ../../workflow-generator/workflows/* build/workflows/
 cp -r ../../batch_logs/swf_traces_json/* build/trace_files
 # cp config.json build/
-docker build -t tcbs .
+docker build -t wrenchproject/task-clustering:latest .
 rm -rf build
-echo "Done building."
+echo "Done building wrenchproject/task-clustering:latest"

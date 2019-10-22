@@ -20,7 +20,7 @@ Similarly for workflow files, the "workflow_dir" and "workflow_type" must both b
 ## Run the container
 For testing, I mounted /output on the container to my host's working directory, so I specified the json file to be written to /output in the command.
 ```bash
-docker run -v $PWD:/output tcbs:latest <trace_file[1]> <trace_file_dir + trace_file[0]> <max_sys_jobs> <"dax:" + workflow_dir + wokflow_file> <start_time> <algorithm> conservative_bf --wrench-no-log <"/output/" + file_name.json>
+docker run -v $PWD:/output wrenchproject/task-clustering:latest <trace_file[1]> <trace_file_dir + trace_file[0]> <max_sys_jobs> <"dax:" + workflow_dir + wokflow_file> <start_time> <algorithm> conservative_bf --wrench-no-log <"/output/" + file_name.json>
 ```
 
 We only use conservative backfilling, so the batch algorithm can always be hardcoded as "conservative_bf". We also only run with "--wrench-no-log", so that should be hardcoded as well.
