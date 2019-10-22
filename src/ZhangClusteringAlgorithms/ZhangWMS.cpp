@@ -18,8 +18,6 @@ namespace wrench {
 
     static int sequence = 0;
 
-    // nlohmann::json Globals::sim_json;
-
     ZhangWMS::ZhangWMS(Simulator *simulator,
                        std::string hostname,
                        std::shared_ptr<BatchComputeService> batch_service,
@@ -51,6 +49,8 @@ namespace wrench {
         this->num_jobs_in_system = 0;
         this->job_manager = this->createJobManager();
         this->proxyWMS = new ProxyWMS(this->getWorkflow(), this->job_manager, this->batch_service);
+
+        Globals::sim_json["end_levels"] = std::vector<unsigned long> ();
 
         while (not this->getWorkflow()->isDone()) {
             applyGroupingHeuristic();
@@ -125,6 +125,13 @@ namespace wrench {
         } else {
             this->number_of_splits++;
         }
+
+        if (this->individual_mode) {
+            Globals::sim_json["individual_mode"] = true;
+        }
+
+        // Add the grouping even if we submit as ojpt
+        Globals::sim_json["end_levels"].push_back(partial_dag_end_level);
 
         if (this->individual_mode) { WRENCH_INFO("Submitting tasks individually after switching to individual mode!");
             this->proxyWMS->submitAllOneJobPerTask(this->core_speed, &(this->num_jobs_in_system), max_num_jobs);
@@ -557,8 +564,8 @@ namespace wrench {
     }
 
     void ZhangWMS::processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) {
-//        WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS",
-//                    e->standard_job->tasks[0]->getID().c_str());
+        WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS",
+                    e->standard_job->tasks[0]->getID().c_str());
         throw std::runtime_error("A job has failed, which shouldn't happen");
     }
 

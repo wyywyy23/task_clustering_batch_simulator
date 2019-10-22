@@ -39,6 +39,8 @@ namespace wrench {
         this->job_manager = this->createJobManager();
         this->proxyWMS = new ProxyWMS(this->getWorkflow(), this->job_manager, this->batch_service);
 
+        Globals::sim_json["end_levels"] = std::vector<unsigned long> ();
+
         while (not this->getWorkflow()->isDone()) {
             applyGroupingHeuristic();
             this->waitForAndProcessNextEvent();
@@ -201,6 +203,8 @@ namespace wrench {
         std::cout << "Wait time: " << estimated_wait_time << std::endl;
         std::cout << "Runtime: " << requested_execution_time << std::endl;
         std::cout << "Parallelism: " << requested_parallelism << std::endl;
+
+        Globals::sim_json["end_levels"].push_back(partial_dag_end_level);
 
         this->pending_placeholder_job = this->proxyWMS->createAndSubmitPlaceholderJob(
                 requested_execution_time, requested_parallelism, start_level, partial_dag_end_level);
@@ -518,7 +522,7 @@ namespace wrench {
     void TestClusteringWMS::processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) {
         WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS",
                     e->standard_job->tasks[0]->getID().c_str());
-//        e->failure_cause->toString();
+        throw std::runtime_error("A job has failed, which shouldn't happen");
     }
 
 
