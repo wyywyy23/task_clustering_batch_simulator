@@ -73,7 +73,6 @@ namespace wrench {
         }
 
         if (this->individual_mode) {
-            // TODO - do we need to call submitAllOJPT here?
             return;
         }
 
@@ -117,17 +116,15 @@ namespace wrench {
             if (wait_time_all > runtime_all * 2.0) {
                 // submit remaining dag as 1 job per task
                 this->individual_mode = true;
+                Globals::sim_json["individual_mode"] = true;
                 std::cout << "Switching to individual mode!" << std::endl;
             } else {
                 std::cout << "NOT INDIVIDUAL\n";
                 // submit remaining dag as 1 job
+                Globals::sim_json["individual_mode"] = false;
             }
         } else {
             this->number_of_splits++;
-        }
-
-        if (this->individual_mode) {
-            Globals::sim_json["individual_mode"] = true;
         }
 
         // Add the grouping even if we submit as ojpt
