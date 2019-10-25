@@ -1,0 +1,20 @@
+{
+    "trace_file_dir": "../../batch_logs/swf_traces_json",
+    "trace_files": [
+        ["sdsc_sp2.swf", "128"]
+    ],
+    "algorithms": [
+        "zhang:noglobal:bsearch:prediction",
+        "test:1:0",
+        "static:one_job-0-1",
+        "static:one_job_per_task"
+    ],
+    "workflow_type": "dax",
+    "workflow_dir": "../../workflow-generator/workflows",
+    "workflows": [
+        "GENOME_50_360000.dax",
+        "SIPHT_50_360000.dax",
+        "CYBERSHAKE_50_360000.dax",
+        "MONTAGE_50_360000.dax"
+    ]
+}

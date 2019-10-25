@@ -18,6 +18,7 @@ StaticClusteringWMS::StaticClusteringWMS(Simulator *simulator, std::string hostn
     this->batch_service = batch_service;
     this->max_num_jobs = max_num_jobs;
     this->algorithm_spec = algorithm_spec;
+    std::cout << this->number_of_nodes << std::endl;
 }
 
 
@@ -100,10 +101,7 @@ std::set<ClusteredJob *> StaticClusteringWMS::createClusteredJobs() {
         if ((sscanf(tokens[1].c_str(), "%lu", &num_nodes) != 1)) {
             throw std::invalid_argument("Invalid static:one_job-m specification");
         }
-
-        if (num_nodes == 100000) {
-            std::cout << "asdfasdfasdfsdff " << num_nodes << std::endl;
-        }
+        
         double waste_bound = std::stod(tokens[2]);
 
         ClusteredJob *job = new ClusteredJob();
@@ -268,6 +266,7 @@ int StaticClusteringWMS::main() {
     while (true) {
 
         while (this->num_jobs_in_systems < this->max_num_jobs) {
+            std::cout << this->num_jobs_in_systems << std::endl;
             // Try to find a ready job
             ClusteredJob *to_submit = nullptr;
             for (auto j : jobs) {
@@ -319,15 +318,15 @@ void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
 
     if (num_nodes == 0) {
         num_nodes = clustered_job->computeBestNumNodesBasedOnQueueWaitTimePredictions(
-                std::min<unsigned long>(clustered_job->getMaxParallelism(), this->max_num_jobs), this->core_speed, this->batch_service);
+                std::min<unsigned long>(clustered_job->getMaxParallelism(), this->number_of_nodes), this->core_speed, this->batch_service);
     }
 
     // For one_job-max
     if (clustered_job->getNumNodes() == 100000) {
-        num_nodes = std::min<unsigned long>(clustered_job->getMaxParallelism(), this->max_num_jobs);
+        num_nodes = std::min<unsigned long>(clustered_job->getMaxParallelism(), this->number_of_nodes);
     }
 
-    num_nodes = std::min<unsigned long>(num_nodes, this->max_num_jobs);
+    num_nodes = std::min<unsigned long>(num_nodes, this->number_of_nodes);
     
     double makespan = WorkflowUtil::estimateMakespan(clustered_job->getTasks(), num_nodes, this->core_speed);
     // std::cout << "MAKESPAN ESTIMATE = " << makespan << "\n";

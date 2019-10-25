@@ -10,6 +10,7 @@
 #include "ZhangWMS.h"
 #include <Util/WorkflowUtil.h>
 #include "assert.h"
+#include "Globals.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(zhang_wms, "Log category for Zhang WMS");
 
@@ -20,12 +21,14 @@ namespace wrench {
     ZhangWMS::ZhangWMS(Simulator *simulator,
                        std::string hostname,
                        std::shared_ptr<BatchComputeService> batch_service,
+                       unsigned long max_num_jobs,
                        bool pick_globally_best_split,
                        bool binary_search_for_leeway,
                        bool calculate_parallelism_based_on_predictions) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "zhang_wms") {
 
         this->simulator = simulator;
+        this->max_num_jobs = max_num_jobs;
         this->pick_globally_best_split = pick_globally_best_split;
         this->binary_search_for_leeway = binary_search_for_leeway;
         this->calculate_parallelism_based_on_predictions = calculate_parallelism_based_on_predictions;
@@ -43,15 +46,23 @@ namespace wrench {
 
         this->core_speed = this->batch_service->getCoreFlopRate().begin()->second;
         this->number_of_hosts = this->batch_service->getNumHosts();
+        this->num_jobs_in_system = 0;
         this->job_manager = this->createJobManager();
         this->proxyWMS = new ProxyWMS(this->getWorkflow(), this->job_manager, this->batch_service);
+
+        Globals::sim_json["individual_mode"] = false;
+        Globals::sim_json["end_levels"] = std::vector<unsigned long> ();
 
         while (not this->getWorkflow()->isDone()) {
             applyGroupingHeuristic();
             this->waitForAndProcessNextEvent();
         }
 
+        assert(this->num_jobs_in_system == 0);
+
         std::cout << "#SPLITS=" << this->number_of_splits << "\n";
+
+        Globals::sim_json["num_splits"] = this->number_of_splits;
 
         return 0;
     }
@@ -66,7 +77,6 @@ namespace wrench {
             return;
         }
 
-        // TODO - does running_placeholder_jobs need to be instantiated??
         unsigned long start_level = this->proxyWMS->getStartLevel(this->running_placeholder_jobs);
         unsigned long end_level = this->getWorkflow()->getNumLevels() - 1;
 
@@ -107,6 +117,7 @@ namespace wrench {
             if (wait_time_all > runtime_all * 2.0) {
                 // submit remaining dag as 1 job per task
                 this->individual_mode = true;
+                Globals::sim_json["individual_mode"] = true;
                 std::cout << "Switching to individual mode!" << std::endl;
             } else {
                 std::cout << "NOT INDIVIDUAL\n";
@@ -116,11 +127,16 @@ namespace wrench {
             this->number_of_splits++;
         }
 
+        // Add the grouping even if we submit as ojpt
+        Globals::sim_json["end_levels"].push_back(partial_dag_end_level);
+
         if (this->individual_mode) { WRENCH_INFO("Submitting tasks individually after switching to individual mode!");
-            this->proxyWMS->submitAllOneJobPerTask(this->core_speed);
+            this->proxyWMS->submitAllOneJobPerTask(this->core_speed, &(this->num_jobs_in_system), max_num_jobs);
         } else {
+            // TODO - should we check this?
             this->pending_placeholder_job = this->proxyWMS->createAndSubmitPlaceholderJob(
                     (partial_dag_makespan + partial_dag_leeway), num_nodes, start_level, partial_dag_end_level);
+            this->num_jobs_in_system++;
         }
     }
 
@@ -356,6 +372,8 @@ namespace wrench {
     }
 
     void ZhangWMS::processEventPilotJobExpiration(std::shared_ptr<PilotJobExpiredEvent> e) {
+        this->num_jobs_in_system--;
+
         PlaceHolderJob *placeholder_job = nullptr;
         for (auto ph : this->running_placeholder_jobs) {
             if (ph->pilot_job == e->pilot_job) {
@@ -450,6 +468,9 @@ namespace wrench {
     }
 
     void ZhangWMS::processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent> e) {
+        assert(this->num_jobs_in_system <= this->max_num_jobs);
+         // std::cout << "GOT COMPLETION\n";
+
         // only one task per job
         WorkflowTask *completed_task = e->standard_job->tasks[0];
 
@@ -471,6 +492,10 @@ namespace wrench {
         if ((placeholder_job == nullptr) and (not this->individual_mode)) {
             throw std::runtime_error("Got a task completion, but couldn't find a placeholder for the task, "
                                      "and we're not in individual mode");
+        }
+
+        if ((placeholder_job ==  nullptr) and (this->individual_mode)) {
+            this->num_jobs_in_system--;
         }
 
         if (placeholder_job != nullptr) {
@@ -509,6 +534,7 @@ namespace wrench {
                     // ignore
                 }
                 this->running_placeholder_jobs.erase(placeholder_job);
+                this->num_jobs_in_system--;
             }
         }
 
@@ -529,16 +555,15 @@ namespace wrench {
         }
 
         if (this->individual_mode) {
-            // TODO - why are we doing this?
-            // Oh okay. submitAllOneJobPerTask only submits ready tasks, so we must rely on this to take care of rest.
             WRENCH_INFO("Submitting tasks individually after job completion!");
-            this->proxyWMS->submitAllOneJobPerTask(this->core_speed);
+            this->proxyWMS->submitAllOneJobPerTask(this->core_speed, &(this->num_jobs_in_system), this->max_num_jobs);
         }
     }
 
     void ZhangWMS::processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) {
         WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS",
                     e->standard_job->tasks[0]->getID().c_str());
+        throw std::runtime_error("A job has failed, which shouldn't happen");
     }
 
 }

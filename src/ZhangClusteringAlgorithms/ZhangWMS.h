@@ -24,6 +24,7 @@ namespace wrench {
         ZhangWMS(Simulator *simulator,
                  std::string hostname,
                  std::shared_ptr<BatchComputeService> batch_service,
+                 unsigned long max_num_jobs,
                  bool pick_globally_best_split,
                  bool binary_search_for_leeway,
                  bool calculate_parallelism_based_on_predictions);
@@ -71,6 +72,8 @@ namespace wrench {
         std::set<PlaceHolderJob *> running_placeholder_jobs;
         double core_speed;
         unsigned long number_of_hosts;
+        unsigned long num_jobs_in_system;
+        unsigned long max_num_jobs;
         std::shared_ptr<JobManager> job_manager;
 
         ProxyWMS *proxyWMS;

@@ -12,6 +12,7 @@ set(SOURCE_FILES
         src/main.cpp
         src/Simulator.cpp
         src/Simulator.h
+        src/Globals.h
         src/Util/WorkflowUtil.cpp
         src/Util/WorkflowUtil.h
         src/Util/ProxyWMS.cpp

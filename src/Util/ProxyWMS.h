@@ -23,7 +23,7 @@ namespace wrench {
                                                       unsigned long start_level,
                                                       unsigned long end_level);
 
-        void submitAllOneJobPerTask(double core_speed);
+        void submitAllOneJobPerTask(double core_speed, unsigned long * num_jobs_in_system, unsigned long max_num_jobs);
 
         static double findMaxDuration(std::set<PlaceHolderJob *> jobs);
 
