@@ -9,7 +9,6 @@
 
 #include "TestClusteringWMS.h"
 #include <Util/WorkflowUtil.h>
-#include <LevelByLevelAlgorithm/PlaceHolderJob.h>
 #include "Globals.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(test_clustering_wms, "Log category for Test Clustering WMS");
