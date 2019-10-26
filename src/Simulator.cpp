@@ -255,7 +255,7 @@ int Simulator::main(int argc, char **argv) {
                                                      {BatchComputeServiceProperty::BATSCHED_LOGGING_MUTED,                                         "true"},
                                                      {BatchComputeServiceProperty::IGNORE_INVALID_JOBS_IN_WORLOAD_TRACE_FILE,                      "true"},
                                                      {BatchComputeServiceProperty::USE_REAL_RUNTIMES_AS_REQUESTED_RUNTIMES_IN_WORKLOAD_TRACE_FILE, "true"},
-                                                     {BatchComputeServiceProperty::SUBMIT_TIME_OF_FIRST_JOB_IN_WORKLOAD_TRACE_FILE, "-1"},
+                                                     {BatchComputeServiceProperty::SUBMIT_TIME_OF_FIRST_JOB_IN_WORKLOAD_TRACE_FILE, "0"},
                                                      {BatchComputeServiceProperty::TASK_STARTUP_OVERHEAD, "0"}
 
                                                     },
