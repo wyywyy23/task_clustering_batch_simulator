@@ -4,6 +4,7 @@
 #define YOUR_PROJECT_NAME_PLACEHOLDERJOB_H
 
 #include <vector>
+#include <wrench-dev.h>
 
 namespace wrench {
 
@@ -16,16 +17,21 @@ namespace wrench {
     public:
 
         PlaceHolderJob(PilotJob *pilot_job,
+                       unsigned long num_hosts,
                        std::vector<WorkflowTask *> tasks,
                        unsigned long start_level,
                        unsigned long end_level);
 
         PilotJob *pilot_job;
+        unsigned long num_hosts;
         std::vector<WorkflowTask *> tasks;
         unsigned long start_level;
         unsigned long end_level;
 
+        unsigned long num_standard_job_submitted = 0;
+
         double getDuration();
+
     };
 
 };

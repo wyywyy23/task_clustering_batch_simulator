@@ -255,8 +255,14 @@ int Simulator::main(int argc, char **argv) {
                                                      {BatchComputeServiceProperty::BATSCHED_LOGGING_MUTED,                                         "true"},
                                                      {BatchComputeServiceProperty::IGNORE_INVALID_JOBS_IN_WORLOAD_TRACE_FILE,                      "true"},
                                                      {BatchComputeServiceProperty::USE_REAL_RUNTIMES_AS_REQUESTED_RUNTIMES_IN_WORKLOAD_TRACE_FILE, "true"},
-                                                     {BatchComputeServiceProperty::SUBMIT_TIME_OF_FIRST_JOB_IN_WORKLOAD_TRACE_FILE, "0"},
-                                                    }, {});
+                                                     {BatchComputeServiceProperty::SUBMIT_TIME_OF_FIRST_JOB_IN_WORKLOAD_TRACE_FILE, "-1"},
+                                                     {BatchComputeServiceProperty::TASK_STARTUP_OVERHEAD, "0"}
+
+                                                    },
+                                                    {
+                                                            {BatchComputeServiceMessagePayload::SUBMIT_PILOT_JOB_ANSWER_MESSAGE_PAYLOAD, 0.0},
+                                                            {BatchComputeServiceMessagePayload::SUBMIT_PILOT_JOB_REQUEST_MESSAGE_PAYLOAD, 0.0},
+                                                    });
     } catch (std::invalid_argument &e) {
 
         WRENCH_INFO("Cannot instantiate batch service: %s", e.what());
@@ -359,8 +365,10 @@ void Simulator::setupSimulationPlatform(Simulation *simulation, unsigned long nu
            "\" speed=\"1f\" bw=\"125GBps\" lat=\"0us\" router_id=\"router\"/>\n";
     xml += "      <zone id=\"AS1\" routing=\"Full\">\n";
     xml += "          <host id=\"Login\" speed=\"1f\"/>\n";
+    xml += "          <link id=\"fastlink\" bandwidth=\"10000000GBps\" latency=\"0ms\"/>\n";
+    xml += "          <route src=\"Login\" dst=\"Login\"> <link_ctn id=\"fastlink\"/> </route>\n";
     xml += "      </zone>\n";
-    xml += "      <link id=\"link\" bandwidth=\"125GBps\" latency=\"0ms\"/>\n";
+    xml += "      <link id=\"link\" bandwidth=\"10000000GBps\" latency=\"0ms\"/>\n";
     xml += "      <zoneRoute src=\"cluster\" dst=\"AS1\" gw_src=\"router\" gw_dst=\"Login\">\n";
     xml += "        <link_ctn id=\"link\"/>\n";
     xml += "       </zoneRoute>\n";
@@ -454,7 +462,8 @@ Workflow *Simulator::createIndepWorkflow(std::vector<std::string> spec_tokens) {
     static std::uniform_int_distribution<unsigned long> m_udist(min_time, max_time);
     for (unsigned long i = 0; i < num_tasks; i++) {
         unsigned long flops = m_udist(rng);
-        workflow->addTask("Task_" + std::to_string(i), (double) flops, 1, 1, 1.0, 0.0);
+        auto t = workflow->addTask("Task_" + std::to_string(i), (double) flops, 1, 1, 1.0, 0.0);
+        WRENCH_INFO("AAAAA   %s %lf", t->getID().c_str(), t->getFlops() );
     }
 
     return workflow;

@@ -9,12 +9,29 @@
 
 namespace wrench {
 
-    PlaceHolderJob::PlaceHolderJob(PilotJob *pilot_job, std::vector<WorkflowTask *> tasks,
+    PlaceHolderJob::PlaceHolderJob(PilotJob *pilot_job, unsigned long num_hosts, std::vector<WorkflowTask *> tasks,
                                    unsigned long start_level, unsigned long end_level) {
+
+        // Sort the tasks
+        std::sort(tasks.begin(), tasks.end(),
+                  [](const WorkflowTask * t1, const WorkflowTask * t2) -> bool {
+
+                          if (t1->getFlops() == t2->getFlops()) {
+                              return (t1->getID() > t2->getID());
+                          }
+                          return (t1->getFlops() > t2->getFlops());
+                  });
+
+
         this->pilot_job = pilot_job;
+        this->num_hosts = num_hosts;
         this->tasks = tasks;
         this->start_level = start_level;
         this->end_level = end_level;
+
+
+
+
     }
 
     double PlaceHolderJob::getDuration() {

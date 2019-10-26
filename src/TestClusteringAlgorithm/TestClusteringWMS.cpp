@@ -9,6 +9,7 @@
 
 #include "TestClusteringWMS.h"
 #include <Util/WorkflowUtil.h>
+#include <LevelByLevelAlgorithm/PlaceHolderJob.h>
 #include "Globals.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(test_clustering_wms, "Log category for Test Clustering WMS");
@@ -336,8 +337,9 @@ namespace wrench {
         this->pending_placeholder_job = nullptr;
 
         // std::string output_string = "";
+
         for (auto task : placeholder_job->tasks) {
-            if (task->getState() == WorkflowTask::State::READY) {
+            if (task->getState() == WorkflowTask::State::READY  and (placeholder_job->num_standard_job_submitted < placeholder_job->num_hosts)) {
                 StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
 
                 // output_string += " " + task->getID();
@@ -345,6 +347,7 @@ namespace wrench {
                 WRENCH_INFO("Submitting task %s as part of placeholder job %ld-%ld",
                             task->getID().c_str(), placeholder_job->start_level, placeholder_job->end_level);
                 this->job_manager->submitJob(standard_job, placeholder_job->pilot_job->getComputeService());
+                placeholder_job->num_standard_job_submitted++;
             }
         }
 
@@ -465,6 +468,9 @@ namespace wrench {
         }
 
         if (placeholder_job != nullptr) {
+
+            placeholder_job->num_standard_job_submitted--;
+
             // Terminate the pilot job in case all its tasks are done
             bool all_tasks_done = true;
             for (auto t : placeholder_job->tasks) {
@@ -506,14 +512,36 @@ namespace wrench {
         // Start all newly ready tasks that depended on the completed task, IN ANY PLACEHOLDER
         std::vector<WorkflowTask *> children = this->getWorkflow()->getTaskChildren(completed_task);
         for (auto ph : this->running_placeholder_jobs) {
+
+            // Start Other tasks if possible, considering first tasks at the same level of completed_task
             for (auto task : ph->tasks) {
-                if ((std::find(children.begin(), children.end(), task) != children.end()) and
-                    (task->getState() == WorkflowTask::READY)) {
+                if ((task->getState() == WorkflowTask::READY) and
+                (task->getTopLevel() == completed_task->getTopLevel()) and
+                (ph->num_standard_job_submitted < ph->num_hosts)) {
+
                     StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
                     // hmm
                     WRENCH_INFO("Submitting task %s  as part of placeholder job %ld-%ld",
                                 task->getID().c_str(), placeholder_job->start_level, placeholder_job->end_level);
                     this->job_manager->submitJob(standard_job, ph->pilot_job->getComputeService());
+
+                    ph->num_standard_job_submitted++;
+
+                }
+            }
+
+            // Start Any other READY TASKS if possible
+            for (auto task : ph->tasks) {
+                if ((task->getState() == WorkflowTask::READY) and (ph->num_standard_job_submitted < ph->num_hosts)) {
+
+                        StandardJob *standard_job = this->job_manager->createStandardJob(task, {});
+                        // hmm
+                        WRENCH_INFO("Submitting task %s  as part of placeholder job %ld-%ld",
+                                    task->getID().c_str(), placeholder_job->start_level, placeholder_job->end_level);
+                        this->job_manager->submitJob(standard_job, ph->pilot_job->getComputeService());
+
+                        ph->num_standard_job_submitted++;
+
                 }
             }
         }

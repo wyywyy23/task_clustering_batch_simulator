@@ -44,7 +44,7 @@ namespace wrench {
         service_specific_args["-c"] = "1";
         service_specific_args["-t"] = std::to_string(1 + ((unsigned long) requested_execution_time) / 60);
 
-        PlaceHolderJob *pj = new PlaceHolderJob(this->job_manager->createPilotJob(), tasks, start_level, end_level);
+        PlaceHolderJob *pj = new PlaceHolderJob(this->job_manager->createPilotJob(), requested_parallelism, tasks, start_level, end_level);
 
         WRENCH_INFO("Submitting a Pilot Job (%ld hosts, %.2lf sec) for workflow levels %ld-%ld (%s)",
                     requested_parallelism, requested_execution_time, start_level, end_level,

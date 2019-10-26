@@ -64,7 +64,18 @@ namespace wrench {
         return 0.0;
       }
 
-      Workflow *workflow = tasks[0]->getWorkflow();
+//        // Sort the tasks
+//        std::sort(tasks.begin(), tasks.end(),
+//                  [](const WorkflowTask * t1, const WorkflowTask * t2) -> bool {
+//
+//                      if (t1->getFlops() == t2->getFlops()) {
+//                          return (t1->getID() > t2->getID());
+//                      }
+//                      return (t1->getFlops() > t2->getFlops());
+//                  });
+
+
+        Workflow *workflow = tasks[0]->getWorkflow();
 
       // Initialize host idle dates
       double idle_date[num_hosts];
