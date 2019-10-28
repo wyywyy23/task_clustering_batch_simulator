@@ -290,7 +290,7 @@ namespace wrench {
     double
     ZhangWMS::calculateLeewayBinarySearch(double runtime, unsigned long num_nodes, double parent_runtime, double lower,
                                           double upper) {
-        std::cout << "LOWER: " << lower << " UPPER: " << upper << " greater? " << (lower >= upper) << std::endl;
+        // std::cout << "LOWER: " << lower << " UPPER: " << upper << " greater? " << (lower >= upper) << std::endl;
         assert(upper > 0 && lower >= 0);
 
         if ((upper - lower) < 600) {
@@ -301,7 +301,7 @@ namespace wrench {
 
         double new_wait_time = this->proxyWMS->estimateWaitTime(num_nodes, (runtime + middle),
                                                                 this->simulation->getCurrentSimulatedDate(), &sequence);
-        std::cout << "NEW WAIT TIME: " << new_wait_time << std::endl;
+        // std::cout << "NEW WAIT TIME: " << new_wait_time << std::endl;
         double new_leeway = parent_runtime - new_wait_time;
 
         // not enough overlap :(

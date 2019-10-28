@@ -18,7 +18,6 @@ StaticClusteringWMS::StaticClusteringWMS(Simulator *simulator, std::string hostn
     this->batch_service = batch_service;
     this->max_num_jobs = max_num_jobs;
     this->algorithm_spec = algorithm_spec;
-    std::cout << this->number_of_nodes << std::endl;
 }
 
 
@@ -266,7 +265,6 @@ int StaticClusteringWMS::main() {
     while (true) {
 
         while (this->num_jobs_in_systems < this->max_num_jobs) {
-            std::cout << this->num_jobs_in_systems << std::endl;
             // Try to find a ready job
             ClusteredJob *to_submit = nullptr;
             for (auto j : jobs) {
@@ -346,7 +344,6 @@ void StaticClusteringWMS::submitClusteredJob(ClusteredJob *clustered_job) {
     try {
         WRENCH_INFO("Submitting a batch job...");
         // std::cout << "REQUESTING " << (unsigned long) (1 + (makespan * EXECUTION_TIME_FUDGE_FACTOR)) << " " << num_nodes << "\n";
-        std::cout << "NUM NODES: " << num_nodes << std::endl;
         this->job_manager->submitJob(standard_job, batch_service, batch_job_args);
 //    this->job_map.insert(std::make_pair(standard_job, clustered_job));
     } catch (WorkflowExecutionException &e) {
