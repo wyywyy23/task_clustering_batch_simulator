@@ -1,6 +1,6 @@
 # Docker Usage
 
-The built docker image is hosted on and and can be pulled from XXX.
+The built docker image is hosted on and and can be pulled at https://hub.docker.com/repository/docker/wrenchproject/task-clustering.
 
 The dockerfile is built on top of wrench's batsched image, then installs simgrid, wrench, and the batch simulator repos.
 
