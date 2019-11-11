@@ -28,6 +28,6 @@ WORKDIR /simulator/task_clustering_batch_simulator
 
 RUN sysctl -w vm.max_map_count=131072
 
-ENTRYPOINT ["./simulator"]
+#ENTRYPOINT ["./simulator"]
 
 CMD []
