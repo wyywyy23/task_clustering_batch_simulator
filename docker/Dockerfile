@@ -20,14 +20,14 @@ RUN git clone --single-branch --branch evan-dev https://github.com/wrench-projec
 
 # These files first copied locally as part of the setup from docker-build.sh
 
-COPY build/workflows/* /simulator/workflows/
+COPY data/workflows/* /simulator/workflows/
 
-COPY build/trace_files/* /simulator/trace_files/
+COPY data/trace_files/* /simulator/trace_files/
 
 WORKDIR /simulator/task_clustering_batch_simulator
 
 RUN sysctl -w vm.max_map_count=131072
 
-ENTRYPOINT ["./simulator"]
+#ENTRYPOINT ["./simulator"]
 
 CMD []
