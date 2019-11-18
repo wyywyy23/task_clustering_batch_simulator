@@ -24,6 +24,9 @@ COPY data/workflows/* /simulator/workflows/
 
 COPY data/trace_files/* /simulator/trace_files/
 
+# python wrapper for the simulator
+COPY build/simulator.py /simulator/task_clustering_batch_simulator/
+
 WORKDIR /simulator/task_clustering_batch_simulator
 
 RUN sysctl -w vm.max_map_count=131072
