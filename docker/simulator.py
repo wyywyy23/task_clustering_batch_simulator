@@ -4,29 +4,7 @@ import subprocess
 import json
 
 # If unable to parse output file argument
-# OUTPUT_FILE_PATH = '/output/error.json'
-OUTPUT_FILE_PATH = 'error.json'
-
-OUTPUT_JSON = {
-    "algorithm": "zhang:noglobal:nobsearch:prediction",
-    "batch_algorithm": "conservative_bf",
-    "end_levels": [
-        0,
-        3
-    ],
-    "individual_mode": True,
-    "job_trace_file": "/simulator/trace_files/kth_sp2.json",
-    "makespan": 183236.48000004218,
-    "max_sys_jobs": "100",
-    "num_compute_nodes": "100",
-    "num_p_job_exp": 0,
-    "num_splits": 1,
-    "start_time": "104400",
-    "total_queue_wait": 0.0,
-    "used_node_sec": 3607179.9800000004,
-    "wasted_node_seconds": 1948.120000016901,
-    "workflow_specification": "dax:/simulator/workflows/CYBERSHAKE_250_3600000.dax"
-}
+OUTPUT_FILE_PATH = '/output/error.json'
 
 
 def write_dict_to_file(data, file_name):
@@ -66,4 +44,5 @@ if __name__ == '__main__':
     if len(argv) != 10:
         print("Simulator requires 9 arguments:  <num_compute_nodes> <job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm> <batch algorithm> --wrench-no-log <json file to write results to>")
         write_dict_to_file({"error": "Invalid number of args", "args": argv}, OUTPUT_FILE_PATH)
-    main(*argv[1:])
+    else:
+        main(*argv[1:])
