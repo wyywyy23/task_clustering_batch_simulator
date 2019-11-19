@@ -10,6 +10,7 @@ cp -r data/trace_files/* build/trace_files
 
 # python wrapper for the simulator
 cp simulator.py build/
+cp run_simulation.sh build/
 
 docker build -t wrenchproject/task-clustering:latest .
 rm -rf build

@@ -26,6 +26,7 @@ COPY data/trace_files/* /simulator/trace_files/
 
 # python wrapper for the simulator
 COPY build/simulator.py /simulator/task_clustering_batch_simulator/
+COPY build/run_simulation.sh /simulator/task_clustering_batch_simulator/
 
 WORKDIR /simulator/task_clustering_batch_simulator
 
