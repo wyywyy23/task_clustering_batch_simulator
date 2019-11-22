@@ -14,7 +14,7 @@ def write_dict_to_file(data, file_name):
 
 
 def main(num_compute_nodes, job_trace_file, max_sys_jobs, workflow_specification, start_time, algorithm, batch_algorithm, wrench_log, output_file):
-    cmd = ["./simulator", num_compute_nodes, job_trace_file, max_sys_jobs, workflow_specification, start_time, algorithm, batch_algorithm, wrench_log, output_file]
+    cmd = ["/simulator/task_clustering_batch_simulator/simulator", num_compute_nodes, job_trace_file, max_sys_jobs, workflow_specification, start_time, algorithm, batch_algorithm, wrench_log, output_file]
     try:
         # Timeout throws an exception
         res = subprocess.check_output(cmd, timeout=3600, stderr=subprocess.STDOUT)
