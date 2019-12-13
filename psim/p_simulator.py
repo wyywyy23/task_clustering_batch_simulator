@@ -170,9 +170,9 @@ def create_fork_join(num_levels, tasks_per_level, task_time):
     return workflow
 
 def main():
-    print("Reading in configurations from config.json")
+    print("Reading in configurations from config_swf.json")
 
-    f = open('config.json', 'r')
+    f = open('config_swf.json', 'r')
     config = json.load(f)
     f.close()
 
@@ -184,7 +184,7 @@ def main():
 
     algorithms = config['algorithms']
 
-    start_times = [str(x * 1800) for x in range(48, 285)]
+    start_times = [str((x * 1800)) for x in range(48, 337)]
 
     print('Trace files: ', trace_files)
     print('Nodes: ', node_map)
@@ -201,7 +201,7 @@ def main():
                     command[1] = node_map[trace]
                     command[2] = trace
                     # set max_sys_jobs to number of nodes on machine
-                    command[3] = node_map[trace]
+                    command[3] = "10"
                     command[4] = workflow
                     command[5] = start_time
                     command[6] = get_algorithm(algorithm, workflow)
@@ -211,7 +211,7 @@ def main():
     print("%s Simulations to run: %d" % (str(datetime.now()), len(commands)))
 
     threads = []
-    cores = 10
+    cores = 8
 
     for _ in range(cores):
         thread = Thread(target=execute)
