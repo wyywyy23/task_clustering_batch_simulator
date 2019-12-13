@@ -71,7 +71,7 @@ def write_to_mongo(obj):
     username = urllib.parse.quote_plus('evan')
     password = urllib.parse.quote_plus('password')
     myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
-    mydb = myclient["simulations"]
+    mydb = myclient["results"]
     mycol = mydb[coll_name]
     mycol.insert_one(obj)
 
