@@ -70,7 +70,7 @@ def print_process_output(command, res, time):
 def write_to_mongo(obj):
     username = urllib.parse.quote_plus('evan')
     password = urllib.parse.quote_plus('password')
-    myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
+    myclient = pymongo.MongoClient('mongodb://dirt02.ics.hawaii.edu')
     mydb = myclient["results"]
     mycol = mydb[coll_name]
     mycol.insert_one(obj)
@@ -81,7 +81,7 @@ def run_simulator(command):
     end = start
     try:
         # Timeout throws exception, this is okay i guess
-        res = subprocess.check_output(command, timeout=1800, stderr=subprocess.STDOUT)
+        res = subprocess.check_output(command, timeout=3600, stderr=subprocess.STDOUT)
         end = time.time()
         res = print_process_output(command, res, end - start)
         obj['success'] = True

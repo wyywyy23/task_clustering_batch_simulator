@@ -1,7 +1,7 @@
 {
     "trace_file_dir": ".",
     "trace_files": [
-        ["kth_sp2.swf", "128"],
+        ["kth_sp2.swf", "100"],
         ["sdsc_sp2.swf", "128"]
     ],
     "algorithms": [
