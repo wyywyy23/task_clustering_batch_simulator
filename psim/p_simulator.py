@@ -201,7 +201,7 @@ def main():
                     command[1] = node_map[trace]
                     command[2] = trace
                     # set max_sys_jobs to number of nodes on machine
-                    command[3] = "10"
+                    command[3] = "128"
                     command[4] = workflow
                     command[5] = start_time
                     command[6] = get_algorithm(algorithm, workflow)
