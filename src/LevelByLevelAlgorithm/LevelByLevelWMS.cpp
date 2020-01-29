@@ -17,10 +17,10 @@
 #include "Simulator.h"
 #include "LevelByLevelWMS.h"
 #include "OngoingLevel.h"
-#include "PlaceHolderJob.h"
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(level_by_level_clustering_wms, "Log category for Level-by-Level Clustering WMS");
 
+typedef unsigned long ulong;
 
 namespace wrench {
 
@@ -32,6 +32,9 @@ namespace wrench {
         this->overlap = overlap;
         this->batch_service = batch_service;
         this->clustering_spec = clustering_spec;
+
+        // TODO - Overlapping is broken due to leeway issues
+        assert(not this->overlap);
     }
 
 
@@ -48,7 +51,6 @@ namespace wrench {
 
         // Create a job manager
         this->job_manager = this->createJobManager();
-
 
         while (not this->getWorkflow()->isDone()) {
 
@@ -67,88 +69,108 @@ namespace wrench {
         WRENCH_INFO("Seeing if I can submit jobs for the 'next' level...");
 
         // If more than 2 levels are going on, forget it
-        if (this->ongoing_levels.size() >= 2) { WRENCH_INFO("Too many ongoing levels going on... will try later");
+        if (this->ongoing_levels.size() >= 2) {
+
+            WRENCH_INFO("Too many ongoing levels going on... will try later");
             return;
         }
 
-        // Don't schedule a pilot job if overlap = false and anything is going on
-        if ((not this->overlap) and (not ongoing_levels.empty())) {
+        if (not(this->overlap or ongoing_levels.empty())) {
             return;
         }
+
+        // TODO - next level to submit? What if incomplete tasks?
 
         // Compute which level should be submitted
-        unsigned long level_to_submit = ULONG_MAX;
+        ulong level_to_submit = this->last_level_completed;
+
         for (auto l : this->ongoing_levels) {
-            unsigned long level_number = l.second->level_number;
-            if ((level_to_submit == ULONG_MAX) or (level_to_submit < level_number)) {
+            ulong level_number = l.second->level_number;
+            if (level_to_submit < level_number) {
                 level_to_submit = level_number;
             }
         }
-        level_to_submit++;
 
-        if (level_to_submit >= this->getWorkflow()->getNumLevels()) { WRENCH_INFO(
-                    "All workflow levels have been submitted!");
+        if (level_to_submit == ULONG_MAX) {
+            level_to_submit = 0;
+        } else {
+            level_to_submit += 1;
+        }
+
+        if (level_to_submit >= this->getWorkflow()->getNumLevels()) {
+
+            WRENCH_INFO("All workflow levels have been submitted!");
+
+            std::cout << "All levels have already been submitted" << std::endl;
+
             return;
         }
 
         // Make sure that all PH jobs in the previous level have started
-        if (level_to_submit > 0) {
-            if (not(this->ongoing_levels[level_to_submit - 1]->pending_placeholder_jobs.empty())) { WRENCH_INFO(
+        if (level_to_submit > 0 and (this->ongoing_levels.find(level_to_submit) != this->ongoing_levels.end())) {
+            if (not(this->ongoing_levels[level_to_submit - 1]->pending_placeholder_jobs.empty())) {
+
+                WRENCH_INFO(
                         "Cannot submit pilot jobs for level %ld since level %ld still has "
                         "pilot jobs that haven't started yet", level_to_submit, level_to_submit - 1);
+
                 return;
             }
         }
 
-        if (level_to_submit > 0) { WRENCH_INFO("All pilot jobs from level %ld have started... off I go with level %ld!",
-                                               level_to_submit - 1, level_to_submit);
-        } else { WRENCH_INFO("Starting the first level!");
+        if (level_to_submit > 0) {
+
+            WRENCH_INFO("All pilot jobs from level %ld have started... off I go with level %ld!",
+                        level_to_submit - 1, level_to_submit);
+
+        } else {
+
+            WRENCH_INFO("Starting the first level!");
+
         }
 
         WRENCH_INFO("Creating a new ongoing level for level %lu", level_to_submit);
+
+        printf("Creating a new ongoing level for level %lu of %lu\n", level_to_submit, (this->getWorkflow()->getNumLevels() - 1));
+
         OngoingLevel *new_ongoing_level = new OngoingLevel();
         new_ongoing_level->level_number = level_to_submit;
 
-        // Create all place holder jobs for level
-        std::set<PlaceHolderJob *> place_holder_jobs;
-        std::cout << "Creating a placeholder for level: " << level_to_submit << " of " << this->getWorkflow()->getNumLevels() << std::endl;
-        place_holder_jobs = createPlaceHolderJobsForLevel(level_to_submit);
+        // Create all placeholder jobs for level
+        std::set<PlaceHolderJob *> placeholder_jobs;
 
+        placeholder_jobs = createPlaceHolderJobsForLevel(level_to_submit);
+
+        // TODO - Must calculate leeway
         // Submit placeholder jobs
-        for (auto ph : place_holder_jobs) {
+        for (auto ph : placeholder_jobs) {
             new_ongoing_level->pending_placeholder_jobs.insert(ph);
-
-            // Compute the number of nodes
-            unsigned long num_nodes;
-            if (ph->clustered_job->getNumNodes() == 0) {
-                // TODO - DEBUG w/ print statement here...
-                std::cout << "tasks in job: " << ph->clustered_job->getNumTasks() << " num_hosts: " << this->number_of_nodes << std::endl;
-                num_nodes = ph->clustered_job->computeBestNumNodesBasedOnQueueWaitTimePredictions(
-                        std::min<unsigned long>(ph->clustered_job->getNumTasks(), this->number_of_nodes), this->core_speed,
-                        this->batch_service);
-                ph->clustered_job->setNumNodes(num_nodes, true);
-            }
 
             // Create the pilot job
             double makespan = ph->clustered_job->estimateMakespan(this->core_speed) * EXECUTION_TIME_FUDGE_FACTOR;
+
             // Create the pilot job
             ph->pilot_job = this->job_manager->createPilotJob();
-
 
             // submit the corresponding pilot job
             std::map<std::string, std::string> service_specific_args;
             service_specific_args["-N"] = std::to_string(ph->clustered_job->getNumNodes());
             service_specific_args["-c"] = std::to_string(1);
-            service_specific_args["-t"] = std::to_string(1 + ((unsigned long) (makespan) / 60));
+            service_specific_args["-t"] = std::to_string(1 + ((ulong) (makespan) / 60));
             this->job_manager->submitJob(ph->pilot_job, this->batch_service,
-                                         service_specific_args);WRENCH_INFO(
-                    "Submitted a Pilot Job (%s hosts, %s min) for workflow level %lu (%s)",
-                    service_specific_args["-N"].c_str(),
-                    service_specific_args["-t"].c_str(),
-                    level_to_submit,
-                    ph->pilot_job->getName().c_str());WRENCH_INFO("This pilot job has these tasks:");
-            for (auto t : ph->clustered_job->getTasks()) { WRENCH_INFO("     - %s (flops: %lf)", t->getID().c_str(),
-                                                                       t->getFlops());
+                                         service_specific_args);
+
+            WRENCH_INFO("Submitted a Pilot Job (%s hosts, %s min) for workflow level %lu (%s)",
+                        service_specific_args["-N"].c_str(),
+                        service_specific_args["-t"].c_str(),
+                        level_to_submit,
+                        ph->pilot_job->getName().c_str());
+
+            WRENCH_INFO("This pilot job has these tasks:");
+
+            for (auto t : ph->clustered_job->getTasks()) {
+
+                WRENCH_INFO("     - %s (flops: %lf)", t->getID().c_str(),t->getFlops());
             }
         }
 
@@ -156,7 +178,7 @@ namespace wrench {
     }
 
 
-    std::set<PlaceHolderJob *> LevelByLevelWMS::createPlaceHolderJobsForLevel(unsigned long level) {
+    std::set<PlaceHolderJob *> LevelByLevelWMS::createPlaceHolderJobsForLevel(ulong level) {
 
         /** Identify relevant tasks **/
         WRENCH_INFO("IN CREATE PLACE HOLDER JOBS FOR LEVEL %lu", level);
@@ -186,17 +208,32 @@ namespace wrench {
                 throw std::runtime_error(
                         "createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
             }
-            unsigned long num_nodes_per_cluster;
+            ulong num_nodes_per_cluster;
             if ((sscanf(tokens[1].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
                 throw std::invalid_argument("Invalid one_job specification");
             }
-            std::cout << "num_nodes_per_cluster: " << num_nodes_per_cluster << std::endl;
+
             auto job = new ClusteredJob();
+
             for (auto t : tasks_to_submit) {
                 job->addTask(t);
             }
-            std::cout << "NUM tasks in job: " << job->getNumTasks() << std::endl;
+
             job->setNumNodes(num_nodes_per_cluster);
+
+            std::cout << "NUM tasks in job: " << job->getNumTasks() << std::endl;
+
+            // Use prediction to compute the best number of nodes if oj-0
+            if (job->getNumNodes() == 0) {
+                // std::cout << "num tasks in job: " << job->getNumTasks() << std::endl;
+                ulong num_nodes = job->computeBestNumNodesBasedOnQueueWaitTimePredictions(
+                        std::min<ulong>(job->getNumTasks(), this->number_of_nodes), this->core_speed,
+                        this->batch_service);
+                job->setNumNodes(num_nodes, true);
+            }
+
+            std::cout << "Num requested nodes: " << job->getNumNodes() << std::endl;
+
             clustered_jobs.insert(job);
 
         } else if (tokens[0] == "one_job_per_task") {
@@ -216,8 +253,8 @@ namespace wrench {
                 throw std::runtime_error(
                         "createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
             }
-            unsigned long num_tasks_per_cluster;
-            unsigned long num_nodes_per_cluster;
+            ulong num_tasks_per_cluster;
+            ulong num_nodes_per_cluster;
             if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
                 (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
                 throw std::invalid_argument("Invalid hc specification");
@@ -232,9 +269,9 @@ namespace wrench {
                 throw std::runtime_error(
                         "createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
             }
-            unsigned long num_seconds_per_cluster;
-            unsigned long num_nodes_to_compute_clustering;
-            unsigned long num_nodes_per_cluster;
+            ulong num_seconds_per_cluster;
+            ulong num_nodes_to_compute_clustering;
+            ulong num_nodes_per_cluster;
             if ((sscanf(tokens[1].c_str(), "%lu", &num_seconds_per_cluster) != 1) or (num_seconds_per_cluster < 1) or
                 (sscanf(tokens[2].c_str(), "%lu", &num_nodes_to_compute_clustering) != 1) or
                 (sscanf(tokens[3].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
@@ -254,8 +291,8 @@ namespace wrench {
                 throw std::runtime_error(
                         "createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
             }
-            unsigned long num_tasks_per_cluster;
-            unsigned long num_nodes_per_cluster;
+            ulong num_tasks_per_cluster;
+            ulong num_nodes_per_cluster;
             if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
                 (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
                 throw std::invalid_argument("Invalid hrb specification");
@@ -270,8 +307,8 @@ namespace wrench {
                 throw std::runtime_error(
                         "createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
             }
-            unsigned long num_tasks_per_cluster;
-            unsigned long num_nodes_per_cluster;
+            ulong num_tasks_per_cluster;
+            ulong num_nodes_per_cluster;
             if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
                 (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
                 throw std::invalid_argument("Invalid hifb specification");
@@ -286,8 +323,8 @@ namespace wrench {
                 throw std::runtime_error(
                         "createPlaceHolderJobsForLevel(): Invalid clustering spec " + this->clustering_spec);
             }
-            unsigned long num_tasks_per_cluster;
-            unsigned long num_nodes_per_cluster;
+            ulong num_tasks_per_cluster;
+            ulong num_nodes_per_cluster;
             if ((sscanf(tokens[1].c_str(), "%lu", &num_tasks_per_cluster) != 1) or (num_tasks_per_cluster < 1) or
                 (sscanf(tokens[2].c_str(), "%lu", &num_nodes_per_cluster) != 1)) {
                 throw std::invalid_argument("Invalid hdb specification");
@@ -332,6 +369,8 @@ namespace wrench {
         // Just for kicks, check it was the pending one
         WRENCH_INFO("Got a Pilot Job Start event: %s", e->pilot_job->getName().c_str());
 
+        std::cout << "Got a pilot job start event" << std::endl;
+
         // Update queue waiting time
         this->simulator->total_queue_wait_time +=
                 this->simulation->getCurrentSimulatedDate() - e->pilot_job->getSubmitDate();
@@ -339,7 +378,6 @@ namespace wrench {
         // Find the placeholder job in the pending list
         PlaceHolderJob *placeholder_job = nullptr;
         OngoingLevel *ongoing_level = nullptr;
-
         for (auto ol : this->ongoing_levels) {
             for (auto ph : ol.second->pending_placeholder_jobs) {
                 if (ph->pilot_job == e->pilot_job) {
@@ -356,6 +394,10 @@ namespace wrench {
 
         WRENCH_INFO("The corresponding placeholder job has %ld tasks",
                     placeholder_job->clustered_job->getTasks().size());
+
+        printf("The corresponding placeholder job has %ld tasks\n",
+               placeholder_job->clustered_job->getTasks().size());
+
         // Mote the placeholder job to running
         ongoing_level->pending_placeholder_jobs.erase(placeholder_job);
         ongoing_level->running_placeholder_jobs.insert(placeholder_job);
@@ -379,7 +421,7 @@ namespace wrench {
 
     void LevelByLevelWMS::processEventPilotJobExpiration(std::shared_ptr<PilotJobExpiredEvent> e) {
 
-        std::cout << "GOT AN EXPIRATION" << std::endl;
+//        std::cout << "GOT AN EXPIRATION" << std::endl;
 
         // Find the placeholder job
         // Find the placeholder job in the pending list
@@ -404,6 +446,9 @@ namespace wrench {
                     placeholder_job->start_level, placeholder_job->end_level,
                     placeholder_job->pilot_job->getName().c_str());
 
+        printf("Got a pilot job expiration for a placeholder job that deals with levels %ld-%ld (%s)\n",
+               placeholder_job->start_level, placeholder_job->end_level,
+               placeholder_job->pilot_job->getName().c_str());
 
         // Check if there are unprocessed tasks
         bool unprocessed = false;
@@ -415,17 +460,20 @@ namespace wrench {
         }
 
 //      double wasted_node_seconds = e->pilot_job->getNumHosts() * e->pilot_job->getDuration();
-        unsigned long num_used_nodes;
+        ulong num_used_nodes;
         sscanf(e->pilot_job->getServiceSpecificArguments()["-N"].c_str(), "%lu", &num_used_nodes);
-        unsigned long num_used_minutes;
+        ulong num_used_minutes;
         sscanf(e->pilot_job->getServiceSpecificArguments()["-t"].c_str(), "%lu", &num_used_minutes);
         double wasted_node_seconds = 60.0 * num_used_minutes * num_used_nodes;
-
+        
+        double used_seconds = 0;
         for (auto t : placeholder_job->clustered_job->getTasks()) {
             if (t->getState() == WorkflowTask::COMPLETED) {
                 wasted_node_seconds -= t->getFlops() / this->core_speed;
+                used_seconds += t->getFlops() / this->core_speed;
             }
         }
+
         this->simulator->wasted_node_seconds += wasted_node_seconds;
 
         if (not unprocessed) { // Nothing to do
@@ -433,7 +481,17 @@ namespace wrench {
             return;
         }
 
+        // TODO - this will break for all algorithms except OJ!
+        std::cout << "Removing level of expired job from ongoing_levels" << std::endl;
+
+        this->ongoing_levels.erase((int) ongoing_level->level_number);
+
         this->simulator->num_pilot_job_expirations_with_remaining_tasks_to_do++;
+
+        return;
+
+        // TODO - Let grouping heuristic process expired tasks in level...
+
 
         ongoing_level->running_placeholder_jobs.erase(placeholder_job);
 
@@ -450,9 +508,9 @@ namespace wrench {
             // Don't be stupid, don't ask for more nodes than tasks
             cj->setNumNodes(std::min(placeholder_job->clustered_job->getNumNodes(), cj->getNumTasks()));
         } else {
-            unsigned long num_nodes = cj->computeBestNumNodesBasedOnQueueWaitTimePredictions(cj->getNumTasks(),
-                                                                                             this->core_speed,
-                                                                                             this->batch_service);
+            ulong num_nodes = cj->computeBestNumNodesBasedOnQueueWaitTimePredictions(cj->getNumTasks(),
+                                                                                     this->core_speed,
+                                                                                     this->batch_service);
             cj->setNumNodes(num_nodes, true);
         }
 
@@ -471,7 +529,7 @@ namespace wrench {
         std::map<std::string, std::string> service_specific_args;
         service_specific_args["-N"] = std::to_string(cj->getNumNodes());
         service_specific_args["-c"] = std::to_string(1);
-        service_specific_args["-t"] = std::to_string(1 + ((unsigned long) (makespan)) / 60);
+        service_specific_args["-t"] = std::to_string(1 + ((ulong) (makespan)) / 60);
         this->job_manager->submitJob(replacement_placeholder_job->pilot_job, this->batch_service,
                                      service_specific_args);WRENCH_INFO(
                 "Submitted a Pilot Job (%s hosts, %s min) for workflow level %lu (%s)",
@@ -528,9 +586,9 @@ namespace wrench {
 
             // Update the wasted no seconds metric
 //        double wasted_node_seconds = placeholder_job->pilot_job->getNumHosts() * placeholder_job->pilot_job->getDuration();
-            unsigned long num_used_nodes;
+            ulong num_used_nodes;
             sscanf(placeholder_job->pilot_job->getServiceSpecificArguments()["-N"].c_str(), "%lu", &num_used_nodes);
-            unsigned long num_used_minutes;
+            ulong num_used_minutes;
             sscanf(placeholder_job->pilot_job->getServiceSpecificArguments()["-t"].c_str(), "%lu", &num_used_minutes);
             double wasted_node_seconds = 60.0 * num_used_minutes * num_used_nodes;
 
@@ -551,9 +609,11 @@ namespace wrench {
             }
             ongoing_level->running_placeholder_jobs.erase(placeholder_job);
             ongoing_level->completed_placeholder_jobs.insert(placeholder_job);
+            // TODO - this isn't removing from this->ongoing_levels???
+            std::cout << "Finished all jobs in a placeholder!" << std::endl;
         }
 
-
+        /**
         // Start all newly ready tasks that depended on the completed task, IN ANY PLACEHOLDER
         // This shouldn't happen in individual mode, but can't hurt
         WRENCH_INFO("Seeing if other tasks (which are now ready) can be submitted...");
@@ -572,11 +632,17 @@ namespace wrench {
                 }
             }
         }
+        */
 
         // Remove the ongoing level if it's finished
         if (ongoing_level->pending_placeholder_jobs.empty() and
-            ongoing_level->running_placeholder_jobs.empty()) { WRENCH_INFO("Level %ld is finished!",
-                                                                           ongoing_level->level_number);
+            ongoing_level->running_placeholder_jobs.empty()) {
+
+            WRENCH_INFO("Level %ld is finished!", ongoing_level->level_number);
+
+            printf("Level %ld is finished!\n", ongoing_level->level_number);
+            this->last_level_completed = ongoing_level->level_number;
+
             this->ongoing_levels.erase(ongoing_level->level_number);
         }
 

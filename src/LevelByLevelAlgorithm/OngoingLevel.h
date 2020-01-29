@@ -13,6 +13,7 @@
 
 
 #include <set>
+#include <Util/PlaceHolderJob.h>
 
 namespace wrench {
 

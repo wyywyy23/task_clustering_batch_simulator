@@ -56,6 +56,7 @@ namespace wrench {
 
         std::map<int, OngoingLevel *> ongoing_levels;
 
+        unsigned long last_level_completed = ULONG_MAX;
     };
 
 };
