@@ -194,6 +194,7 @@ def main():
     print('Nodes: ', node_map)
     print('Start times: ', start_times)
     print('Workflows: ', workflows)
+    print('Max sys jobs: ', max_sys_jobs)
     print('Algorithms: ', algorithms)
     print('')
 
@@ -206,7 +207,7 @@ def main():
                         command[1] = node_map[trace]
                         command[2] = trace
                         # set max_sys_jobs to number of nodes on machine
-                        command[3] = str(max_sys_jobs)
+                        command[3] = str(max_jobs)
                         command[4] = workflow
                         command[5] = start_time
                         command[6] = get_algorithm(algorithm, workflow)
