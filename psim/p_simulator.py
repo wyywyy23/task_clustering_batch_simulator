@@ -85,6 +85,8 @@ def run_simulator(command):
         end = time.time()
         res = print_process_output(command, res, end - start)
         obj['success'] = True
+        if "zhang" in command[6]:
+            obj['individual_mode'] = True if ('Switching to' in res[len(res) - 8]) else False
         if "test" in command[6] or "evan" in command[6] or "zhang" in command[6]:
             obj['num_splits'] = int((res[len(res) - 7]).split("=")[1])
         else:
@@ -182,6 +184,8 @@ def main():
 
     workflows = [config['workflow_type'] + ':' + config['workflow_dir'] + '/' + x for x in config['workflows']]
 
+    max_sys_jobs = config['max_sys_jobs']
+
     algorithms = config['algorithms']
 
     start_times = [str((x * 1800)) for x in range(48, 337)]
@@ -194,18 +198,19 @@ def main():
     print('')
 
     for trace in trace_files:
-        for start_time in start_times:
-            for workflow in workflows:
-                for algorithm in algorithms:
-                    command = simulator_command()
-                    command[1] = node_map[trace]
-                    command[2] = trace
-                    # set max_sys_jobs to number of nodes on machine
-                    command[3] = "128"
-                    command[4] = workflow
-                    command[5] = start_time
-                    command[6] = get_algorithm(algorithm, workflow)
-                    commands.append(command)
+        for max_jobs in max_sys_jobs:
+            for start_time in start_times:
+                for workflow in workflows:
+                    for algorithm in algorithms:
+                        command = simulator_command()
+                        command[1] = node_map[trace]
+                        command[2] = trace
+                        # set max_sys_jobs to number of nodes on machine
+                        command[3] = str(max_sys_jobs)
+                        command[4] = workflow
+                        command[5] = start_time
+                        command[6] = get_algorithm(algorithm, workflow)
+                        commands.append(command)
 
     start = time.time()
     print("%s Simulations to run: %d" % (str(datetime.now()), len(commands)))
