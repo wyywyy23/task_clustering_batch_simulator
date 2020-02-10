@@ -216,7 +216,7 @@ def main():
     print("%s Simulations to run: %d" % (str(datetime.now()), len(commands)))
 
     threads = []
-    cores = 8
+    cores = 12
 
     for _ in range(cores):
         thread = Thread(target=execute)
