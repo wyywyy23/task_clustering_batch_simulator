@@ -70,8 +70,8 @@ def print_process_output(command, res, time):
 def write_to_mongo(obj):
     username = urllib.parse.quote_plus('evan')
     password = urllib.parse.quote_plus('password')
-    myclient = pymongo.MongoClient('mongodb://%s:%s@dirt02.ics.hawaii.edu/simulations' % (username, password))
-    mydb = myclient["simulations"]
+    myclient = pymongo.MongoClient('mongodb://dirt02.ics.hawaii.edu')
+    mydb = myclient["results"]
     mycol = mydb[coll_name]
     mycol.insert_one(obj)
 
@@ -81,10 +81,12 @@ def run_simulator(command):
     end = start
     try:
         # Timeout throws exception, this is okay i guess
-        res = subprocess.check_output(command, timeout=1800, stderr=subprocess.STDOUT)
+        res = subprocess.check_output(command, timeout=3600, stderr=subprocess.STDOUT)
         end = time.time()
         res = print_process_output(command, res, end - start)
         obj['success'] = True
+        if "zhang" in command[6]:
+            obj['individual_mode'] = True if ('Switching to' in res[len(res) - 8]) else False
         if "test" in command[6] or "evan" in command[6] or "zhang" in command[6]:
             obj['num_splits'] = int((res[len(res) - 7]).split("=")[1])
         else:
@@ -170,9 +172,9 @@ def create_fork_join(num_levels, tasks_per_level, task_time):
     return workflow
 
 def main():
-    print("Reading in configurations from config.json")
+    print("Reading in configurations from config_swf.json")
 
-    f = open('config.json', 'r')
+    f = open('config_swf.json', 'r')
     config = json.load(f)
     f.close()
 
@@ -182,36 +184,40 @@ def main():
 
     workflows = [config['workflow_type'] + ':' + config['workflow_dir'] + '/' + x for x in config['workflows']]
 
+    max_sys_jobs = config['max_sys_jobs']
+
     algorithms = config['algorithms']
 
-    start_times = [str(x * 1800) for x in range(48, 285)]
+    start_times = [str((x * 1800)) for x in range(48, 337)]
 
     print('Trace files: ', trace_files)
     print('Nodes: ', node_map)
     print('Start times: ', start_times)
     print('Workflows: ', workflows)
+    print('Max sys jobs: ', max_sys_jobs)
     print('Algorithms: ', algorithms)
     print('')
 
     for trace in trace_files:
-        for start_time in start_times:
-            for workflow in workflows:
-                for algorithm in algorithms:
-                    command = simulator_command()
-                    command[1] = node_map[trace]
-                    command[2] = trace
-                    # set max_sys_jobs to number of nodes on machine
-                    command[3] = node_map[trace]
-                    command[4] = workflow
-                    command[5] = start_time
-                    command[6] = get_algorithm(algorithm, workflow)
-                    commands.append(command)
+        for max_jobs in max_sys_jobs:
+            for start_time in start_times:
+                for workflow in workflows:
+                    for algorithm in algorithms:
+                        command = simulator_command()
+                        command[1] = node_map[trace]
+                        command[2] = trace
+                        # set max_sys_jobs to number of nodes on machine
+                        command[3] = str(max_jobs)
+                        command[4] = workflow
+                        command[5] = start_time
+                        command[6] = get_algorithm(algorithm, workflow)
+                        commands.append(command)
 
     start = time.time()
     print("%s Simulations to run: %d" % (str(datetime.now()), len(commands)))
 
     threads = []
-    cores = 10
+    cores = 12
 
     for _ in range(cores):
         thread = Thread(target=execute)

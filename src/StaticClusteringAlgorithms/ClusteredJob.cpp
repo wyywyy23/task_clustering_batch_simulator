@@ -165,7 +165,7 @@ namespace wrench {
 
         WRENCH_INFO("Opted to use %lu compute nodes!", best_num_nodes);
 
-        std::cout << "NODES: " << best_num_nodes << std::endl;
+        //std::cout << "NODES: " << best_num_nodes << std::endl;
 
         return best_num_nodes;
     }

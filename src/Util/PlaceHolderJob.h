@@ -12,6 +12,8 @@ namespace wrench {
 
     class PilotJob;
 
+    class ClusteredJob;
+
     class PlaceHolderJob {
 
     public:
@@ -19,6 +21,12 @@ namespace wrench {
         PlaceHolderJob(PilotJob *pilot_job,
                        unsigned long num_hosts,
                        std::vector<WorkflowTask *> tasks,
+                       unsigned long start_level,
+                       unsigned long end_level);
+
+        // For lbl
+        PlaceHolderJob(PilotJob *pilot_job,
+                       ClusteredJob *clustered_job,
                        unsigned long start_level,
                        unsigned long end_level);
 
@@ -32,6 +40,8 @@ namespace wrench {
 
         double getDuration();
 
+        // For lbl
+        ClusteredJob *clustered_job;
     };
 
 };
