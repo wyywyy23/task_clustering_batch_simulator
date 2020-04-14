@@ -8,8 +8,8 @@
  */
 
 
-#ifndef YOUR_PROJECT_NAME_TESTCLUSERINGWMS_H
-#define YOUR_PROJECT_NAME_TESTCLUSERINGWMS_H
+#ifndef YOUR_PROJECT_NAME_GLUMEWMS_H
+#define YOUR_PROJECT_NAME_GLUMEWMS_H
 
 
 #include <wrench-dev.h>
@@ -19,11 +19,11 @@
 
 namespace wrench {
 
-    class TestClusteringWMS : public WMS {
+    class GlumeWMS : public WMS {
 
     public:
 
-        TestClusteringWMS(Simulator *simulator, std::string hostname, double waste_bound, double beat_bound,
+        GlumeWMS(Simulator *simulator, std::string hostname, double waste_bound, double beat_bound,
                           std::shared_ptr<BatchComputeService> batch_service);
 
     private:
@@ -75,4 +75,4 @@ namespace wrench {
 };
 
 
-#endif //YOUR_PROJECT_NAME_TESTCLUSERINGWMS_H
+#endif //YOUR_PROJECT_NAME_GLUMEWMS_H

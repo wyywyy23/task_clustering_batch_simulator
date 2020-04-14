@@ -7,17 +7,17 @@
 * (at your option) any later version.
 */
 
-#include "TestClusteringWMS.h"
+#include "GlumeWMS.h"
 #include <Util/WorkflowUtil.h>
 #include "Globals.h"
 
-XBT_LOG_NEW_DEFAULT_CATEGORY(test_clustering_wms, "Log category for Test Clustering WMS");
+XBT_LOG_NEW_DEFAULT_CATEGORY(glume_wms, "Log category for Glume WMS");
 
 namespace wrench {
 
     static int sequence = 0;
 
-    TestClusteringWMS::TestClusteringWMS(Simulator *simulator, std::string hostname, double waste_bound,
+    GlumeWMS::GlumeWMS(Simulator *simulator, std::string hostname, double waste_bound,
                                          double beat_bound, std::shared_ptr<BatchComputeService> batch_service) :
             WMS(nullptr, nullptr, {batch_service}, {}, {}, nullptr, hostname, "clustering_wms") {
         this->simulator = simulator;
@@ -28,7 +28,7 @@ namespace wrench {
         this->number_of_splits = 0;
     }
 
-    int TestClusteringWMS::main() {
+    int GlumeWMS::main() {
 
         TerminalOutput::setThisProcessLoggingColor(TerminalOutput::COLOR_WHITE);
 
@@ -53,7 +53,7 @@ namespace wrench {
         return 0;
     }
 
-    void TestClusteringWMS::applyGroupingHeuristic() {
+    void GlumeWMS::applyGroupingHeuristic() {
 
         WRENCH_INFO("APPLYING GROUPING HEURISTIC");
 
@@ -212,7 +212,7 @@ namespace wrench {
 
     // Return params: (wait time, runtime, num_hosts)
     std::tuple<double, double, unsigned long>
-    TestClusteringWMS::estimateJob(unsigned long start_level, unsigned long end_level, double delay) {
+    GlumeWMS::estimateJob(unsigned long start_level, unsigned long end_level, double delay) {
 
         double runtime = DBL_MAX;
         double wait_time = DBL_MAX;
@@ -245,7 +245,7 @@ namespace wrench {
         return std::make_tuple(wait_time, runtime, best_parallelism);
     }
 
-    unsigned long TestClusteringWMS::findMaxParallelism(unsigned long start_level, unsigned long end_level) {
+    unsigned long GlumeWMS::findMaxParallelism(unsigned long start_level, unsigned long end_level) {
         unsigned long max_parallelism = 0;
         for (unsigned long i = start_level; i <= end_level; i++) {
             unsigned long num_tasks_in_level = this->getWorkflow()->getTasksInTopLevelRange(i, i).size();
@@ -256,7 +256,7 @@ namespace wrench {
     }
 
     std::tuple<double, double>
-    TestClusteringWMS::estimateWaitAndRunTimes(unsigned long start_level, unsigned long end_level,
+    GlumeWMS::estimateWaitAndRunTimes(unsigned long start_level, unsigned long end_level,
                                                unsigned long nodes) {
         double runtime = WorkflowUtil::estimateMakespan(
                 this->getWorkflow()->getTasksInTopLevelRange(start_level, end_level),
@@ -266,7 +266,7 @@ namespace wrench {
         return std::make_tuple(wait_time, runtime);
     }
 
-    bool TestClusteringWMS::isTooWasteful(double runtime, unsigned long nodes, unsigned long start_level,
+    bool GlumeWMS::isTooWasteful(double runtime, unsigned long nodes, unsigned long start_level,
                                           unsigned long end_level) {
         double all_tasks_time = 0;
         for (unsigned long i = start_level; i <= end_level; i++) {
@@ -281,7 +281,7 @@ namespace wrench {
     }
 
     double
-    TestClusteringWMS::calculateLeewayBinarySearch(double runtime, unsigned long num_nodes, double parent_runtime,
+    GlumeWMS::calculateLeewayBinarySearch(double runtime, unsigned long num_nodes, double parent_runtime,
                                                    double lower,
                                                    double upper) {
         // std::cout << "LOWER: " << lower << " UPPER: " << upper << " greater? " << (lower >= upper) << std::endl;
@@ -309,7 +309,7 @@ namespace wrench {
         return middle;
     }
 
-    void TestClusteringWMS::processEventPilotJobStart(std::shared_ptr<PilotJobStartedEvent> e) {
+    void GlumeWMS::processEventPilotJobStart(std::shared_ptr<PilotJobStartedEvent> e) {
         // Update queue waiting time
         this->simulator->total_queue_wait_time +=
                 this->simulation->getCurrentSimulatedDate() - e->pilot_job->getSubmitDate();
@@ -353,7 +353,7 @@ namespace wrench {
         this->applyGroupingHeuristic();
     }
 
-    void TestClusteringWMS::processEventPilotJobExpiration(std::shared_ptr<PilotJobExpiredEvent> e) {
+    void GlumeWMS::processEventPilotJobExpiration(std::shared_ptr<PilotJobExpiredEvent> e) {
         PlaceHolderJob *placeholder_job = nullptr;
         for (auto ph : this->running_placeholder_jobs) {
             if (ph->pilot_job == e->pilot_job) {
@@ -447,7 +447,7 @@ namespace wrench {
         this->applyGroupingHeuristic();
     }
 
-    void TestClusteringWMS::processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent> e) {
+    void GlumeWMS::processEventStandardJobCompletion(std::shared_ptr<StandardJobCompletedEvent> e) {
         // only one task per job
         WorkflowTask *completed_task = e->standard_job->tasks[0];
 
@@ -546,7 +546,7 @@ namespace wrench {
         }
     }
 
-    void TestClusteringWMS::processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) {
+    void GlumeWMS::processEventStandardJobFailure(std::shared_ptr<StandardJobFailedEvent> e) {
         WRENCH_INFO("Got a standard job failure event for task %s -- IGNORING THIS",
                     e->standard_job->tasks[0]->getID().c_str());
         throw std::runtime_error("A job has failed, which shouldn't happen");

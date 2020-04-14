@@ -25,8 +25,8 @@ set(SOURCE_FILES
         src/LevelByLevelAlgorithm/LevelByLevelWMS.h
         src/ZhangClusteringAlgorithms/ZhangWMS.cpp
         src/ZhangClusteringAlgorithms/ZhangWMS.h
-        src/TestClusteringAlgorithm/TestClusteringWMS.cpp
-        src/TestClusteringAlgorithm/TestClusteringWMS.h
+        src/GlumeAlgorithm/GlumeWMS.cpp
+        src/GlumeAlgorithm/GlumeWMS.h
         src/StaticClusteringAlgorithms/ClusteredJob.cpp
         src/StaticClusteringAlgorithms/ClusteredJob.h
         src/StaticClusteringAlgorithms/StaticClusteringWMS.cpp

@@ -11,7 +11,7 @@
 #include "Util/WorkflowUtil.h"
 #include "StaticClusteringAlgorithms/StaticClusteringWMS.h"
 #include "ZhangClusteringAlgorithms/ZhangWMS.h"
-#include "TestClusteringAlgorithm/TestClusteringWMS.h"
+#include "GlumeAlgorithm/GlumeWMS.h"
 #include "Globals.h"
 
 #include <sys/types.h>
@@ -643,7 +643,7 @@ WMS *Simulator::createWMS(std::string hostname,
         double waste_bound = std::stod(tokens[1]);
         double beat_bound = std::stod(tokens[2]);
 
-        return new TestClusteringWMS(this, hostname, waste_bound, beat_bound, batch_service);
+        return new GlumeWMS(this, hostname, waste_bound, beat_bound, batch_service);
 
     } else if (tokens[0] == "levelbylevel") {
         if (tokens.size() != 3) {
