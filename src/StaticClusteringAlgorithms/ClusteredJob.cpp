@@ -88,7 +88,7 @@ namespace wrench {
         unsigned long real_max_num_nodes = std::min(this->getNumTasks(), max_num_nodes);
 
         std::string job_id_prefix = "my_tentative_job";
-        std::set<std::tuple<std::string, unsigned int, unsigned int, double>> set_of_job_configurations;
+        std::set<std::tuple<std::string, unsigned long, unsigned long, double>> set_of_job_configurations;
         unsigned long num_jobs = real_max_num_nodes;
         for (unsigned int n = 1; n <= real_max_num_nodes; n++) {
             double walltime_seconds = this->estimateMakespan(core_speed, n);

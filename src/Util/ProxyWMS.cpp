@@ -90,7 +90,7 @@ namespace wrench {
     }
 
     double ProxyWMS::estimateWaitTime(long parallelism, double makespan, double simulation_date, int *sequence) {
-        std::set<std::tuple<std::string, unsigned int, unsigned int, double>> job_config;
+        std::set<std::tuple<std::string, unsigned long, unsigned long, double>> job_config;
         std::string config_key = "config_XXXX_" + std::to_string((*sequence)++); // need to make it unique for BATSCHED
         job_config.insert(std::make_tuple(config_key, (unsigned int) parallelism, 1, makespan));
         std::map<std::string, double> estimates = this->batch_service->getStartTimeEstimates(job_config);
