@@ -33,7 +33,7 @@ int Simulator::main(int argc, char **argv) {
     // Parse command-line arguments
     if ((argc != 8) and (argc != 9)) {
         std::cerr << "\e[1;31mUsage: " << argv[0]
-                  << " <num_compute_nodes> <job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm> <batch algorithm> [DISABLED: csv batch log file] [json result file]\e[0m"
+                  << " <num_compute_nodes> <job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm> <batch algorithm> [DISABLED: csv batch log file] [OPTIONAL: json result file]\e[0m"
                   << "\n";
         std::cerr << "  \e[1;32m### workflow specification options ###\e[0m" << "\n";
         std::cerr << "    *  \e[1mindep:s:n:t1:t2\e[0m " << "\n";
@@ -146,8 +146,8 @@ int Simulator::main(int argc, char **argv) {
                 << "\n";
         std::cerr << "      - [prediction|noprediction]: pick parallelism based on makespan+wait predictions"
                   << "\n";
-        std::cerr << "    * \e[1mtest:waste_bound:beat_bound\e[0m" << "\n";
-        std::cerr << "      - Testing a new algorithm" << "\n";
+        std::cerr << "    * \e[1mglume:waste_bound:beat_bound\e[0m" << "\n";
+        std::cerr << "      - GLUME: Group Levels Using Makespan Estimates" << "\n";
         std::cerr << "      - waste_bound: maximum percentage of wasted node time e.g. 0.2" << "\n";
         std::cerr
                 << "      - beat_bound: percentage splitting time must beat non-splitting time by to be viable e.g. 0.1"
@@ -634,10 +634,10 @@ WMS *Simulator::createWMS(std::string hostname,
 
         return new ZhangWMS(this, hostname, batch_service, max_num_jobs, global, bsearch, prediction);
 
-    } else if (tokens[0] == "test") {
+    } else if (tokens[0] == "glume") {
 
         if (tokens.size() != 3) {
-            throw std::invalid_argument("createWMS(): Invalid test specification");
+            throw std::invalid_argument("createWMS(): Invalid glume specification");
         }
 
         double waste_bound = std::stod(tokens[1]);
