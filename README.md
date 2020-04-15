@@ -1,6 +1,6 @@
 ## Task Clustering Algorithm Simulator
 
-This is a WRENCH-based simulator designed for exploring task clustering algorithms. Specifically, this simulates the scheduling and execution of workflows on batch-scheduled clusters.
+This is a WRENCH-based simulator designed for exploring task clustering algorithms in  the context of executing a workflow application on a batch-scheduled cluster.
 
 ## Prerequisites
 
@@ -17,11 +17,12 @@ And, one of the following:
 ## Dependencies
 
 - [Batsched](https://gitlab.inria.fr/batsim/batsched)
-- [WRENCH](https://github.com/wrench-project/wrench) - Build with  ```cmake -DENABLE_BATSCHED=on```
+- [WRENCH](https://github.com/wrench-project/wrench) - Built with  ```cmake -DENABLE_BATSCHED=on```
 
 ## Installation
 
-After installing batsched and WRENCH, compiling and installing with:
+Provided Batsched and WRENCH have been installed, the simulator is
+compiled and installed as:
 
 ```bash
 cmake .
@@ -32,36 +33,21 @@ sudo make install
 ## Usage
 
 ```bash
-$ simulator <compute_nodes> <trace_file> <max_jobs> <workflow_specification> <start_time> <algorithm> <batch_algorithm> <logging_option> <output_file>
-
+$ simulator <compute_nodes> <trace_file> <max_jobs> <workflow_specification> <start_time> <algorithm> <batch_algorithm> [<logging_option>] <output_file>]
 ```
 
-### Arguments
-```
-compute_nodes
-	- The number of compute nodes in the cluster
-trace_file
-	- A workload trace file that defines the "background" load on the cluster throughout. The workflow execution competes with this background load for access to compute nodes
-max_jobs
-	- The maximum number of jobs allowed in the system per user
-workflow_specification
-	- A workflow description file that gives workflow task execution times and dependencies	
-start_time
-	- The date at which the workflow execution begins (i.e., when the first task can be submitted for execution)
-algorithm
-	- The application-level workflow scheduling algorithm to employ
-batch_algorithm
-	- The RJMS-level scheduling algorithm used by the batch scheduler
-```                              
-#### Optional Arguments
-```
-logging_option
-	- Enables some level of logging from WRENCH
-output_file
-	- Name of json file to write simulation results to
-```
+  - ```<compute_nodes>```: the number of compute nodes in the cluster;
+  - ```<trace_file>``: the path of a workload trace file that defines the dynamic "background" load on the cluster. Workflow execution competes with this background load for access to compute nodes;
+  - ```<max_jobs>```: the maximum number of jobs allowed in the system per user onthe cluster (which thus limits the number of workflow jobs  that can be in the system at  a given time;
+  - ```<workflow_specification>```: A workflow description file that gives workflow task execution times and dependencies (in DAX format);
+  - ```<start_time>```: the date at which the workflow execution begins (i.e., when the first task can be submitted for execution);
+  - ```<algorithm>```: the application-level workflow scheduling algorithm to employ;
+  - ```<batch_algorithm>```: the batch scheduling algorithm used by the batch scheduler on the cluster;
+  - ```<logging_option>```: an optional argument, available to all WRENCH-based simulators, to configure the level of simulation logging;
+  - ```<output_file>```: and optional argument that is a path to a json file to which simulation output should be written.
 
-Invoking the simulator with no arguments will output a usage menu along with pre-made algorithm options (redacted output):
+Invoking the simulator with no arguments outputs a long and detailed usage description, which, in particular, details all available ```<algorithm>``` argument values (redacted output):
+
 ```
 Usage: ./simulator <num_compute_nodes> <job trace file> <max jobs in system> <workflow specification> <workflow start time> <algorithm> <batch algorithm> [DISABLED: csv batch log file] [json result file]
   ### workflow specification options ###
