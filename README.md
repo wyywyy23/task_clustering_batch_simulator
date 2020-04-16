@@ -39,7 +39,7 @@ $ simulator <compute_nodes> <trace_file> <max_jobs> <workflow_specification> <st
   - ```<compute_nodes>```: the number of compute nodes in the cluster;
   - ```<trace_file>``: the path of a workload trace file that defines the dynamic "background" load on the cluster. Workflow execution competes with this background load for access to compute nodes;
   - ```<max_jobs>```: the maximum number of jobs allowed in the system per user onthe cluster (which thus limits the number of workflow jobs  that can be in the system at  a given time;
-  - ```<workflow_specification>```: A workflow description file that gives workflow task execution times and dependencies (in DAX format);
+  - ```<workflow_specification>```: A workflow description file that gives workflow task execution times and dependencies (in [DAX format](https://pegasus.isi.edu/documentation/creating_workflows.php));
   - ```<start_time>```: the date at which the workflow execution begins (i.e., when the first task can be submitted for execution);
   - ```<algorithm>```: the application-level workflow scheduling algorithm to employ;
   - ```<batch_algorithm>```: the batch scheduling algorithm used by the batch scheduler on the cluster;
