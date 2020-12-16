@@ -881,7 +881,7 @@ void StaticClusteringWMS::mergeSingleParentSingleChildPairs(Workflow *workflow) 
         wrench::WorkflowTask *merged_task = workflow->addTask(
                 parent_to_merge->getID() + "_" + child_to_merge->getID(),
                 parent_to_merge->getFlops() + child_to_merge->getFlops(),
-                1, 1, 1.0, 0);
+                1, 1, 1.0);
 
         for (auto parent : workflow->getTaskParents(parent_to_merge)) {
             workflow->addControlDependency(parent, merged_task);

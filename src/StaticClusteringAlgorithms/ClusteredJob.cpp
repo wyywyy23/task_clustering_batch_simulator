@@ -174,7 +174,7 @@ namespace wrench {
         auto real_workflow = this->getTasks().at(0)->getWorkflow();
         auto tmp_workflow = new Workflow();
         for (auto real_task : this->getTasks()) {
-            tmp_workflow->addTask(real_task->getID(), 1.0, 1, 1, 1.0, 0);
+            tmp_workflow->addTask(real_task->getID(), 1.0, 1, 1, 1.0);
         }
 
         for (auto tmp_parent : this->getTasks()) {

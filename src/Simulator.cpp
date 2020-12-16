@@ -462,7 +462,7 @@ Workflow *Simulator::createIndepWorkflow(std::vector<std::string> spec_tokens) {
     static std::uniform_int_distribution<unsigned long> m_udist(min_time, max_time);
     for (unsigned long i = 0; i < num_tasks; i++) {
         unsigned long flops = m_udist(rng);
-        auto t = workflow->addTask("Task_" + std::to_string(i), (double) flops, 1, 1, 1.0, 0.0);
+        auto t = workflow->addTask("Task_" + std::to_string(i), (double) flops, 1, 1, 1.0);
         WRENCH_INFO("AAAAA   %s %lf", t->getID().c_str(), t->getFlops() );
     }
 
@@ -517,7 +517,7 @@ Workflow *Simulator::createLevelsWorkflow(std::vector<std::string> spec_tokens) 
         for (unsigned long t = 0; t < num_tasks[l]; t++) {
             unsigned long flops = (*m_udists[l])(rng);
             wrench::WorkflowTask *task = workflow->addTask("Task_l" + std::to_string(l) + "_" +
-                                                           std::to_string(t), (double) flops, 1, 1, 1.0, 0.0);
+                                                           std::to_string(t), (double) flops, 1, 1, 1.0);
             tasks[l].push_back(task);
         }
     }
@@ -552,7 +552,7 @@ Workflow *Simulator::createDAXWorkflow(std::vector<std::string> spec_tokens) {
     // Add task replicas
     for (auto t : original_workflow->getTasks()) {
 //    WRENCH_INFO("t->getFlops() = %lf", t->getFlops());
-        workflow->addTask(t->getID(), t->getFlops(), 1, 1, 1.0, 0);
+        workflow->addTask(t->getID(), t->getFlops(), 1, 1, 1.0);
     }
 
     // Deal with all dependencies (brute-force, but whatever)

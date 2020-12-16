@@ -17,7 +17,7 @@ And, one of the following:
 ## Dependencies
 
 - [Batsched](https://gitlab.inria.fr/batsim/batsched)
-- [WRENCH](https://github.com/wrench-project/wrench) - Built with  ```cmake -DENABLE_BATSCHED=on```
+- [WRENCH version 1.7](https://wrench-project.org/downloads.html) - Built with  ```cmake -DENABLE_BATSCHED=on```
 
 ## Installation
 
